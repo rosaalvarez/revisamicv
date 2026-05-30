@@ -29,11 +29,13 @@ async function checkAndConsumeToken(email: string): Promise<{
   error?: string
 }> {
   try {
-    // Find user
+    const normalizedEmail = email.toLowerCase().trim()
+
+    // Find user — no pedimos free_used aún porque puede no existir
     const { data: user, error: queryError } = await supabaseAdmin
       .from('users')
-      .select('id, tokens, free_used')
-      .eq('email', email.toLowerCase().trim())
+      .select('id, tokens')
+      .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (queryError) {
@@ -44,7 +46,7 @@ async function checkAndConsumeToken(email: string): Promise<{
     // New user: create and allow free CV
     if (!user) {
       await supabaseAdmin.from('users').insert({
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         tokens: 0,
       })
       // Tenta setear free_used; si la columna no existe, falla silenciosamente
@@ -52,24 +54,35 @@ async function checkAndConsumeToken(email: string): Promise<{
         await supabaseAdmin
           .from('users')
           .update({ free_used: true })
-          .eq('email', email.toLowerCase().trim())
+          .eq('email', normalizedEmail)
       } catch {
-        console.warn('free_used column may not exist yet — run ALTER TABLE migration')
+        console.warn('free_used column may not exist yet — run migration')
       }
       return { allowed: true, tokens_remaining: 0 }
     }
 
-    // Free CV still available (free_used === false or undefined/null = columna no existe)
-    const hasFreeUsedColumn = 'free_used' in user
-    const freeUsed = hasFreeUsedColumn ? !!user.free_used : false
+    // Check free_used (maneja el caso donde la columna no existe)
+    let freeUsed = false
+    try {
+      const { data: check } = await supabaseAdmin
+        .from('users')
+        .select('free_used')
+        .eq('id', user.id)
+        .maybeSingle()
+      freeUsed = check ? !!check.free_used : false
+    } catch {
+      // Columna no existe → tratar como primer uso gratis
+      console.warn('free_used column missing — treating as free tier')
+    }
 
+    // Free CV still available
     if (!freeUsed) {
-      if (hasFreeUsedColumn) {
+      try {
         await supabaseAdmin
           .from('users')
           .update({ free_used: true })
           .eq('id', user.id)
-      }
+      } catch { /* columna no existe */ }
       return { allowed: true, tokens_remaining: user.tokens ?? 0 }
     }
 
