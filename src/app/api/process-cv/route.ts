@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 const CV_PROMPT = `You are an expert ATS (Applicant Tracking System) optimization specialist and professional CV writer. Your job is to take a CV written in Spanish and a job description, and produce an optimized CV in English tailored specifically for that position.
 
@@ -17,31 +23,118 @@ Follow these rules strictly:
 9. Do NOT mention this optimization or the tool in the final CV. The CV should look naturally written.
 10. Keep it to one page equivalent of content (around 500-700 words).`
 
+async function checkAndConsumeToken(email: string): Promise<{
+  allowed: boolean
+  tokens_remaining: number
+  error?: string
+}> {
+  try {
+    // Find user
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('id, tokens, free_used')
+      .eq('email', email.toLowerCase().trim())
+      .single()
+
+    // New user: create and allow free CV
+    if (!user) {
+      await supabaseAdmin.from('users').insert({
+        email: email.toLowerCase().trim(),
+        tokens: 0,
+        free_used: true, // mark as used since they're using it now
+      })
+      return { allowed: true, tokens_remaining: 0 }
+    }
+
+    // Free CV still available
+    if (!user.free_used) {
+      await supabaseAdmin
+        .from('users')
+        .update({ free_used: true })
+        .eq('id', user.id)
+      return { allowed: true, tokens_remaining: user.tokens }
+    }
+
+    // No tokens left
+    if (user.tokens <= 0) {
+      return {
+        allowed: false,
+        tokens_remaining: 0,
+        error: 'no_tokens',
+      }
+    }
+
+    // Deduct token
+    const newTokens = user.tokens - 1
+    await supabaseAdmin
+      .from('users')
+      .update({ tokens: newTokens })
+      .eq('id', user.id)
+
+    return { allowed: true, tokens_remaining: newTokens }
+  } catch (err) {
+    console.error('Token check error:', err)
+    return { allowed: false, tokens_remaining: 0, error: 'db_error' }
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData()
-    const cvFile = formData.get('cv') as File
-    const jobDescription = formData.get('jobDescription') as string
+    // Support both JSON and FormData
+    const contentType = req.headers.get('content-type') || ''
 
-    if (!cvFile) return NextResponse.json({ error: 'CV file is required' }, { status: 400 })
-    if (!jobDescription) return NextResponse.json({ error: 'Job description is required' }, { status: 400 })
+    let email: string
+    let cvText: string
+    let jobDescription: string
 
-    // Extract text from the CV file
-    let cvText = ''
-    try {
-      cvText = await cvFile.text()
-    } catch {
-      // If it's a binary file (PDF/DOCX), we can't read it directly
-      return NextResponse.json({
-        error:
-          'Formato de archivo no soportado directamente. Por favor, copia y pega el texto de tu CV en un archivo .txt y súbelo de nuevo.',
-      }, { status: 400 })
+    if (contentType.includes('application/json')) {
+      const body = await req.json()
+      email = body.email
+      cvText = body.cv_text
+      jobDescription = body.job_description
+    } else {
+      const formData = await req.formData()
+      const file = formData.get('cv') as File
+      email = (formData.get('email') as string) || ''
+      jobDescription = (formData.get('jobDescription') as string) || ''
+
+      if (!file) {
+        return NextResponse.json({ error: 'CV file is required' }, { status: 400 })
+      }
+
+      try {
+        cvText = await file.text()
+      } catch {
+        return NextResponse.json({
+          error: 'Formato de archivo no soportado directamente. Por favor, copia y pega el texto de tu CV en un archivo .txt y súbelo de nuevo.',
+        }, { status: 400 })
+      }
     }
 
-    if (!cvText.trim()) {
-      return NextResponse.json({ error: 'CV file is empty' }, { status: 400 })
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    }
+    if (!cvText?.trim()) {
+      return NextResponse.json({ error: 'CV content is required' }, { status: 400 })
+    }
+    if (!jobDescription?.trim()) {
+      return NextResponse.json({ error: 'Job description is required' }, { status: 400 })
     }
 
+    // Token control
+    const tokenCheck = await checkAndConsumeToken(email)
+    if (!tokenCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: tokenCheck.error,
+          message: 'No tienes CVs disponibles. Compra más tokens para continuar.',
+          tokens_remaining: 0,
+        },
+        { status: 402 }
+      )
+    }
+
+    // Process CV with OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -55,9 +148,13 @@ export async function POST(req: NextRequest) {
       max_tokens: 2000,
     })
 
-    const optimizedCV = completion.choices[0]?.message?.content || 'Error generating CV. Please try again.'
+    const optimizedCV =
+      completion.choices[0]?.message?.content || 'Error generating CV. Please try again.'
 
-    return NextResponse.json({ optimizedCV })
+    return NextResponse.json({
+      optimizedCV,
+      tokens_remaining: tokenCheck.tokens_remaining,
+    })
   } catch (error: any) {
     console.error('CV processing error:', error)
     return NextResponse.json(
@@ -65,10 +162,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
 }
