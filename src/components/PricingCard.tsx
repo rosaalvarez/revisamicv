@@ -2,8 +2,24 @@ import { TOKEN_PACKS } from '@/lib/stripe'
 import { CheckIcon } from '@/components/icons'
 import Link from 'next/link'
 
+const FEATURES_BASIC = [
+  'Adaptado a cada oferta',
+  'Traducción nativa',
+  'Auditoría + sugerencias',
+  'Optimización ATS',
+  'No expiran nunca',
+]
+
+const FEATURES_PRO_PREMIUM = [
+  'Todo lo de Básico',
+  'No expiran nunca',
+]
+
 export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }) {
   const p = TOKEN_PACKS[pack]
+  const isBasic = pack === 'basic'
+  const features = isBasic ? FEATURES_BASIC : FEATURES_PRO_PREMIUM
+
   return (
     <div className={`rounded-2xl border-2 p-8 ${p.popular ? 'border-purple-500 bg-purple-50 relative' : 'border-slate-200 bg-white'}`}>
       {p.popular && (
@@ -18,22 +34,12 @@ export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }
         <span className="text-slate-500 ml-1">USD</span>
       </div>
       <ul className="space-y-3 mb-8">
-        <li className="flex items-center gap-2 text-slate-700">
-          <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-          {p.cvCount} CVs optimizados
-        </li>
-        <li className="flex items-center gap-2 text-slate-700">
-          <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-          Adaptado a cada oferta
-        </li>
-        <li className="flex items-center gap-2 text-slate-700">
-          <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-          Optimización ATS
-        </li>
-        <li className="flex items-center gap-2 text-slate-700">
-          <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
-          No expiran nunca
-        </li>
+        {features.map((feat) => (
+          <li key={feat} className="flex items-center gap-2 text-slate-700">
+            <CheckIcon className="w-5 h-5 text-green-500 flex-shrink-0" />
+            {feat}
+          </li>
+        ))}
       </ul>
       <Link
         href={`/signup?pack=${pack}`}
@@ -43,7 +49,7 @@ export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }
             : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
         }`}
       >
-        Comprar {p.name}
+        Comprar {p.name} →
       </Link>
     </div>
   )
