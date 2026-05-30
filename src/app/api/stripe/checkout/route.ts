@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const packData = TOKEN_PACKS[pack as keyof typeof TOKEN_PACKS]
     if (!packData) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat'
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim()
     const success_url = `${appUrl}/dashboard?payment=success`
     const cancel_url = `${appUrl}/dashboard?payment=cancelled`
 
