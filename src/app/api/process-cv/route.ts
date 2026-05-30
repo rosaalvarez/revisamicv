@@ -45,10 +45,17 @@ async function checkAndConsumeToken(email: string): Promise<{
 
     // New user: create and allow free CV
     if (!user) {
-      await supabaseAdmin.from('users').insert({
-        email: normalizedEmail,
-        tokens: 0,
-      })
+      try {
+        await supabaseAdmin.from('users').insert({
+          email: normalizedEmail,
+          tokens: 0,
+        })
+      } catch (insertErr: any) {
+        // Si falla el insert, es probablemente falta de permisos en Supabase
+        console.error('Cannot insert user:', insertErr?.message || insertErr)
+        // Permitir el CV igual (modo degraded — no tracking)
+        return { allowed: true, tokens_remaining: 0 }
+      }
       // Tenta setear free_used; si la columna no existe, falla silenciosamente
       try {
         await supabaseAdmin
@@ -97,10 +104,14 @@ async function checkAndConsumeToken(email: string): Promise<{
 
     // Deduct token
     const newTokens = (user.tokens ?? 1) - 1
-    await supabaseAdmin
-      .from('users')
-      .update({ tokens: newTokens })
-      .eq('id', user.id)
+    try {
+      await supabaseAdmin
+        .from('users')
+        .update({ tokens: newTokens })
+        .eq('id', user.id)
+    } catch (updateErr: any) {
+      console.error('Cannot deduct token:', updateErr?.message || updateErr)
+    }
 
     return { allowed: true, tokens_remaining: newTokens }
   } catch (err) {
