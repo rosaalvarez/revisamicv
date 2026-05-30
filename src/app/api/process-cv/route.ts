@@ -30,33 +30,51 @@ async function checkAndConsumeToken(email: string): Promise<{
 }> {
   try {
     // Find user
-    const { data: user } = await supabaseAdmin
+    const { data: user, error: queryError } = await supabaseAdmin
       .from('users')
       .select('id, tokens, free_used')
       .eq('email', email.toLowerCase().trim())
-      .single()
+      .maybeSingle()
+
+    if (queryError) {
+      console.error('Supabase query error:', queryError)
+      return { allowed: false, tokens_remaining: 0, error: 'db_error' }
+    }
 
     // New user: create and allow free CV
     if (!user) {
       await supabaseAdmin.from('users').insert({
         email: email.toLowerCase().trim(),
         tokens: 0,
-        free_used: true, // mark as used since they're using it now
       })
+      // Tenta setear free_used; si la columna no existe, falla silenciosamente
+      try {
+        await supabaseAdmin
+          .from('users')
+          .update({ free_used: true })
+          .eq('email', email.toLowerCase().trim())
+      } catch {
+        console.warn('free_used column may not exist yet — run ALTER TABLE migration')
+      }
       return { allowed: true, tokens_remaining: 0 }
     }
 
-    // Free CV still available
-    if (!user.free_used) {
-      await supabaseAdmin
-        .from('users')
-        .update({ free_used: true })
-        .eq('id', user.id)
-      return { allowed: true, tokens_remaining: user.tokens }
+    // Free CV still available (free_used === false or undefined/null = columna no existe)
+    const hasFreeUsedColumn = 'free_used' in user
+    const freeUsed = hasFreeUsedColumn ? !!user.free_used : false
+
+    if (!freeUsed) {
+      if (hasFreeUsedColumn) {
+        await supabaseAdmin
+          .from('users')
+          .update({ free_used: true })
+          .eq('id', user.id)
+      }
+      return { allowed: true, tokens_remaining: user.tokens ?? 0 }
     }
 
     // No tokens left
-    if (user.tokens <= 0) {
+    if ((user.tokens ?? 0) <= 0) {
       return {
         allowed: false,
         tokens_remaining: 0,
@@ -65,7 +83,7 @@ async function checkAndConsumeToken(email: string): Promise<{
     }
 
     // Deduct token
-    const newTokens = user.tokens - 1
+    const newTokens = (user.tokens ?? 1) - 1
     await supabaseAdmin
       .from('users')
       .update({ tokens: newTokens })
