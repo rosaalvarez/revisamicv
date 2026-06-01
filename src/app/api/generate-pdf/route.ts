@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     const pdfBuffer = await generateCvPdfBuffer(payload)
-    const filename = sanitizePdfFilename(payload.optimizedCV?.headline || 'optimized-cv')
+    const filename = sanitizePdfFilename(payload.optimizedCV?.candidateName || payload.optimizedCV?.name || payload.optimizedCV?.headline || 'optimized-cv')
 
     return new Response(pdfBuffer, {
       status: 200,

@@ -35,43 +35,83 @@ function renderList(title: string, items?: string[]) {
   )
 }
 
+function renderChipList(items?: string[]) {
+  if (!items?.length) return null
+  return <p className="text-sm text-slate-800 leading-relaxed">{items.join(' | ')}</p>
+}
+
+function renderSimpleSection(title: string, items?: string[]) {
+  if (!items?.length) return null
+  return (
+    <div className="border-t border-slate-200 pt-4">
+      <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{title}</h4>
+      <ul className="list-disc pl-5 space-y-1 text-sm text-slate-800">
+        {items.map((item, index) => <li key={index}>{item}</li>)}
+      </ul>
+    </div>
+  )
+}
+
 function renderOptimizedCV(cv: any) {
   if (!cv) return null
   if (typeof cv === 'string') {
     return <pre className="whitespace-pre-wrap text-sm text-slate-800 font-sans">{cv}</pre>
   }
 
+  const contact = typeof cv.contact === 'object' && cv.contact
+    ? [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.portfolio].filter(Boolean).join(' | ')
+    : cv.contact
+
   return (
     <section className="rounded-2xl border border-purple-200 bg-white p-6">
-      <h3 className="font-bold text-slate-900 mb-4 text-xl">CV adaptado</h3>
-      {cv.headline && <h4 className="text-lg font-bold text-purple-700 mb-2">{cv.headline}</h4>}
-      {cv.summary && <p className="text-sm text-slate-700 leading-relaxed mb-5">{cv.summary}</p>}
+      <div className="text-center border-b border-slate-200 pb-4 mb-5">
+        <h3 className="font-bold text-slate-950 text-2xl">{cv.candidateName || cv.name || 'CV adaptado ATS'}</h3>
+        {contact && <p className="text-sm text-slate-700 mt-1">{contact}</p>}
+        {(cv.targetTitle || cv.headline) && <p className="text-sm font-semibold text-slate-900 mt-2">{cv.targetTitle || cv.headline}</p>}
+      </div>
 
-      {cv.coreCompetencies?.length > 0 && (
-        <div className="mb-5">
-          <h4 className="font-semibold text-slate-900 mb-2">Core Competencies</h4>
-          <div className="flex flex-wrap gap-2">
-            {cv.coreCompetencies.map((skill: string, index: number) => (
-              <span key={index} className="rounded-full bg-purple-50 text-purple-700 px-3 py-1 text-xs font-medium">{skill}</span>
+      <div className="space-y-5">
+        {cv.summary && (
+          <div>
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Professional Summary</h4>
+            <p className="text-sm text-slate-800 leading-relaxed">{cv.summary}</p>
+          </div>
+        )}
+
+        {(cv.coreCompetencies?.length > 0 || cv.skills?.length > 0) && (
+          <div className="border-t border-slate-200 pt-4">
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Skills</h4>
+            {renderChipList([...(cv.coreCompetencies || []), ...(cv.skills || [])])}
+          </div>
+        )}
+
+        {cv.technicalSkills?.length > 0 && (
+          <div className="border-t border-slate-200 pt-4">
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Technical Skills</h4>
+            {renderChipList(cv.technicalSkills)}
+          </div>
+        )}
+
+        {cv.experience?.length > 0 && (
+          <div className="space-y-4 border-t border-slate-200 pt-4">
+            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">Professional Experience</h4>
+            {cv.experience.map((role: any, index: number) => (
+              <div key={index}>
+                <p className="font-semibold text-slate-950">{role.title}</p>
+                <p className="text-sm text-slate-600">{[role.company, role.location, role.dates].filter(Boolean).join(' | ')}</p>
+                <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
+                  {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
+                </ul>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {cv.experience?.length > 0 && (
-        <div className="space-y-5">
-          <h4 className="font-semibold text-slate-900">Experience</h4>
-          {cv.experience.map((role: any, index: number) => (
-            <div key={index} className="border-t border-slate-100 pt-4">
-              <p className="font-semibold text-slate-900">{role.title}</p>
-              <p className="text-sm text-slate-500">{role.company} {role.dates ? `| ${role.dates}` : ''}</p>
-              <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-700">
-                {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
+        {renderSimpleSection('Education', cv.education)}
+        {renderSimpleSection('Certifications', cv.certifications)}
+        {cv.tools?.length > 0 && <div className="border-t border-slate-200 pt-4"><h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Tools</h4>{renderChipList(cv.tools)}</div>}
+        {renderSimpleSection('Languages', cv.languages)}
+      </div>
     </section>
   )
 }
@@ -172,6 +212,11 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4">
       <div className="max-w-4xl mx-auto py-10">
+        <nav className="mb-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+          <a href="/" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Inicio</a>
+          <a href="/#pricing" className="rounded-full border border-purple-200 bg-white px-4 py-2 font-semibold text-purple-700 hover:bg-purple-50">Ver planes</a>
+          <a href="/dashboard" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Dashboard</a>
+        </nav>
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
             {result ? '✅ Resultado de compatibilidad' : 'Adapta tu CV a una vacante real'}
@@ -192,7 +237,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setAndRememberEmail(e.target.value)}
                 placeholder="tu@email.com"
-                className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                className="w-full border border-slate-300 rounded-xl bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
                 required
               />
               <p className="text-xs text-slate-400 mt-1">Lo usamos para darte 1 prueba gratis y manejar tus tokens.</p>
@@ -249,7 +294,7 @@ export default function SignupPage() {
                 onChange={(e) => setJobDescription(e.target.value)}
                 rows={8}
                 placeholder="Pega la descripción completa del trabajo al que quieres aplicar..."
-                className="w-full border border-slate-300 rounded-xl p-4 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                className="w-full border border-slate-300 rounded-xl bg-white p-4 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 required
               />
               <p className="text-xs text-slate-400 mt-1">El score se calcula cruzando tu CV real contra esta vacante específica.</p>

@@ -84,7 +84,13 @@ Business rules:
 5. If the vacancy is far outside the candidate's background, say so honestly.
 6. Do not claim strong spoken English if the CV indicates limited English.
 7. Use vacancy keywords only when truthful.
-8. Optimize for ATS: clear headings, standard titles, relevant keywords, quantified achievements when supported.
+8. Optimize for ATS: one-column text layout, standard section headings, relevant keywords, quantified achievements when supported, reverse chronological experience when dates are available.
+9. Use standard ATS section order in the final CV: Contact Information, Professional Summary, Skills, Technical Skills, Professional Experience, Education, Certifications, Tools, Languages.
+10. The CV should read like a real international ATS resume/CV, not like an analysis report. Avoid first-person prose in the final CV.
+11. Do not use photos, icons, skill bars, tables, columns, graphics, hidden keywords, or sensitive personal data.
+12. candidateName and contact fields must come only from the original CV. If unavailable, return empty strings.
+13. Use email, phone, location, LinkedIn, portfolio, tools, languages, certifications, and education only when supported by the original CV.
+14. Keep bullets achievement-oriented and truthful: action + scope + result when supported. Never invent metrics.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -96,20 +102,31 @@ Return ONLY valid JSON with this exact shape:
   "keywordsToInclude": string[],
   "honestyWarnings": string[],
   "optimizedCV": {
+    "candidateName": string,
+    "contact": {
+      "email": string,
+      "phone": string,
+      "location": string,
+      "linkedin": string,
+      "portfolio": string
+    },
+    "targetTitle": string,
     "headline": string,
     "summary": string,
     "coreCompetencies": string[],
+    "technicalSkills": string[],
+    "tools": string[],
     "experience": [
       {
         "title": string,
         "company": string,
+        "location": string,
         "dates": string,
         "bullets": string[]
       }
     ],
     "education": string[],
     "certifications": string[],
-    "tools": string[],
     "languages": string[]
   },
   "coverLetter": string

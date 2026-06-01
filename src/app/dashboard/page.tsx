@@ -180,7 +180,7 @@ export default function DashboardPage() {
                 if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
               }}
               placeholder="tu@email.com"
-              className="flex-1 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+              className="flex-1 border border-slate-300 rounded-xl bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
               required
             />
             <button

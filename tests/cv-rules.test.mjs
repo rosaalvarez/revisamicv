@@ -50,3 +50,15 @@ test('buildOptimizerSystemPrompt includes selected output language and anti-inve
   assert.match(prompt, /Do not invent employers/i)
   assert.match(prompt, /compatibilityScore/i)
 })
+
+test('buildOptimizerSystemPrompt requires an ATS resume schema with contact and skills sections', () => {
+  const prompt = buildOptimizerSystemPrompt('english')
+  assert.match(prompt, /candidateName/i)
+  assert.match(prompt, /contact/i)
+  assert.match(prompt, /targetTitle/i)
+  assert.match(prompt, /technicalSkills/i)
+  assert.match(prompt, /tools/i)
+  assert.match(prompt, /languages/i)
+  assert.match(prompt, /standard ATS section order/i)
+  assert.match(prompt, /If unavailable, return empty strings/i)
+})
