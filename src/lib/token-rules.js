@@ -4,7 +4,7 @@ export const TOKEN_PACKS = {
     cvCount: 5,
     priceUSD: 5,
     priceCents: 500,
-    description: '5 vacantes donde aplicas como candidato local',
+    description: '5 análisis CV + vacante con PDF descargable',
     popular: false,
   },
   pro: {
@@ -12,7 +12,7 @@ export const TOKEN_PACKS = {
     cvCount: 15,
     priceUSD: 12,
     priceCents: 1200,
-    description: '15 oportunidades con CV blindado',
+    description: '15 análisis para comparar oportunidades',
     popular: true,
   },
   premium: {
@@ -20,7 +20,7 @@ export const TOKEN_PACKS = {
     cvCount: 30,
     priceUSD: 19,
     priceCents: 1900,
-    description: '30 aplicaciones nivel US',
+    description: '30 análisis para búsqueda intensiva',
     popular: false,
   },
 }

@@ -1,4 +1,4 @@
-import { SparklesIcon, ArrowRightIcon, StarIcon, SearchIcon, ClipboardIcon, UploadIcon, DownloadIcon, ClockIcon, AlertCircleIcon, TrendingUpIcon, ChartBarIcon, ShieldCheckIcon, ThumbsDownIcon, UserIcon } from '@/components/icons'
+import { SparklesIcon, ArrowRightIcon, StarIcon, SearchIcon, ClipboardIcon, UploadIcon, DownloadIcon, ClockIcon, AlertCircleIcon, ChartBarIcon, ShieldCheckIcon, ThumbsDownIcon, UserIcon, CheckIcon } from '@/components/icons'
 import PricingCard from '@/components/PricingCard'
 import BeforeAfterCards from '@/components/BeforeAfterCards'
 import Link from 'next/link'
@@ -6,18 +6,18 @@ import Link from 'next/link'
 const painBlocks = [
   {
     icon: AlertCircleIcon,
-    title: 'Hablas inglés perfecto. Tu CV suena a Google Translate.',
-    text: 'Usas palabras como "spearheaded" y se siente falso. Tu CV se lee como una descripción de cargo, no como una lista de logros. Los reclutadores en EE.UU. lo notan en 6 segundos.',
+    title: 'No sabes si esa vacante vale tu tiempo.',
+    text: 'Lees la descripción, ves 40 requisitos y no sabes si aplicar, adaptar tu CV o descartarla. Terminas usando el mismo documento para todo.',
   },
   {
     icon: ClockIcon,
-    title: '100 aplicaciones. Rechazos automáticos a las 3 a.m.',
-    text: 'Tienes las skills. Las pusiste en el CV. Pero si no usas las palabras exactas de la vacante, tu CV se pierde entre 2.000 aplicantes. Y si marcas "no soy ciudadano US" — incluso en "Global Remote" — el filtro te descarta antes de que alguien lea la primera línea.',
+    title: 'Cada aplicación te toma demasiado.',
+    text: 'Copias la vacante, abres tu CV, intentas mover keywords y pierdes horas. Cuando por fin lo envías, no sabes si quedó alineado o solo más largo.',
   },
   {
     icon: ThumbsDownIcon,
-    title: '15 versiones de tu CV en PDF. Y ni así te llaman.',
-    text: 'Ya probaste Jobscan, Teal, ChatGPT. Pasaste 3 horas adaptando para UNA vacante, sacaste 80% de match — y rechazo automático 12 horas después. Cuando usas ChatGPT, todos los CVs suenan igual: rellenos de "synergy" y "navigated" que un reclutador detecta al instante.',
+    title: 'ChatGPT ayuda, pero también inventa o exagera.',
+    text: 'Un prompt genérico puede sonar bonito, pero mezclar experiencia real con frases infladas te puede costar credibilidad. Necesitas adaptación sin mentir.',
   },
 ]
 
@@ -25,45 +25,51 @@ const steps = [
   {
     step: '1',
     icon: UploadIcon,
-    title: 'Sube tu CV',
-    desc: 'En español o inglés. PDF, Word, o texto. Lo que tengas.',
+    title: 'Sube tu CV real',
+    desc: 'PDF, Word .docx o TXT. En español o inglés.',
   },
   {
     step: '2',
-    icon: SearchIcon,
-    title: 'Auditoría instantánea',
-    desc: 'Te marcamos qué falla, qué sobra, y qué te está costando entrevistas. Con sugerencias concretas.',
+    icon: ClipboardIcon,
+    title: 'Pega una vacante',
+    desc: 'Responsabilidades, requisitos y skills del cargo objetivo.',
   },
   {
     step: '3',
-    icon: ClipboardIcon,
-    title: 'Pega la vacante',
-    desc: 'Copia la descripción del cargo al que quieres aplicar.',
+    icon: SearchIcon,
+    title: 'Recibe score y brechas',
+    desc: 'Compatibilidad /100, fortalezas, riesgos y keywords que faltan.',
   },
   {
     step: '4',
     icon: DownloadIcon,
-    title: 'Recibe tu CV reconstruido',
-    desc: 'En inglés nativo. Reorganizado con tus logros reales en formato action verbs + métricas. Con las keywords exactas de esa vacante. Listo para enviar.',
+    title: 'Descarga el CV adaptado',
+    desc: 'ATS-friendly, en inglés o español, listo para enviar en PDF.',
   },
 ]
 
-const testimonials = [
+const useCases = [
   {
-    quote: 'Apliqué a 30 posiciones sin respuesta. Después de optimizar mi CV, tuve 4 entrevistas en 2 semanas.',
-    name: 'María González',
-    role: 'Ingeniera de Software, Bogotá',
+    quote: 'Tengo 3 vacantes parecidas y quiero saber a cuál vale más la pena aplicar primero.',
+    name: 'Comparar oportunidades',
+    role: 'Score distinto por cada vacante',
   },
   {
-    quote: 'No sabía que mi CV era invisible para los filtros. La diferencia fue inmediata.',
-    name: 'Carlos Ramírez',
-    role: 'Marketing Manager, Medellín',
+    quote: 'Vengo de otra industria y necesito reposicionar mi experiencia sin inventar cargos.',
+    name: 'Transición profesional',
+    role: 'Fortalezas transferibles + brechas claras',
   },
   {
-    quote: 'Tenía 12 versiones de mi CV. Ahora subo la vacante y en 2 minutos tengo uno perfecto.',
-    name: 'Andrea López',
-    role: 'Product Designer, Lima',
+    quote: 'Necesito un CV en inglés para remoto global, pero que suene profesional y honesto.',
+    name: 'Aplicaciones internacionales',
+    role: 'Output en inglés o español',
   },
+]
+
+const trustPoints = [
+  'No inventa experiencia: marca brechas y reposiciona habilidades reales.',
+  'Cada análisis cruza tu CV contra una vacante específica, no contra consejos genéricos.',
+  'Puedes descargar PDF y volver a tus CVs desde el dashboard.',
 ]
 
 export default function Home() {
@@ -73,27 +79,27 @@ export default function Home() {
       <section className="pt-24 pb-16 px-4 text-center">
         <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
           <SparklesIcon className="w-4 h-4" />
-          Para profesionales LATAM que aplican afuera
+          Para profesionales LATAM que aplican a mejores vacantes
         </div>
 
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 mb-6 max-w-4xl mx-auto leading-tight">
-          Tu experiencia es Senior.{' '}
-          <span className="text-purple-600">No dejes que tu CV en inglés grite &apos;Junior&apos;.</span>
+          ¿Qué tan compatible es tu CV con esa vacante?{' '}
+          <span className="text-purple-600">Descúbrelo antes de aplicar.</span>
         </h1>
 
         <p className="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-          Deja de traducir literalmente. Nuestra IA reescribe tu experiencia usando el vocabulario exacto
-          y las <em>action metrics</em> que los reclutadores en EE.UU. exigen — adaptado a cada vacante en segundos.
+          Sube tu CV real, pega una vacante y recibe un score de compatibilidad, brechas honestas,
+          keywords importantes y un CV adaptado en inglés o español, sin inventar experiencia.
         </p>
 
         <Link
           href="/signup"
           className="inline-flex items-center gap-2 bg-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-purple-700 transition shadow-lg shadow-purple-200"
         >
-          Generar mi CV nivel US <ArrowRightIcon className="w-5 h-5" />
+          Analizar mi CV gratis <ArrowRightIcon className="w-5 h-5" />
         </Link>
         <p className="text-sm text-slate-400 mt-3">
-          Primer CV gratis. Sin tarjeta. Sin registro para ver el resultado.
+          Primer análisis gratis. Sin tarjeta. PDF/DOCX/TXT soportados.
         </p>
 
         <BeforeAfterCards />
@@ -102,10 +108,10 @@ export default function Home() {
       {/* ═══════════════ 2. AGITACIÓN DEL DOLOR ═══════════════ */}
       <section className="py-20 px-4 max-w-4xl mx-auto">
         <h2 className="text-3xl font-bold text-center text-slate-900 mb-4">
-          ¿Esto te suena?
+          Aplicar sin estrategia sale caro
         </h2>
         <p className="text-center text-slate-500 mb-12 text-lg">
-          No eres tú. Es tu CV.
+          El problema no siempre es tu experiencia. Muchas veces es el match entre tu CV y esa vacante.
         </p>
         <div className="space-y-6">
           {painBlocks.map((block, i) => (
@@ -129,12 +135,11 @@ export default function Home() {
       <section className="py-20 px-4 bg-slate-900 text-white">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-2xl md:text-3xl italic font-light text-slate-300 mb-6 leading-relaxed">
-            &ldquo;Igual escucho de gente consiguiendo trabajo. ¿Quiénes son? ¿Qué hicieron diferente?&rdquo;
+            &ldquo;No necesitas aplicar a más vacantes a ciegas. Necesitas saber cuáles sí tienen sentido para tu perfil.&rdquo;
           </p>
           <p className="text-lg text-slate-400 leading-relaxed">
-            Lo que hicieron diferente no fue aplicar a más vacantes. Fue dejar de enviar el mismo CV
-            traducido a todas y presentar un documento que un <em>hiring manager</em> gringo no distingue
-            de un candidato local.
+            RevisaMiCV convierte cada vacante en una decisión: aplicar fuerte, adaptar con cuidado o no perder tiempo.
+            Y cuando sí aplica, te entrega un CV alineado con esa oportunidad.
           </p>
         </div>
       </section>
@@ -145,7 +150,7 @@ export default function Home() {
           Así funciona
         </h2>
         <p className="text-center text-slate-500 mb-12 text-lg">
-          De tu CV en español a un CV nivel US en 2 minutos.
+          De un CV genérico a una aplicación específica en pocos minutos.
         </p>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -163,18 +168,19 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Mini before/after */}
-        <div className="max-w-2xl mx-auto bg-purple-50 rounded-2xl p-6 border border-purple-200">
-          <div className="space-y-3">
+        <div className="max-w-3xl mx-auto bg-purple-50 rounded-2xl p-6 border border-purple-200">
+          <div className="flex items-start gap-4">
+            <ShieldCheckIcon className="w-8 h-8 text-purple-600 flex-shrink-0 mt-1" />
             <div>
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">De:</span>
-              <p className="text-slate-600 italic mt-1">&ldquo;Fui el encargado del proyecto de migración&rdquo;</p>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">A:</span>
-              <p className="text-slate-900 font-medium mt-1">
-                &ldquo;Spearheaded cloud migration for 3 microservices, reducing deployment time by 40%&rdquo;
-              </p>
+              <h3 className="font-bold text-slate-900 mb-3">Reglas del producto</h3>
+              <ul className="space-y-2 text-sm text-slate-700">
+                {trustPoints.map((point) => (
+                  <li key={point} className="flex gap-2">
+                    <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
@@ -187,27 +193,24 @@ export default function Home() {
             ¿Y si uso ChatGPT?
           </h2>
           <p className="text-center text-slate-500 mb-12 text-lg">
-            Puedes. Pero esto es lo que pasa:
+            Puedes. Pero RevisaMiCV está diseñado para este flujo exacto:
           </p>
 
-          {/* Mobile: card-based comparison. Desktop: table-like grid */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            {/* Header */}
             <div className="grid grid-cols-3 bg-slate-100 text-sm font-semibold text-slate-700">
               <div className="p-4">&nbsp;</div>
-              <div className="p-4 text-center border-l border-slate-200">ChatGPT</div>
+              <div className="p-4 text-center border-l border-slate-200">ChatGPT genérico</div>
               <div className="p-4 text-center border-l border-slate-200 bg-purple-50 text-purple-700 rounded-tr-2xl">RevisaMiCV</div>
             </div>
 
             {[
-              ['Traduce CV', '✅', '✅'],
-              ['Suena nativo', '❌ buzzwords', '✅ action verbs'],
-              ['Audita tu CV', '❌', '✅'],
-              ['Sugiere cambios', '❌', '✅'],
-              ['Extrae keywords JD', '❌ manual', '✅ automático'],
-              ['Score de match', '❌', '✅'],
-              ['Tiempo por vacante', '30–40 min', '2 min'],
-              ['Inventa experiencia', '⚠️ frecuente', '❌ nunca'],
+              ['Lee PDF/DOCX/TXT', '⚠️ manual', '✅ automático'],
+              ['Cruza CV vs vacante', '⚠️ depende del prompt', '✅ flujo guiado'],
+              ['Score de compatibilidad', '❌', '✅ /100'],
+              ['Brechas y riesgos', '⚠️ genérico', '✅ por vacante'],
+              ['CV adaptado descargable', '❌ copiar/pegar', '✅ PDF'],
+              ['Historial y tokens', '❌', '✅ dashboard'],
+              ['Inventa experiencia', '⚠️ posible', '❌ reglas anti-invención'],
             ].map(([label, chatgpt, revisamicv], i) => (
               <div key={i} className={`grid grid-cols-3 text-sm ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
                 <div className="p-4 text-slate-700 font-medium">{label}</div>
@@ -219,18 +222,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ═══════════════ 6. PRUEBA SOCIAL ═══════════════ */}
+      {/* ═══════════════ 6. CASOS DE USO ═══════════════ */}
       <section className="py-20 px-4 bg-slate-900 text-white">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">
-            Profesionales LATAM ya están consiguiendo entrevistas
+            Úsalo antes de gastar energía aplicando
           </h2>
           <p className="text-center text-slate-400 mb-12 text-lg">
-            No son casos especiales. Hicieron un cambio simple.
+            Ideal cuando necesitas decidir rápido y adaptar con honestidad.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {testimonials.map((t, i) => (
+            {useCases.map((t, i) => (
               <div key={i} className="p-6 rounded-2xl bg-slate-800 border border-slate-700">
                 <div className="flex gap-1 mb-3">
                   {[...Array(5)].map((_, j) => (
@@ -251,12 +254,11 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Stat box */}
           <div className="max-w-2xl mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center gap-4">
             <ChartBarIcon className="w-10 h-10 text-purple-400 flex-shrink-0" />
             <p className="text-slate-300 text-sm leading-relaxed">
-              Un estudio de la Universidad de Texas demostró que alinear el CV con las keywords del puesto
-              sube al candidato <strong className="text-white">al menos 16 posiciones</strong> en un pool de 100.
+              El score no promete entrevistas. Te ayuda a priorizar, entender brechas y enviar un CV más alineado
+              con lo que esa vacante está pidiendo.
             </p>
           </div>
         </div>
@@ -268,7 +270,7 @@ export default function Home() {
           Precios simples. Sin suscripción.
         </h2>
         <p className="text-center text-slate-500 mb-12 text-lg">
-          Compra los CVs que necesites. No expiran. Sin letra pequeña.
+          Cada token = 1 análisis de CV contra 1 vacante + CV adaptado descargable en PDF.
         </p>
         <div className="grid md:grid-cols-3 gap-6">
           <PricingCard pack="basic" />
@@ -280,23 +282,23 @@ export default function Home() {
       {/* ═══════════════ 8. CTA FINAL ═══════════════ */}
       <section className="py-20 px-4 text-center bg-gradient-to-b from-white to-purple-50">
         <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4 max-w-2xl mx-auto leading-tight">
-          Dejaste de aplicar a esa vacante porque sentiste que tu inglés no daba.{' '}
-          <span className="text-purple-600">Hoy lo arreglas.</span>
+          Antes de mandar otro CV genérico, revisa si esa vacante realmente encaja contigo.{' '}
+          <span className="text-purple-600">Empieza con un análisis gratis.</span>
         </h2>
         <Link
           href="/signup"
           className="inline-flex items-center gap-2 bg-purple-600 text-white px-10 py-5 rounded-full text-xl font-semibold hover:bg-purple-700 transition shadow-xl shadow-purple-200 mt-8"
         >
-          Generar mi primer CV gratis <ArrowRightIcon className="w-6 h-6" />
+          Analizar mi primer CV gratis <ArrowRightIcon className="w-6 h-6" />
         </Link>
         <p className="text-sm text-slate-400 mt-4">
-          Sin tarjeta. Sin registro para ver el resultado.
+          Sin tarjeta. Recibe score, CV adaptado y PDF descargable.
         </p>
       </section>
 
       {/* ═══════════════ 9. FOOTER ═══════════════ */}
       <footer className="py-8 px-4 text-center text-sm text-slate-400 border-t border-slate-200">
-        <p>© 2025 RevisaMiCV.lat — Todos los derechos reservados</p>
+        <p>© 2026 RevisaMiCV.lat — Todos los derechos reservados</p>
       </footer>
     </main>
   )
