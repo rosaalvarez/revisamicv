@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
+import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -8,20 +9,6 @@ const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-const CV_PROMPT = `You are an expert ATS (Applicant Tracking System) optimization specialist and professional CV writer. Your job is to take a CV written in Spanish and a job description, and produce an optimized CV in English tailored specifically for that position.
-
-Follow these rules strictly:
-1. Rewrite the CV ENTIRELY in professional English.
-2. Extract keywords, skills, and requirements from the job description and naturally incorporate them into the CV.
-3. Reformat the CV to pass ATS filters: use standard headings (Professional Summary, Work Experience, Education, Skills), avoid tables/images/columns, use standard fonts, include relevant keywords exactly as they appear in the job description.
-4. Quantify achievements where possible. If the original says "managed a team", rewrite as "Led a team of 5 engineers, delivering 3 major releases on time".
-5. Remove irrelevant experience that doesn't match the job description.
-6. Add a "Core Competencies" section with 6-8 keywords pulled directly from the job description.
-7. Include a brief note at the top explaining the top 3 improvements made and why they matter for ATS.
-8. Format the output as a clean, professional CV ready to submit. Use markdown-style formatting for headers.
-9. Do NOT mention this optimization or the tool in the final CV. The CV should look naturally written.
-10. Keep it to one page equivalent of content (around 500-700 words).`
 
 async function checkAndConsumeToken(email: string): Promise<{
   allowed: boolean
@@ -128,17 +115,20 @@ export async function POST(req: NextRequest) {
     let email: string
     let cvText: string
     let jobDescription: string
+    let outputLanguage: 'english' | 'spanish'
 
     if (contentType.includes('application/json')) {
       const body = await req.json()
       email = body.email
       cvText = body.cv_text
       jobDescription = body.job_description
+      outputLanguage = normalizeOutputLanguage(body.outputLanguage || body.output_language)
     } else {
       const formData = await req.formData()
       const file = formData.get('cv') as File
       email = (formData.get('email') as string) || ''
       jobDescription = (formData.get('jobDescription') as string) || ''
+      outputLanguage = normalizeOutputLanguage(formData.get('outputLanguage'))
 
       if (!file) {
         return NextResponse.json({ error: 'CV file is required' }, { status: 400 })
@@ -179,22 +169,36 @@ export async function POST(req: NextRequest) {
     // Process CV with OpenAI
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: CV_PROMPT },
+        { role: 'system', content: buildOptimizerSystemPrompt(outputLanguage) },
         {
           role: 'user',
-          content: `Original CV (Spanish):\n\n${cvText.substring(0, 8000)}\n\n---\n\nJob Description:\n\n${jobDescription.substring(0, 4000)}`,
+          content: `Real CV text:\n\n${cvText.substring(0, 10000)}\n\n---\n\nTarget job vacancy:\n\n${jobDescription.substring(0, 6000)}\n\n---\n\nSelected final CV language: ${outputLanguage}`,
         },
       ],
-      temperature: 0.5,
-      max_tokens: 2000,
+      temperature: 0.35,
+      max_tokens: 3500,
     })
 
-    const optimizedCV =
-      completion.choices[0]?.message?.content || 'Error generating CV. Please try again.'
+    const rawText =
+      completion.choices[0]?.message?.content || '{"fitVerdict":"Error generating CV. Please try again."}'
+
+    let parsed: any
+    try {
+      parsed = JSON.parse(rawText)
+    } catch {
+      parsed = { rawText, optimizedCV: rawText }
+    }
+
+    const compatibilityScore = Number(parsed.compatibilityScore ?? 0)
+    const band = getCompatibilityBand(compatibilityScore)
 
     return NextResponse.json({
-      optimizedCV,
+      ...parsed,
+      compatibilityScore,
+      compatibilityBand: band,
+      outputLanguage,
       tokens_remaining: tokenCheck.tokens_remaining,
     })
   } catch (error: any) {
