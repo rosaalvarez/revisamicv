@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
+import { creditTokens } from '@/lib/token-service'
+import { getPackTokenCount } from '@/lib/token-rules'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-const TOKEN_MAP: Record<string, number> = {
-  basic: 5,
-  pro: 15,
-  premium: 30,
-}
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -34,36 +30,19 @@ export async function POST(req: NextRequest) {
     const session = event.data.object
     const email = session.customer_email || session.metadata?.email
     const pack = session.metadata?.pack || 'basic'
-    const tokens = TOKEN_MAP[pack] || 5
+    const tokens = getPackTokenCount(pack) || 5
 
     if (!email) {
       console.error('No email in checkout session')
       return NextResponse.json({ error: 'No email' }, { status: 400 })
     }
 
-    // Find or create user, add tokens
-    const { data: existing } = await supabaseAdmin
-      .from('users')
-      .select('id, tokens')
-      .eq('email', email.toLowerCase().trim())
-      .single()
-
-    if (existing) {
-      await supabaseAdmin
-        .from('users')
-        .update({
-          tokens: existing.tokens + tokens,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
-      console.log(`✓ Credited ${tokens} tokens to ${email} (now: ${existing.tokens + tokens})`)
-    } else {
-      await supabaseAdmin.from('users').insert({
-        email: email.toLowerCase().trim(),
-        tokens,
-        free_used: false,
-      })
-      console.log(`✓ Created user ${email} with ${tokens} tokens`)
+    try {
+      const user = await creditTokens(supabaseAdmin, email, tokens)
+      console.log(`✓ Credited ${tokens} tokens to ${user.email} (now: ${user.tokens})`)
+    } catch (error: any) {
+      console.error('Token credit failed:', error?.message || error)
+      return NextResponse.json({ error: 'Token credit failed' }, { status: 500 })
     }
   }
 
