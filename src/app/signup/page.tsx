@@ -83,6 +83,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [error, setError] = useState('')
+  const [pdfLoading, setPdfLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,6 +111,43 @@ export default function SignupPage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!result?.optimizedCV) return setError('Primero genera un CV adaptado')
+
+    setPdfLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          optimizedCV: result.optimizedCV,
+          outputLanguage,
+        }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || data.error || 'No pude generar el PDF')
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'cv-adaptado-revisamicv.pdf'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setPdfLoading(false)
     }
   }
 
@@ -237,12 +275,21 @@ export default function SignupPage() {
               </section>
             )}
 
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+
             <div className="flex flex-col md:flex-row gap-4">
               <button
                 onClick={() => { setResult(null); setFile(null); setJobDescription('') }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
                 Probar otra vacante
+              </button>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading || !result.optimizedCV}
+                className="flex-1 py-3 rounded-full font-semibold bg-slate-900 text-white hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                {pdfLoading ? 'Generando PDF...' : 'Descargar CV en PDF'}
               </button>
               <a
                 href="/#pricing"
