@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
+import { extractDocumentText } from '@/lib/document-extraction'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -135,10 +136,11 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        cvText = await file.text()
-      } catch {
+        cvText = await extractDocumentText(file)
+      } catch (err: any) {
         return NextResponse.json({
-          error: 'Formato de archivo no soportado directamente. Por favor, copia y pega el texto de tu CV en un archivo .txt y súbelo de nuevo.',
+          error: 'document_extraction_failed',
+          message: err.message || 'No pude leer el CV. Prueba con PDF, Word (.docx), TXT o pega el texto manualmente.',
         }, { status: 400 })
       }
     }

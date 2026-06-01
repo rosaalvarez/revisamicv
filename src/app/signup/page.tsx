@@ -173,7 +173,7 @@ export default function SignupPage() {
                 ) : (
                   <>
                     <p className="text-slate-600 font-medium">Haz clic para subir</p>
-                    <p className="text-sm text-slate-400 mt-1">Por ahora funciona mejor con TXT. PDF/Word real viene en la siguiente fase.</p>
+                    <p className="text-sm text-slate-400 mt-1">PDF, Word (.docx) o TXT. Máximo 8 MB.</p>
                   </>
                 )}
                 <input
