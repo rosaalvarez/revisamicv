@@ -1,3 +1,7 @@
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+
 export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 const MIN_EXTRACTED_CHARS = 120
 
@@ -77,7 +81,7 @@ export async function extractDocumentText(file) {
   }
 
   if (kind === 'pdf') {
-    const { PDFParse } = await import('pdf-parse')
+    const { PDFParse } = require('pdf-parse')
     const parser = new PDFParse({ data: buffer })
     try {
       const result = await parser.getText()

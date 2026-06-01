@@ -5,8 +5,10 @@ import {
   getDocumentKind,
   validateDocumentFile,
   cleanExtractedText,
+  extractDocumentText,
   MAX_DOCUMENT_BYTES,
 } from '../src/lib/document-extraction.js'
+import { generateCvPdfBuffer } from '../src/lib/pdf-generator.js'
 
 test('getDocumentKind detects supported extensions and mime types', () => {
   assert.equal(getDocumentKind({ name: 'resume.pdf', type: 'application/pdf' }), 'pdf')
@@ -33,3 +35,27 @@ test('cleanExtractedText removes noisy whitespace and browser print artifacts', 
   const input = '  ROSA   ÁLVAREZ\n\n\nfile:///Users/test/cv.html\n1/3\nProduct    Manager  '
   assert.equal(cleanExtractedText(input), 'ROSA ÁLVAREZ\nProduct Manager')
 })
+
+test('extractDocumentText reads generated PDFs in Node without DOMMatrix browser globals', async () => {
+  const pdfBuffer = await generateCvPdfBuffer({
+    optimizedCV: {
+      name: 'Rosa Alvarez',
+      headline: 'Product Manager focused on AI SaaS and operations',
+      summary: 'Product leader with experience building practical AI tools, customer workflows, analytics, launches, and automation for digital products in LATAM and global markets.',
+      experience: [
+        'Built AI-assisted product workflows for resume analysis, job matching, user onboarding, and conversion optimization.',
+        'Coordinated product launches with payments, dashboards, document generation, and customer-facing UX improvements.',
+      ],
+      skills: ['AI products', 'SaaS', 'Operations', 'Customer research', 'Launch strategy'],
+    },
+    outputLanguage: 'english',
+  })
+
+  const file = new File([pdfBuffer], 'rosa-cv.pdf', { type: 'application/pdf' })
+  const text = await extractDocumentText(file)
+
+  assert.match(text, /PROFESSIONAL SUMMARY/)
+  assert.match(text, /Product Manager/)
+  assert.ok(text.length > 120)
+})
+
