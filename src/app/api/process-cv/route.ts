@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
+import { validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
@@ -50,14 +51,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    const emailError = validateEmail(email)
+    if (emailError) {
+      return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
     }
     if (!cvText?.trim()) {
-      return NextResponse.json({ error: 'CV content is required' }, { status: 400 })
+      return NextResponse.json({ error: 'empty_cv', message: 'No pude encontrar texto útil dentro del CV.' }, { status: 400 })
     }
-    if (!jobDescription?.trim()) {
-      return NextResponse.json({ error: 'Job description is required' }, { status: 400 })
+    const jobError = validateJobDescription(jobDescription)
+    if (jobError) {
+      return NextResponse.json({ error: 'invalid_job_description', message: jobError }, { status: 400 })
     }
 
     // Token pre-check. We only consume after OpenAI succeeds, so failed generations do not burn credits.

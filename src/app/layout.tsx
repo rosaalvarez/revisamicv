@@ -1,12 +1,36 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat'
+
 export const metadata: Metadata = {
-  title: 'RevisaMiCV.lat — Tu experiencia es Senior. No dejes que tu CV grite Junior.',
-  description: 'Deja de traducir literalmente. Nuestra IA reescribe tu experiencia con el vocabulario exacto y las action metrics que los reclutadores en EE.UU. exigen. Primer CV gratis.',
+  metadataBase: new URL(appUrl),
+  title: 'RevisaMiCV.lat — Score de compatibilidad + CV adaptado a cada vacante',
+  description: 'Cruza tu CV real contra una vacante específica, descubre tu porcentaje de compatibilidad y descarga un CV adaptado en inglés o español sin inventar experiencia.',
+  keywords: ['CV ATS', 'compatibilidad laboral', 'curriculum vitae', 'vacantes remotas', 'empleo LATAM', 'CV en inglés', 'CV en español'],
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
-    title: 'RevisaMiCV.lat — CV nivel US en 2 minutos',
-    description: 'Tu experiencia es Senior. No dejes que tu CV en inglés grite Junior. Optimización ATS con IA para profesionales LATAM.',
+    title: 'RevisaMiCV.lat — ¿Qué tan compatible eres con esta vacante?',
+    description: 'Sube tu CV, pega una vacante y recibe score, brechas, keywords y CV adaptado descargable en PDF.',
+    url: appUrl,
+    siteName: 'RevisaMiCV.lat',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'RevisaMiCV.lat — Score de compatibilidad y CV adaptado',
+      },
+    ],
+    locale: 'es_CO',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RevisaMiCV.lat — Score + CV adaptado',
+    description: 'Cruza tu CV real contra una vacante y descarga un CV adaptado en PDF.',
     images: ['/og.png'],
   },
 }

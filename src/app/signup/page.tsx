@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
+import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
 
 type ProcessResult = {
   compatibilityScore?: number
@@ -86,26 +87,43 @@ export default function SignupPage() {
   const [pdfLoading, setPdfLoading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  useEffect(() => {
+    const savedEmail = window.localStorage.getItem('revisamicv_email')
+    if (savedEmail) setEmail(savedEmail)
+  }, [])
+
+  const setAndRememberEmail = (value: string) => {
+    setEmail(value)
+    if (value.trim()) window.localStorage.setItem('revisamicv_email', value.trim().toLowerCase())
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email.trim()) return setError('Escribe tu email')
-    if (!file) return setError('Sube tu CV')
-    if (!jobDescription.trim()) return setError('Pega la vacante para poder adaptar el CV')
+    const emailError = validateEmail(email)
+    if (emailError) return setError(emailError)
+
+    const fileError = validateCvFile(file)
+    if (fileError) return setError(fileError)
+    const selectedFile = file as File
+
+    const jobError = validateJobDescription(jobDescription)
+    if (jobError) return setError(jobError)
 
     setLoading(true)
     setError('')
 
     try {
       const formData = new FormData()
-      formData.append('email', email)
-      formData.append('cv', file)
+      formData.append('email', email.trim().toLowerCase())
+      formData.append('cv', selectedFile)
       formData.append('jobDescription', jobDescription)
       formData.append('outputLanguage', outputLanguage)
 
       const res = await fetch('/api/process-cv', { method: 'POST', body: formData })
       const data = await res.json()
 
-      if (!res.ok) throw new Error(data.message || data.error || 'Error procesando')
+      if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
+      window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       setResult(data)
     } catch (err: any) {
       setError(err.message)
@@ -132,7 +150,7 @@ export default function SignupPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.message || data.error || 'No pude generar el PDF')
+        throw new Error(getFriendlyApiError(data.message || data.error, 'No pude generar el PDF'))
       }
 
       const blob = await res.blob()
@@ -172,7 +190,7 @@ export default function SignupPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setAndRememberEmail(e.target.value)}
                 placeholder="tu@email.com"
                 className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
                 required
@@ -217,7 +235,7 @@ export default function SignupPage() {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".pdf,.doc,.docx,.txt"
+                  accept=".pdf,.docx,.txt"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="hidden"
                 />
@@ -237,7 +255,7 @@ export default function SignupPage() {
               <p className="text-xs text-slate-400 mt-1">El score se calcula cruzando tu CV real contra esta vacante específica.</p>
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
 
             <button
               type="submit"
@@ -275,7 +293,7 @@ export default function SignupPage() {
               </section>
             )}
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
@@ -292,10 +310,16 @@ export default function SignupPage() {
                 {pdfLoading ? 'Generando PDF...' : 'Descargar CV en PDF'}
               </button>
               <a
-                href="/#pricing"
+                href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`}
                 className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-full font-semibold hover:bg-purple-700 transition"
               >
-                Comprar más tokens <ArrowRightIcon className="w-4 h-4" />
+                Ver mi dashboard <ArrowRightIcon className="w-4 h-4" />
+              </a>
+              <a
+                href="/#pricing"
+                className="flex-1 flex items-center justify-center gap-2 border-2 border-purple-200 text-purple-700 py-3 rounded-full font-semibold hover:bg-purple-50 transition"
+              >
+                Comprar más tokens
               </a>
             </div>
           </div>

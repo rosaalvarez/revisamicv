@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
 import { ArrowRightIcon, DocumentIcon, SparklesIcon } from '@/components/icons'
+import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 
 type UserState = {
   email: string
@@ -40,19 +41,27 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const queryEmail = params.get('email') || ''
+    const savedEmail = window.localStorage.getItem('revisamicv_email') || ''
+    const initialEmail = queryEmail || savedEmail
     const payment = params.get('payment')
 
     if (payment === 'success') setNotice('Pago recibido. Tus tokens pueden tardar unos segundos en aparecer.')
     if (payment === 'cancelled') setNotice('Pago cancelado. No se hizo ningún cargo.')
 
-    if (queryEmail) {
-      setEmail(queryEmail)
-      checkAccount(queryEmail)
+    if (initialEmail) {
+      setEmail(initialEmail)
+      checkAccount(initialEmail)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const checkAccount = async (emailToCheck = email) => {
+    const emailError = validateEmail(emailToCheck)
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+
     setLoading(true)
     setError('')
     setNotice((current) => current)
@@ -62,12 +71,12 @@ export default function DashboardPage() {
         fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailToCheck }),
+          body: JSON.stringify({ email: emailToCheck.trim().toLowerCase() }),
         }),
         fetch('/api/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailToCheck }),
+          body: JSON.stringify({ email: emailToCheck.trim().toLowerCase() }),
         }),
       ])
 
@@ -76,10 +85,11 @@ export default function DashboardPage() {
       if (!userRes.ok) throw new Error(userData.message || userData.error)
       if (!historyRes.ok) throw new Error(historyData.message || historyData.error)
 
+      window.localStorage.setItem('revisamicv_email', emailToCheck.trim().toLowerCase())
       setUser(userData)
       setHistory(historyData.history || [])
     } catch (err: any) {
-      setError(err.message || 'No pude cargar tu cuenta')
+      setError(getFriendlyApiError(err.message, 'No pude cargar tu cuenta'))
     } finally {
       setLoading(false)
     }
@@ -91,20 +101,21 @@ export default function DashboardPage() {
   }
 
   const handleBuy = async (pack: string) => {
-    if (!email) return setError('Escribe tu email primero')
+    const emailError = validateEmail(email)
+    if (emailError) return setError(emailError)
     setError('')
 
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pack, email }),
+        body: JSON.stringify({ pack, email: email.trim().toLowerCase() }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || data.message || 'No pude iniciar el pago')
       if (data.url) window.location.href = data.url
     } catch (err: any) {
-      setError(err.message)
+      setError(getFriendlyApiError(err.message, 'No pude iniciar el pago'))
     }
   }
 
@@ -137,7 +148,7 @@ export default function DashboardPage() {
       link.remove()
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err.message)
+      setError(getFriendlyApiError(err.message, 'No pude generar el PDF'))
     } finally {
       setPdfLoadingId(null)
     }
@@ -157,7 +168,11 @@ export default function DashboardPage() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                const nextEmail = e.target.value
+                setEmail(nextEmail)
+                if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
+              }}
               placeholder="tu@email.com"
               className="flex-1 border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
               required
