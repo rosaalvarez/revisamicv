@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
+import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
+import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 
 type ProcessResult = {
   compatibilityScore?: number
@@ -123,8 +125,10 @@ export default function SignupPage() {
   const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('english')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ProcessResult | null>(null)
+  const [editableCv, setEditableCv] = useState<any | null>(null)
   const [error, setError] = useState('')
-  const [pdfLoading, setPdfLoading] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState<'pdf' | 'docx' | 'txt' | null>(null)
+  const [copySuccess, setCopySuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -165,6 +169,7 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       setResult(data)
+      setEditableCv(data.optimizedCV || null)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -172,32 +177,34 @@ export default function SignupPage() {
     }
   }
 
-  const handleDownloadPdf = async () => {
-    if (!result?.optimizedCV) return setError('Primero genera un CV adaptado')
+  const downloadFile = async (format: 'pdf' | 'docx' | 'txt') => {
+    const cvForDownload = editableCv || result?.optimizedCV
+    if (!cvForDownload) return setError('Primero genera un CV adaptado')
 
-    setPdfLoading(true)
+    setDownloadLoading(format)
     setError('')
+    setCopySuccess('')
 
     try {
-      const res = await fetch('/api/generate-pdf', {
+      const res = await fetch(`/api/generate-${format}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          optimizedCV: result.optimizedCV,
+          optimizedCV: cvForDownload,
           outputLanguage,
         }),
       })
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(getFriendlyApiError(data.message || data.error, 'No pude generar el PDF'))
+        throw new Error(getFriendlyApiError(data.message || data.error, `No pude generar el archivo ${format.toUpperCase()}`))
       }
 
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = 'cv-adaptado-revisamicv.pdf'
+      link.download = `cv-adaptado-revisamicv.${format}`
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -205,7 +212,20 @@ export default function SignupPage() {
     } catch (err: any) {
       setError(err.message)
     } finally {
-      setPdfLoading(false)
+      setDownloadLoading(null)
+    }
+  }
+
+  const copyCvText = async () => {
+    const cvForCopy = editableCv || result?.optimizedCV || result?.rawText
+    if (!cvForCopy) return setError('Primero genera un CV adaptado')
+
+    try {
+      await navigator.clipboard.writeText(typeof cvForCopy === 'string' ? cvForCopy : optimizedCvToPlainText(cvForCopy, outputLanguage))
+      setCopySuccess('CV copiado al portapapeles')
+      setError('')
+    } catch {
+      setError('No pude copiar el CV. Intenta descargar el TXT.')
     }
   }
 
@@ -329,7 +349,9 @@ export default function SignupPage() {
               {renderList('Advertencias para no inventar', result.honestyWarnings)}
             </div>
 
-            {renderOptimizedCV(result.optimizedCV || result.rawText)}
+            <EditableCvForm cv={editableCv} onChange={setEditableCv} />
+
+            {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
 
             {result.coverLetter && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -338,21 +360,45 @@ export default function SignupPage() {
               </section>
             )}
 
+            {copySuccess && <p className="text-green-700 bg-green-50 border border-green-100 rounded-xl p-3 text-sm">{copySuccess}</p>}
             {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
+
+            <div className="grid md:grid-cols-3 gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <button
+                onClick={() => downloadFile('pdf')}
+                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
+                className="py-3 rounded-full font-semibold bg-slate-900 text-white hover:bg-slate-800 transition disabled:opacity-50"
+              >
+                {downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}
+              </button>
+              <button
+                onClick={() => downloadFile('docx')}
+                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
+                className="py-3 rounded-full font-semibold bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50"
+              >
+                {downloadLoading === 'docx' ? 'Generando Word...' : 'Descargar Word DOCX'}
+              </button>
+              <button
+                onClick={() => downloadFile('txt')}
+                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
+                className="py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                {downloadLoading === 'txt' ? 'Generando TXT...' : 'Descargar TXT ATS'}
+              </button>
+              <button
+                onClick={copyCvText}
+                className="md:col-span-3 py-3 rounded-full font-semibold border-2 border-purple-200 text-purple-700 hover:bg-purple-50 transition"
+              >
+                Copiar CV al portapapeles
+              </button>
+            </div>
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setFile(null); setJobDescription('') }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); setCopySuccess('') }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
                 Probar otra vacante
-              </button>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={pdfLoading || !result.optimizedCV}
-                className="flex-1 py-3 rounded-full font-semibold bg-slate-900 text-white hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                {pdfLoading ? 'Generando PDF...' : 'Descargar CV en PDF'}
               </button>
               <a
                 href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`}
