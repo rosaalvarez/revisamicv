@@ -31,7 +31,15 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAUL
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS free_used BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
-ALTER TABLE public.users ADD CONSTRAINT users_tokens_nonnegative CHECK (tokens >= 0) NOT VALID;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_tokens_nonnegative'
+  ) THEN
+    ALTER TABLE public.users ADD CONSTRAINT users_tokens_nonnegative CHECK (tokens >= 0) NOT VALID;
+  END IF;
+END;
+$$;
 ALTER TABLE public.users VALIDATE CONSTRAINT users_tokens_nonnegative;
 
 ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS optimized_cv JSONB;
