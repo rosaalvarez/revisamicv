@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [selectedPack, setSelectedPack] = useState<string>('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -44,6 +45,11 @@ export default function DashboardPage() {
     const savedEmail = window.localStorage.getItem('revisamicv_email') || ''
     const initialEmail = queryEmail || savedEmail
     const payment = params.get('payment')
+    const pack = params.get('pack') || ''
+    if (pack && PACKS[pack]) {
+      setSelectedPack(pack)
+      setNotice(`Pack ${PACKS[pack].name} seleccionado. Escribe tu email y presiona comprar para acreditar tus tokens.`)
+    }
 
     if (payment === 'success') setNotice('Pago recibido. Tus tokens pueden tardar unos segundos en aparecer.')
     if (payment === 'cancelled') setNotice('Pago cancelado. No se hizo ningún cargo.')
@@ -260,15 +266,20 @@ export default function DashboardPage() {
                 {Object.entries(PACKS).map(([pack, p]) => (
                   <button
                     key={pack}
-                    onClick={() => handleBuy(pack)}
+                    onClick={() => {
+                      setSelectedPack(pack)
+                      handleBuy(pack)
+                    }}
                     className={`rounded-2xl border-2 p-5 text-center transition hover:shadow-md ${
-                      p.popular ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-white'
+                      selectedPack === pack
+                        ? 'border-green-500 bg-green-50 shadow-md'
+                        : p.popular ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-white'
                     }`}
                   >
                     {p.popular && <p className="text-xs font-bold text-purple-600 mb-1">MÁS POPULAR</p>}
                     <p className="font-bold text-slate-900">{p.name}</p>
                     <p className="text-3xl font-bold text-purple-600 my-1">${p.priceUSD}</p>
-                    <p className="text-sm text-slate-500">{p.cvCount} CVs</p>
+                    <p className="text-sm text-slate-500">{p.cvCount} análisis</p>
                     <p className="text-xs text-slate-400 mt-2">{p.description}</p>
                   </button>
                 ))}
