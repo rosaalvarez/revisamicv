@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
 import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
+import { saveCvHistory } from '@/lib/history-service'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -131,6 +132,19 @@ export async function POST(req: NextRequest) {
         },
         { status: 503 }
       )
+    }
+
+    try {
+      await saveCvHistory(supabaseAdmin, {
+        email,
+        cvText,
+        jobDescription,
+        optimizedCv: parsed.optimizedCV || parsed,
+        compatibilityScore,
+        outputLanguage,
+      })
+    } catch (err: any) {
+      console.error('History save error:', err?.message || err)
     }
 
     return NextResponse.json({
