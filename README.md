@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RevisaMiCV.lat
 
-## Getting Started
+SaaS para cruzar un CV real contra una vacante específica, calcular compatibilidad y generar un CV adaptado ATS-friendly en inglés o español sin inventar experiencia.
 
-First, run the development server:
+## Stack
+
+- Next.js App Router
+- Supabase
+- Stripe Checkout + webhook
+- OpenAI
+- PDF/DOCX/TXT parsing
+- PDF generation
+
+## Comandos principales
+
+```bash
+npm install
+npm run dev
+npm test
+npm run build
+```
+
+## Smoke tests
+
+Con servidor local encendido:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+En otra terminal:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+APP_URL=http://localhost:3000 npm run smoke -- --skip-paid-apis
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Producción básico:
 
-## Learn More
+```bash
+APP_URL=https://revisamicv.lat npm run smoke -- --skip-paid-apis
+```
 
-To learn more about Next.js, take a look at the following resources:
+Producción completo después de configurar Supabase/OpenAI/Stripe:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+APP_URL=https://revisamicv.lat \
+SMOKE_EMAIL=prueba@revisamicv.lat \
+npm run smoke -- --cv "/ruta/a/cv.pdf" --job "/ruta/a/vacante.txt"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Variables de entorno
 
-## Deploy on Vercel
+Ver documento completo:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```txt
+docs/final-production-config.md
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Variables requeridas:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+Nunca commitear `.env.local` ni secrets.
+
+## Base de datos
+
+Ejecutar en Supabase SQL Editor:
+
+```txt
+supabase-schema.sql
+```
+
+## Funciones principales
+
+- `/signup`: formulario de CV + vacante + idioma.
+- `/dashboard`: tokens, historial y descargas.
+- `/api/process-cv`: extracción, scoring, generación y consumo de crédito.
+- `/api/generate-pdf`: descarga del CV adaptado.
+- `/api/history`: historial por email.
+- `/api/user`: estado de tokens/free CV.
+- `/api/stripe/checkout`: crear pago.
+- `/api/stripe/webhook`: acreditar tokens.

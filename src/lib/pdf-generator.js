@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit'
+import PDFDocument from 'pdfkit/js/pdfkit.standalone.js'
 
 const DEFAULT_TITLE = 'Optimized CV'
 const MAX_TEXT_LENGTH = 12000
