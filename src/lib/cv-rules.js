@@ -101,6 +101,8 @@ Business rules:
 22. Start experience bullets with consistent past-tense action verbs in the selected language; avoid mixing noun phrases with verb-led bullets.
 23. Prefer ATS-safe separators in final text. Use commas or bullet lists for skills rather than visual bars or decorative separators.
 24. Filename guidance: fitVerdict or positioningAngle may mention a recommended filename like Candidate_Name_Target_Title_CV.pdf when candidate and target are available.
+25. For technical roles, preserve role-specific tech stack details from the original CV when truthful, including framework/library names and versions (for example React 16.13.1, Typescript 3.7.2, GraphQL 15.0.0). Put these in each experience item as techStack/tools instead of flattening everything into one generic skills list.
+26. Do not remove important engineering context from each role: responsibilities, product scope, tech stack, tools, and scale/traction metrics that are explicitly present in the original CV. Condense them, but keep the evidence that supports the target role.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -141,6 +143,8 @@ Return ONLY valid JSON with this exact shape:
         "company": string,
         "location": string,
         "dates": string,
+        "techStack": string[],
+        "tools": string[],
         "bullets": string[]
       }
     ],
@@ -173,6 +177,7 @@ Allowed changes:
 5. Normalize date formatting and correct obvious formatting inconsistencies without changing factual dates. If dates conflict, overlap, or appear inaccurate, preserve the safest dates and add a note for the user to review.
 6. Add only low-risk factual details that the user explicitly provides in the revision request: contact data, location, portfolio links, preferred title/headline wording, or wording clarifications.
 7. Keep the same JSON structure as the current CV.
+8. Preserve and edit role-level techStack/tools arrays when present. Do not merge all role-specific versions into one generic tools list if the original CV ties those technologies to specific jobs.
 
 Safety rules:
 1. Do not invent employers, job titles, degrees, certifications, seniority, years of experience, tools, metrics, languages, regulated credentials, or domain experience.
@@ -204,6 +209,8 @@ Return ONLY valid JSON with this exact shape:
         "company": string,
         "location": string,
         "dates": string,
+        "techStack": string[],
+        "tools": string[],
         "bullets": string[]
       }
     ],

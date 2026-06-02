@@ -261,6 +261,8 @@ function renderOptimizedCV(cv: any) {
               <div key={index}>
                 <p className="font-semibold text-slate-950">{role.title}</p>
                 <p className="text-sm text-slate-600">{[role.company, role.location, role.dates].filter(Boolean).join(' | ')}</p>
+                {role.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">Tech Stack:</span> {role.techStack.join(', ')}</p>}
+                {role.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">Tools:</span> {role.tools.join(', ')}</p>}
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
                   {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
                 </ul>

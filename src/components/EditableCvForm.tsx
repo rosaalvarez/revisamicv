@@ -109,6 +109,20 @@ export default function EditableCvForm({ cv, onChange }: EditableCvFormProps) {
                 <Field label="Fechas" value={role.dates || ''} onChange={(value) => updateExperience(index, 'dates', value)} />
               </div>
               <TextArea
+                label="Stack técnico del rol"
+                value={listToText(role.techStack)}
+                onChange={(value) => updateExperience(index, 'techStack', textToList(value))}
+                rows={3}
+                helper="Frameworks, librerías y versiones ligadas a este cargo. Ej: React 16.13.1, Typescript 3.7.2."
+              />
+              <TextArea
+                label="Herramientas del rol"
+                value={listToText(role.tools)}
+                onChange={(value) => updateExperience(index, 'tools', textToList(value))}
+                rows={3}
+                helper="Herramientas específicas de este cargo. Ej: Figma, Sentry, Mixpanel."
+              />
+              <TextArea
                 label="Logros / bullets"
                 value={listToText(role.bullets)}
                 onChange={(value) => updateExperience(index, 'bullets', textToList(value))}

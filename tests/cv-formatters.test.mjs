@@ -14,7 +14,14 @@ test('optimizedCvToPlainText formats contact and ATS sections', () => {
     targetTitle: 'Customer Success Manager',
     summary: 'Perfil fuerte para SaaS.',
     coreCompetencies: ['CRM', 'Onboarding'],
-    experience: [{ title: 'CS Lead', company: 'Acme', dates: '2021-2025', bullets: ['Reduced churn'] }],
+    experience: [{
+      title: 'CS Lead',
+      company: 'Acme',
+      dates: '2021-2025',
+      techStack: ['React 18', 'Typescript 5'],
+      tools: ['Figma'],
+      bullets: ['Reduced churn'],
+    }],
     education: ['Business Admin'],
   }, 'english')
 
@@ -22,5 +29,7 @@ test('optimizedCvToPlainText formats contact and ATS sections', () => {
   assert.match(text, /ana@test.com \| \+57 300 \| Bogotá/)
   assert.match(text, /PROFESSIONAL SUMMARY/)
   assert.match(text, /Customer Success Manager/)
+  assert.match(text, /Tech Stack: React 18, Typescript 5/)
+  assert.match(text, /Role Tools: Figma/)
   assert.match(text, /- Reduced churn/)
 })

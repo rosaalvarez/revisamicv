@@ -3,6 +3,8 @@ const LABELS = {
     summary: 'Perfil profesional',
     skills: 'Habilidades',
     technicalSkills: 'Habilidades técnicas',
+    roleTechStack: 'Stack técnico',
+    roleTools: 'Herramientas del rol',
     tools: 'Herramientas',
     experience: 'Experiencia profesional',
     education: 'Educación',
@@ -14,6 +16,8 @@ const LABELS = {
     summary: 'Professional Summary',
     skills: 'Skills',
     technicalSkills: 'Technical Skills',
+    roleTechStack: 'Tech Stack',
+    roleTools: 'Role Tools',
     tools: 'Tools',
     experience: 'Professional Experience',
     education: 'Education',
@@ -106,8 +110,16 @@ export function optimizedCvToPlainText(cv, language = 'english') {
   const experienceLines = Array.isArray(cv.experience)
     ? cv.experience.flatMap((role) => {
         const header = [role?.title, role?.company, role?.location, role?.dates].map(cleanText).filter(Boolean).join(' | ')
+        const techStack = normalizeStringArray(role?.techStack).join(', ')
+        const tools = normalizeStringArray(role?.tools).join(', ')
         const bullets = normalizeStringArray(role?.bullets).map((bullet) => `- ${bullet}`)
-        return [header, ...bullets, ''].filter(Boolean)
+        return [
+          header,
+          techStack ? `${labels.roleTechStack}: ${techStack}` : '',
+          tools ? `${labels.roleTools}: ${tools}` : '',
+          ...bullets,
+          '',
+        ].filter(Boolean)
       })
     : []
   pushSection(lines, labels.experience, experienceLines)

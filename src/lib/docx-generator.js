@@ -26,7 +26,21 @@ function textParagraph(text, options = {}) {
         text: cleanText(text),
         bold: options.bold,
         size: options.size || 21,
+        color: options.color || '111111',
       }),
+    ],
+  })
+}
+
+function metaParagraph(label, items) {
+  const text = normalizeStringArray(items).join(', ')
+  if (!text) return null
+
+  return new Paragraph({
+    spacing: { after: 70 },
+    children: [
+      new TextRun({ text: `${label}: `, bold: true, size: 19, color: '111111' }),
+      new TextRun({ text, size: 19, color: '111111' }),
     ],
   })
 }
@@ -50,7 +64,7 @@ export async function generateCvDocxBuffer(payload) {
   if (typeof cv === 'string') {
     const doc = new Document({
       sections: [{
-        properties: {},
+        properties: { page: { margin: { top: 720, bottom: 720, left: 810, right: 810 } } },
         children: cv.split('\n').map((line) => textParagraph(line || ' ')),
       }],
     })
@@ -75,6 +89,10 @@ export async function generateCvDocxBuffer(payload) {
     for (const role of cv.experience) {
       const header = [role?.title, role?.company, role?.location, role?.dates].map(cleanText).filter(Boolean).join(' | ')
       if (header) experienceParagraphs.push(textParagraph(header, { bold: true, after: 70 }))
+      const techStack = metaParagraph(labels.roleTechStack, role?.techStack)
+      if (techStack) experienceParagraphs.push(techStack)
+      const roleTools = metaParagraph(labels.roleTools, role?.tools)
+      if (roleTools) experienceParagraphs.push(roleTools)
       experienceParagraphs.push(...listParagraphs(role?.bullets))
     }
   }
@@ -88,7 +106,7 @@ export async function generateCvDocxBuffer(payload) {
 
   const doc = new Document({
     sections: [{
-      properties: {},
+      properties: { page: { margin: { top: 720, bottom: 720, left: 810, right: 810 } } },
       children,
     }],
   })

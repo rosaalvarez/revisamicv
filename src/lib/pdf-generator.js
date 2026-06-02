@@ -39,6 +39,8 @@ function getLabels(language) {
         summary: 'Perfil profesional',
         skills: 'Habilidades',
         technicalSkills: 'Habilidades técnicas',
+        roleTechStack: 'Stack técnico',
+        roleTools: 'Herramientas del rol',
         tools: 'Herramientas',
         experience: 'Experiencia profesional',
         education: 'Educación',
@@ -50,6 +52,8 @@ function getLabels(language) {
         summary: 'Professional Summary',
         skills: 'Skills',
         technicalSkills: 'Technical Skills',
+        roleTechStack: 'Tech Stack',
+        roleTools: 'Role Tools',
         tools: 'Tools',
         experience: 'Professional Experience',
         education: 'Education',
@@ -127,7 +131,19 @@ function drawInlineList(doc, items) {
   doc.font('Helvetica').fontSize(10).fillColor('#111111').text(text, { lineGap: 1.5 })
 }
 
-function drawExperience(doc, experience) {
+function drawMetaLine(doc, label, items) {
+  const text = asArray(items).map(clean).filter(Boolean).join(', ')
+  if (!text) return
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(9.3)
+    .fillColor('#111111')
+    .text(`${label}: `, { continued: true })
+    .font('Helvetica')
+    .text(text, { lineGap: 1.2 })
+}
+
+function drawExperience(doc, experience, labels) {
   for (const role of Array.isArray(experience) ? experience : []) {
     const title = clean(role?.title)
     const company = clean(role?.company)
@@ -146,6 +162,8 @@ function drawExperience(doc, experience) {
       doc.font('Helvetica').fontSize(9.5).fillColor('#111111').text(meta)
     }
 
+    drawMetaLine(doc, labels.roleTechStack, role?.techStack)
+    drawMetaLine(doc, labels.roleTools, role?.tools)
     drawBulletList(doc, role?.bullets)
     doc.moveDown(0.35)
   }
@@ -235,7 +253,7 @@ export async function generateCvPdfBuffer(payload) {
 
     if (Array.isArray(optimizedCV?.experience) && optimizedCV.experience.length) {
       drawSectionTitle(doc, labels.experience)
-      drawExperience(doc, optimizedCV.experience)
+      drawExperience(doc, optimizedCV.experience, labels)
     }
 
     if (hasItems(optimizedCV?.education)) {

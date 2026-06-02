@@ -64,6 +64,8 @@ test('generateCvPdfBuffer renders a complete ATS resume structure', async () => 
           company: 'Independent SaaS Projects',
           location: 'Remote',
           dates: '2024 - Present',
+          techStack: ['React 18', 'Typescript 5'],
+          tools: ['Figma'],
           bullets: ['Launched AI document workflows for customer acquisition and activation.'],
         },
       ],
@@ -81,6 +83,8 @@ test('generateCvPdfBuffer renders a complete ATS resume structure', async () => 
   assert.match(text, /Skills/i)
   assert.match(text, /Technical Skills/i)
   assert.match(text, /Professional Experience/i)
+  assert.match(text, /Tech Stack/i)
+  assert.match(text, /React 18/i)
   assert.match(text, /Education/i)
   assert.match(text, /Certifications/i)
   assert.match(text, /Tools/i)
