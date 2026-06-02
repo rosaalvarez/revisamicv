@@ -59,8 +59,8 @@ const matchBreakdownLabels: Record<string, string> = {
   keywordMatch: 'Keywords de la vacante',
   experienceAlignment: 'Experiencia alineada',
   educationCertification: 'Educación / certificaciones',
-  atsFormattingRisk: 'Riesgo de formato ATS',
-  honestyRisk: 'Riesgo de honestidad',
+  atsFormattingRisk: 'Formato ATS seguro',
+  honestyRisk: 'Veracidad / riesgo de inventar',
 }
 
 function getScoreTone(score?: number) {
