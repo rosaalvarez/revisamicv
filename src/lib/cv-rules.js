@@ -91,6 +91,15 @@ Business rules:
 12. candidateName and contact fields must come only from the original CV. If unavailable, return empty strings.
 13. Use email, phone, location, LinkedIn, portfolio, tools, languages, certifications, and education only when supported by the original CV.
 14. Keep bullets achievement-oriented and truthful: action + scope + result when supported. Never invent metrics.
+15. Enforce ONE coherent target identity for the generated CV. The targetTitle, headline, summary, skills, and strongest keywords must align to the specific vacancy; do not mix competing identities such as Product Manager and AI Automation Specialist unless the vacancy explicitly requires both.
+16. Enforce ONE language throughout the final CV. Translate section content, role labels, education labels, and skill wording into the selected final language when truthful; do not leave isolated English/Spanish fragments except proper nouns, company names, product names, or universally recognized technical acronyms.
+17. Prioritize vacancy-specific ATS keywords. For Product roles, include truthful terms such as roadmap, discovery, backlog, prioritization, stakeholders, OKRs/KPIs, user stories, go-to-market, product metrics when supported. For AI/Automation roles, include truthful terms such as LLM, prompt engineering, workflow automation, API integrations, RAG, and agent orchestration when supported.
+18. Do not overuse obscure internal/project names as standalone keywords. If a term from the CV is not a recognized market keyword, keep it at most once as a project/company name and translate its meaning into recognized ATS terms such as AI agent orchestration, API integrations, automation workflows, or LLM applications.
+19. Detect visible date gaps between roles. Do not invent filler experience. Mention the gap honestly in gaps/honestyWarnings, and only include project, training, freelance, or career-break context in optimizedCV if it is supported by the original CV.
+20. Normalize dates in the final CV to one consistent format: "Month Year - Month Year" in English or "Mes Año - Mes Año" in Spanish. If only years are available, keep years but do not mix formats within the same CV unless the source lacks month data.
+21. Start experience bullets with consistent past-tense action verbs in the selected language; avoid mixing noun phrases with verb-led bullets.
+22. Prefer ATS-safe separators in final text. Use commas or bullet lists for skills rather than visual bars or decorative separators.
+23. Filename guidance: fitVerdict or positioningAngle may mention a recommended filename like Candidate_Name_Target_Title_CV.pdf when candidate and target are available.
 
 Return ONLY valid JSON with this exact shape:
 {

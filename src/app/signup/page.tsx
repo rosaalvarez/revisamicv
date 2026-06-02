@@ -25,6 +25,21 @@ const languageOptions = [
   { value: 'spanish', label: 'Español', helper: 'Para España, LATAM o vacantes en español' },
 ] as const
 
+function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
+  const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
+  const rawTarget = typeof cv === 'object' ? (cv?.targetTitle || cv?.headline || 'cv') : 'cv'
+  const safe = `${rawName}-${rawTarget}-revisamicv`
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9-_ ]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .toLowerCase()
+
+  return `${safe || 'cv-revisamicv'}.${format}`
+}
+
 function renderList(title: string, items?: string[]) {
   if (!items?.length) return null
   return (
@@ -39,7 +54,7 @@ function renderList(title: string, items?: string[]) {
 
 function renderChipList(items?: string[]) {
   if (!items?.length) return null
-  return <p className="text-sm text-slate-800 leading-relaxed">{items.join(' | ')}</p>
+  return <p className="text-sm text-slate-800 leading-relaxed">{items.join(', ')}</p>
 }
 
 function renderSimpleSection(title: string, items?: string[]) {
@@ -211,7 +226,7 @@ export default function SignupPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `cv-adaptado-revisamicv.${format}`
+      link.download = buildDownloadFilename(cvForDownload, format)
       document.body.appendChild(link)
       link.click()
       link.remove()

@@ -99,9 +99,9 @@ export function optimizedCvToPlainText(cv, language = 'english') {
 
   pushSection(lines, labels.summary, [cv.summary])
   pushSection(lines, labels.skills, [
-    [...normalizeStringArray(cv.coreCompetencies), ...normalizeStringArray(cv.skills)].join(' | '),
+    [...normalizeStringArray(cv.coreCompetencies), ...normalizeStringArray(cv.skills)].join(', '),
   ])
-  pushSection(lines, labels.technicalSkills, [normalizeStringArray(cv.technicalSkills).join(' | ')])
+  pushSection(lines, labels.technicalSkills, [normalizeStringArray(cv.technicalSkills).join(', ')])
 
   const experienceLines = Array.isArray(cv.experience)
     ? cv.experience.flatMap((role) => {
@@ -114,7 +114,7 @@ export function optimizedCvToPlainText(cv, language = 'english') {
 
   pushSection(lines, labels.education, normalizeStringArray(cv.education).map((item) => `- ${item}`))
   pushSection(lines, labels.certifications, normalizeStringArray(cv.certifications).map((item) => `- ${item}`))
-  pushSection(lines, labels.tools, [normalizeStringArray(cv.tools).join(' | ')])
+  pushSection(lines, labels.tools, [normalizeStringArray(cv.tools).join(', ')])
   pushSection(lines, labels.languages, normalizeStringArray(cv.languages).map((item) => `- ${item}`))
   pushSection(lines, labels.additional, normalizeStringArray(cv.additionalInformation || cv.additional).map((item) => `- ${item}`))
 

@@ -67,8 +67,8 @@ export async function generateCvDocxBuffer(payload) {
   if (targetTitle) children.push(textParagraph(targetTitle, { align: AlignmentType.CENTER, bold: true, size: 22, after: 180 }))
 
   addSection(children, labels.summary, cv.summary ? [textParagraph(cv.summary)] : [])
-  addSection(children, labels.skills, normalizeStringArray([...(normalizeStringArray(cv.coreCompetencies)), ...(normalizeStringArray(cv.skills))]).length ? [textParagraph([...normalizeStringArray(cv.coreCompetencies), ...normalizeStringArray(cv.skills)].join(' | '))] : [])
-  addSection(children, labels.technicalSkills, normalizeStringArray(cv.technicalSkills).length ? [textParagraph(normalizeStringArray(cv.technicalSkills).join(' | '))] : [])
+  addSection(children, labels.skills, normalizeStringArray([...(normalizeStringArray(cv.coreCompetencies)), ...(normalizeStringArray(cv.skills))]).length ? [textParagraph([...normalizeStringArray(cv.coreCompetencies), ...normalizeStringArray(cv.skills)].join(', '))] : [])
+  addSection(children, labels.technicalSkills, normalizeStringArray(cv.technicalSkills).length ? [textParagraph(normalizeStringArray(cv.technicalSkills).join(', '))] : [])
 
   const experienceParagraphs = []
   if (Array.isArray(cv.experience)) {
@@ -82,7 +82,7 @@ export async function generateCvDocxBuffer(payload) {
 
   addSection(children, labels.education, listParagraphs(cv.education))
   addSection(children, labels.certifications, listParagraphs(cv.certifications))
-  addSection(children, labels.tools, normalizeStringArray(cv.tools).length ? [textParagraph(normalizeStringArray(cv.tools).join(' | '))] : [])
+  addSection(children, labels.tools, normalizeStringArray(cv.tools).length ? [textParagraph(normalizeStringArray(cv.tools).join(', '))] : [])
   addSection(children, labels.languages, listParagraphs(cv.languages))
   addSection(children, labels.additional, listParagraphs(cv.additionalInformation || cv.additional))
 

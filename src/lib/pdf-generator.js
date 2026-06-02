@@ -122,7 +122,7 @@ function drawBulletList(doc, items) {
 }
 
 function drawInlineList(doc, items) {
-  const text = asArray(items).map(clean).filter(Boolean).join(' | ')
+  const text = asArray(items).map(clean).filter(Boolean).join(', ')
   if (!text) return
   doc.font('Helvetica').fontSize(10).fillColor('#111111').text(text, { lineGap: 1.5 })
 }

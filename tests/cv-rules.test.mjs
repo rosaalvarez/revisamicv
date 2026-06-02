@@ -49,6 +49,10 @@ test('buildOptimizerSystemPrompt includes selected output language and anti-inve
   assert.match(prompt, /final CV must be written in Spanish/i)
   assert.match(prompt, /Do not invent employers/i)
   assert.match(prompt, /compatibilityScore/i)
+  assert.match(prompt, /ONE coherent target identity/i)
+  assert.match(prompt, /ONE language throughout/i)
+  assert.match(prompt, /Detect visible date gaps/i)
+  assert.match(prompt, /obscure internal\/project names/i)
 })
 
 test('buildOptimizerSystemPrompt requires an ATS resume schema with contact and skills sections', () => {
