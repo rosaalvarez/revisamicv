@@ -4,6 +4,7 @@ import { buildRevisionSystemPrompt, normalizeOutputLanguage } from '@/lib/cv-rul
 import { validateEmail } from '@/lib/input-validation'
 import { getUserTokenState } from '@/lib/token-service'
 import { createJsonCompletion } from '@/lib/llm-client'
+import { parseJsonCompletion } from '@/lib/json-completion'
 
 export const runtime = 'nodejs'
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     const rawText = completion.text || '{}'
     let parsed: any
     try {
-      parsed = JSON.parse(rawText)
+      parsed = parseJsonCompletion(rawText)
     } catch {
       return NextResponse.json(
         { error: 'invalid_ai_response', message: 'No pude aplicar el ajuste. Intenta escribirlo más específico.' },

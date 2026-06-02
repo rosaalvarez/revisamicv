@@ -6,6 +6,7 @@ import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
+import { parseJsonCompletion } from '@/lib/json-completion'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     let parsed: any
     try {
-      parsed = JSON.parse(rawText)
+      parsed = parseJsonCompletion(rawText)
     } catch {
       parsed = { rawText, optimizedCV: rawText }
     }
