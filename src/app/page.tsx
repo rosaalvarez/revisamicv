@@ -44,7 +44,7 @@ const steps = [
     step: '4',
     icon: DownloadIcon,
     title: 'Descarga el CV adaptado',
-    desc: 'ATS-friendly, en inglés o español, listo para enviar en PDF.',
+    desc: 'ATS-friendly, editable y listo para enviar en PDF, DOCX o TXT.',
   },
 ]
 
@@ -69,7 +69,7 @@ const useCases = [
 const trustPoints = [
   'No inventa experiencia: marca brechas y reposiciona habilidades reales.',
   'Cada análisis cruza tu CV contra una vacante específica, no contra consejos genéricos.',
-  'Puedes descargar PDF y volver a tus CVs desde el dashboard.',
+  'Puedes editar antes de descargar y exportar PDF, Word DOCX o TXT ATS.',
 ]
 
 export default function Home() {
@@ -208,7 +208,7 @@ export default function Home() {
               ['Cruza CV vs vacante', '⚠️ depende del prompt', '✅ flujo guiado'],
               ['Score de compatibilidad', '❌', '✅ /100'],
               ['Brechas y riesgos', '⚠️ genérico', '✅ por vacante'],
-              ['CV adaptado descargable', '❌ copiar/pegar', '✅ PDF'],
+              ['CV adaptado descargable', '❌ copiar/pegar', '✅ PDF/DOCX/TXT'],
               ['Historial y tokens', '❌', '✅ dashboard'],
               ['Inventa experiencia', '⚠️ posible', '❌ reglas anti-invención'],
             ].map(([label, chatgpt, revisamicv], i) => (

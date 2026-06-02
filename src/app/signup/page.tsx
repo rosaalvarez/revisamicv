@@ -63,18 +63,74 @@ const matchBreakdownLabels: Record<string, string> = {
   honestyRisk: 'Riesgo de honestidad',
 }
 
+function getScoreTone(score?: number) {
+  if (typeof score !== 'number') {
+    return {
+      label: 'Diagnóstico pendiente',
+      action: 'Genera el análisis para ver prioridad de aplicación.',
+      bg: 'bg-slate-100',
+      text: 'text-slate-700',
+      bar: 'bg-slate-400',
+    }
+  }
+
+  if (score >= 85) {
+    return {
+      label: 'Aplicación fuerte',
+      action: 'Puedes aplicar con el CV adaptado y revisar detalles finales.',
+      bg: 'bg-green-100',
+      text: 'text-green-800',
+      bar: 'bg-green-500',
+    }
+  }
+
+  if (score >= 70) {
+    return {
+      label: 'Buena oportunidad',
+      action: 'Conviene aplicar después de reforzar keywords y brechas menores.',
+      bg: 'bg-purple-100',
+      text: 'text-purple-800',
+      bar: 'bg-purple-500',
+    }
+  }
+
+  if (score >= 55) {
+    return {
+      label: 'Aplicación estratégica',
+      action: 'Aplica solo si puedes explicar bien la transición y revisar brechas.',
+      bg: 'bg-amber-100',
+      text: 'text-amber-800',
+      bar: 'bg-amber-500',
+    }
+  }
+
+  return {
+    label: 'Aplicar con cuidado',
+    action: 'La vacante parece lejana. Evita inventar experiencia y evalúa otra opción.',
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    bar: 'bg-red-500',
+  }
+}
+
+function normalizeScore(value: unknown) {
+  const score = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(score)) return undefined
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
 function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
   if (!breakdown || typeof breakdown !== 'object') return null
 
   const entries = Object.entries(breakdown)
     .map(([key, value]) => {
       if (typeof value === 'number' || typeof value === 'string') {
-        return { key, label: matchBreakdownLabels[key] || key, score: value, summary: '' }
+        return { key, label: matchBreakdownLabels[key] || key, score: normalizeScore(value), summary: '' }
       }
       return {
         key,
         label: matchBreakdownLabels[key] || key,
-        score: value?.score,
+        score: normalizeScore(value?.score),
         summary: value?.summary || '',
       }
     })
@@ -83,20 +139,57 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
   if (!entries.length) return null
 
   return (
-    <section className="rounded-2xl border border-purple-100 bg-purple-50/70 p-5">
+    <section className="rounded-2xl border border-purple-100 bg-purple-50/70 p-5 shadow-sm">
       <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Diagnóstico por categorías</p>
         <h3 className="text-xl font-bold text-slate-950">Dónde encaja tu CV y dónde hay brechas</h3>
-        <p className="text-sm text-slate-600 mt-1">Esto ayuda a entender el score sin depender de un solo número.</p>
+        <p className="text-sm text-slate-600 mt-1">Esto explica el score como lo haría un ATS/reclutador: requisitos, keywords, experiencia, formato y riesgos.</p>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
-        {entries.map((item) => (
-          <div key={item.key} className="rounded-xl bg-white border border-purple-100 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-semibold text-slate-900 text-sm">{item.label}</p>
-              {item.score !== undefined && <span className="text-sm font-bold text-purple-700">{item.score}/100</span>}
+        {entries.map((item) => {
+          const tone = getScoreTone(item.score)
+          const width = typeof item.score === 'number' ? `${item.score}%` : '0%'
+
+          return (
+            <div key={item.key} className="rounded-xl bg-white border border-purple-100 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-slate-900 text-sm">{item.label}</p>
+                {item.score !== undefined && <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.bg} ${tone.text}`}>{item.score}/100</span>}
+              </div>
+              {item.score !== undefined && (
+                <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className={`h-full rounded-full ${tone.bar}`} style={{ width }} />
+                </div>
+              )}
+              {item.summary && <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.summary}</p>}
             </div>
-            {item.summary && <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.summary}</p>}
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function renderActionPlan(result: ProcessResult) {
+  const topKeywords = result.keywordsToInclude?.slice(0, 6) || []
+  const firstGap = result.gaps?.[0]
+  const firstWarning = result.honestyWarnings?.[0]
+
+  const actions = [
+    topKeywords.length ? `Refuerza estas keywords en el CV adaptado: ${topKeywords.join(', ')}.` : 'Revisa que las keywords principales de la vacante estén reflejadas de forma natural.',
+    firstGap ? `Revisa esta brecha antes de enviar: ${firstGap}` : 'Valida que el perfil, skills y experiencia estén alineados con el cargo objetivo.',
+    firstWarning ? `Chequeo de honestidad: ${firstWarning}` : 'Haz una lectura final para confirmar que todo lo generado está soportado por tu experiencia real.',
+  ]
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Plan de acción</p>
+      <h3 className="text-xl font-bold text-slate-950 mt-1">Qué hacer antes de aplicar</h3>
+      <div className="mt-4 grid gap-3">
+        {actions.map((action, index) => (
+          <div key={action} className="flex gap-3 rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm text-slate-700">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">{index + 1}</span>
+            <p className="leading-relaxed">{action}</p>
           </div>
         ))}
       </div>
@@ -443,17 +536,41 @@ export default function SignupPage() {
           </form>
         ) : (
           <div className="space-y-5">
-            <section className="rounded-2xl bg-slate-900 text-white p-6">
-              <p className="text-slate-300 text-sm mb-2">Compatibilidad estimada</p>
-              <div className="flex items-end gap-3">
-                <span className="text-6xl font-bold text-purple-300">{result.compatibilityScore ?? '—'}</span>
-                {typeof result.compatibilityScore === 'number' && <span className="text-2xl mb-2">/100</span>}
-              </div>
-              {result.fitVerdict && <p className="mt-4 text-lg">{result.fitVerdict}</p>}
-              {result.positioningAngle && <p className="mt-2 text-sm text-slate-300">{result.positioningAngle}</p>}
+            <section className="rounded-3xl bg-slate-900 text-white p-6 shadow-xl shadow-slate-200">
+              {(() => {
+                const score = normalizeScore(result.compatibilityScore)
+                const tone = getScoreTone(score)
+
+                return (
+                  <>
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div>
+                        <p className="text-slate-300 text-sm mb-2">Compatibilidad estimada</p>
+                        <div className="flex items-end gap-3">
+                          <span className="text-6xl font-bold text-purple-300">{score ?? '—'}</span>
+                          {score !== undefined && <span className="text-2xl mb-2">/100</span>}
+                        </div>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-3 ${tone.bg} ${tone.text} md:max-w-xs`}>
+                        <p className="text-sm font-bold">{tone.label}</p>
+                        <p className="text-xs mt-1 leading-relaxed">{tone.action}</p>
+                      </div>
+                    </div>
+                    {score !== undefined && (
+                      <div className="mt-5 h-3 rounded-full bg-slate-700 overflow-hidden">
+                        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${score}%` }} />
+                      </div>
+                    )}
+                    {result.fitVerdict && <p className="mt-4 text-lg">{result.fitVerdict}</p>}
+                    {result.positioningAngle && <p className="mt-2 text-sm text-slate-300">{result.positioningAngle}</p>}
+                  </>
+                )
+              })()}
             </section>
 
             {renderMatchBreakdown(result.matchBreakdown)}
+
+            {renderActionPlan(result)}
 
             <div className="grid md:grid-cols-2 gap-5">
               {renderList('Fortalezas para esta vacante', result.strengths)}
