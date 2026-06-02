@@ -598,7 +598,14 @@ export default function SignupPage() {
               {renderList('Recomendaciones de honestidad antes de enviar', result.honestyWarnings)}
             </div>
 
-            <EditableCvForm cv={editableCv} onChange={setEditableCv} />
+            <EditableCvForm
+              cv={editableCv}
+              onChange={setEditableCv}
+              score={normalizeScore(result.compatibilityScore)}
+              gaps={result.gaps}
+              keywords={result.keywordsToInclude}
+              honestyWarnings={result.honestyWarnings}
+            />
 
             <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
               <div>
