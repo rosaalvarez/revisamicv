@@ -62,6 +62,16 @@ const analysisProgressSteps = [
   { pct: 94, label: 'Preparando diagnóstico, editor y descargas...' },
 ]
 
+const revisionProgressSteps = [
+  { pct: 20, label: 'Leyendo tu instrucción...' },
+  { pct: 40, label: 'Validando qué se puede agregar sin inventar...' },
+  { pct: 62, label: 'Actualizando skills, perfil y bullets...' },
+  { pct: 82, label: 'Revisando coherencia con la vacante...' },
+  { pct: 94, label: 'Preparando resumen de cambios...' },
+]
+
+const clarificationOptions = ['Sí', 'No', 'Parcialmente', 'No estoy segura']
+
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
   const rawTarget = typeof cv === 'object' ? (cv?.targetTitle || cv?.headline || 'cv') : 'cv'
@@ -75,6 +85,34 @@ function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
     .toLowerCase()
 
   return `${safe || 'cv-revisamicv'}.${format}`
+}
+
+function uniqueCleanList(items: unknown[]) {
+  return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function collectCvSkills(cv: any) {
+  if (!cv || typeof cv !== 'object') return []
+  return uniqueCleanList([
+    ...(cv.coreCompetencies || []),
+    ...(cv.skills || []),
+    ...(cv.technicalSkills || []),
+    ...(cv.tools || []),
+  ])
+}
+
+function getAddedSkills(beforeCv: any, afterCv: any) {
+  const before = new Set(collectCvSkills(beforeCv).map((item) => item.toLowerCase()))
+  return collectCvSkills(afterCv).filter((item) => !before.has(item.toLowerCase())).slice(0, 12)
+}
+
+function buildClarificationInstruction(questions: string[], answers: Record<number, { option: string; detail: string }>) {
+  const lines = questions.map((question, index) => {
+    const answer = answers[index]
+    return `${index + 1}. Pregunta: ${question}\nRespuesta rápida: ${answer?.option || 'Sin seleccionar'}\nDetalle del usuario: ${answer?.detail || 'Sin detalle adicional'}`
+  })
+
+  return `Usa estas respuestas de aclaración para ajustar el CV a la vacante. Agrega solo skills, enfoque o evidencia que estén soportados por las respuestas del usuario. Si una respuesta dice no, no estoy segura o no da evidencia suficiente, no inventes; deja una nota de seguridad.\n\n${lines.join('\n\n')}`
 }
 
 function renderList(title: string, items?: string[]) {
@@ -250,7 +288,7 @@ function renderActionPlan(result: ProcessResult) {
   )
 }
 
-function renderDecisionGate(result: ProcessResult) {
+function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void) {
   const decision = result.applicationDecision
   const questions = result.clarificationQuestions?.filter(Boolean).slice(0, 3) || []
   if (!decision && !questions.length && !result.decisionReason) return null
@@ -276,6 +314,15 @@ function renderDecisionGate(result: ProcessResult) {
             ))}
           </ol>
           <p className="mt-3 text-xs opacity-75">Si estas respuestas no existen en tu experiencia real, es mejor probar otra vacante más alineada.</p>
+          {onOpenQuestions && (
+            <button
+              type="button"
+              onClick={onOpenQuestions}
+              className="mt-4 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-purple-700"
+            >
+              Responder preguntas y ajustar con IA
+            </button>
+          )}
         </div>
       )}
     </section>
@@ -511,8 +558,13 @@ export default function SignupPage() {
   const [downloadLoading, setDownloadLoading] = useState<'pdf' | 'docx' | 'txt' | null>(null)
   const [revisionInstruction, setRevisionInstruction] = useState('')
   const [revisionLoading, setRevisionLoading] = useState(false)
+  const [revisionProgress, setRevisionProgress] = useState(0)
+  const [revisionStepIndex, setRevisionStepIndex] = useState(0)
+  const [revisionAddedSkills, setRevisionAddedSkills] = useState<string[]>([])
   const [revisionNotes, setRevisionNotes] = useState<string[]>([])
   const [blockedChanges, setBlockedChanges] = useState<string[]>([])
+  const [clarificationModalOpen, setClarificationModalOpen] = useState(false)
+  const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string }>>({})
   const [copySuccess, setCopySuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -549,6 +601,21 @@ export default function SignupPage() {
     window.addEventListener('beforeunload', warnBeforeUnload)
     return () => window.removeEventListener('beforeunload', warnBeforeUnload)
   }, [loading])
+
+  useEffect(() => {
+    if (!revisionLoading) return
+    setRevisionProgress(12)
+    setRevisionStepIndex(0)
+    const interval = window.setInterval(() => {
+      setRevisionProgress((current) => {
+        const next = Math.min(94, current + (current < 62 ? 6 : 3))
+        const nextIndex = revisionProgressSteps.reduce((lastIndex, step, index) => next >= step.pct ? index : lastIndex, 0)
+        setRevisionStepIndex(Math.max(0, nextIndex))
+        return next
+      })
+    }, 700)
+    return () => window.clearInterval(interval)
+  }, [revisionLoading])
 
   const setAndRememberEmail = (value: string) => {
     setEmail(value)
@@ -591,6 +658,9 @@ export default function SignupPage() {
       setRevisionInstruction('')
       setRevisionNotes([])
       setBlockedChanges([])
+      setRevisionAddedSkills([])
+      setClarificationAnswers({})
+      setClarificationModalOpen(Array.isArray(data.clarificationQuestions) && data.clarificationQuestions.length > 0)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -650,36 +720,61 @@ export default function SignupPage() {
     }
   }
 
-  const applyRevisionInstruction = async () => {
+  const copyCoverLetter = async () => {
+    if (!result?.coverLetter) return setError('No hay cover letter para copiar')
+    try {
+      await navigator.clipboard.writeText(result.coverLetter)
+      setCopySuccess('Cover letter copiada. Pégala en el email, LinkedIn o portal de aplicación.')
+      setError('')
+    } catch {
+      setError('No pude copiar la cover letter. Selecciona el texto y cópialo manualmente.')
+    }
+  }
+
+  const submitClarificationAnswers = async () => {
+    const questions = result?.clarificationQuestions?.filter(Boolean).slice(0, 3) || []
+    if (!questions.length) return setClarificationModalOpen(false)
+    await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
+  }
+
+  const applyRevisionInstruction = async (instructionOverride?: string) => {
     const cvToRevise = editableCv || result?.optimizedCV
+    const instruction = (instructionOverride || revisionInstruction).trim()
     if (!cvToRevise) return setError('Primero genera un CV adaptado')
-    if (!revisionInstruction.trim()) return setError('Escribe qué cambio quieres aplicar')
+    if (!instruction) return setError('Escribe qué cambio quieres aplicar')
 
     setRevisionLoading(true)
+    setRevisionProgress(12)
+    setRevisionStepIndex(0)
     setError('')
     setCopySuccess('')
     setRevisionNotes([])
     setBlockedChanges([])
+    setRevisionAddedSkills([])
 
     try {
+      const beforeCv = cvToRevise
       const res = await fetch('/api/revise-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
           optimizedCV: cvToRevise,
-          revisionInstruction: revisionInstruction.trim(),
+          revisionInstruction: instruction,
           outputLanguage,
         }),
       })
       const data = await res.json()
 
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude aplicar el ajuste. Intenta de nuevo.'))
+      setRevisionProgress(100)
       setEditableCv(data.optimizedCV)
+      setRevisionAddedSkills(getAddedSkills(beforeCv, data.optimizedCV))
       setRevisionNotes(Array.isArray(data.revisionNotes) ? data.revisionNotes : [])
       setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges : [])
       setRevisionInstruction('')
-      setCopySuccess('Cambios aplicados. Revisa el CV antes de descargar.')
+      setClarificationModalOpen(false)
+      setCopySuccess('Cambios aplicados. Abajo te muestro qué se agregó o qué se bloqueó por seguridad.')
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -815,6 +910,72 @@ export default function SignupPage() {
           </form>
         ) : (
           <div className="space-y-5">
+            {clarificationModalOpen && result.clarificationQuestions?.length ? (
+              <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm md:items-center">
+                <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Filtro inteligente de evidencia</p>
+                      <h2 className="mt-1 text-2xl font-bold text-slate-950">Aclaremos esto antes de ajustar tu CV</h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">Responde rápido. La IA usará estas respuestas solo si son experiencia real; si no hay evidencia suficiente, no inventará.</p>
+                    </div>
+                    <button onClick={() => setClarificationModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-slate-50">Cerrar</button>
+                  </div>
+                  <div className="mt-5 space-y-4">
+                    {result.clarificationQuestions.filter(Boolean).slice(0, 3).map((question, index) => {
+                      const answer = clarificationAnswers[index] || { option: '', detail: '' }
+                      return (
+                        <div key={question} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="font-bold text-slate-950">{index + 1}. {question}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {clarificationOptions.map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
+                                className={`rounded-full border px-3 py-2 text-xs font-bold transition ${answer.option === option ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300'}`}
+                              >
+                                {option}
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            value={answer.detail}
+                            onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
+                            rows={3}
+                            placeholder="Agrega contexto si aplica: herramientas, proyecto, alcance, años, resultado, responsabilidad real..."
+                            className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex-1">
+                      <p className="text-xs leading-5 text-slate-500">No necesitas escribir perfecto. Responde como puedas; el sistema lo traduce a lenguaje profesional si es verdadero.</p>
+                      {revisionLoading && (
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between text-xs font-bold text-purple-700">
+                            <span>{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando respuestas...'}</span>
+                            <span>{revisionProgress}%</span>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-purple-50">
+                            <div className="h-full rounded-full bg-purple-600 transition-all duration-700" style={{ width: `${revisionProgress}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={submitClarificationAnswers}
+                      disabled={revisionLoading}
+                      className="rounded-full bg-purple-600 px-5 py-3 text-sm font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      {revisionLoading ? 'Aplicando respuestas...' : 'Usar respuestas para ajustar mi CV'}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            ) : null}
             <section className="rounded-3xl bg-slate-900 text-white p-6 shadow-xl shadow-slate-200">
               {(() => {
                 const score = normalizeScore(result.compatibilityScore)
@@ -849,7 +1010,7 @@ export default function SignupPage() {
 
             {renderMatchBreakdown(result.matchBreakdown)}
 
-            {renderDecisionGate(result)}
+            {renderDecisionGate(result, () => setClarificationModalOpen(true))}
 
             {renderActionPlan(result)}
 
@@ -887,16 +1048,38 @@ export default function SignupPage() {
                 placeholder="Ej: cambia mi ciudad a Bogotá, normaliza mis fechas, marca si alguna fecha no coincide, reescribe el perfil más orientado a ventas SaaS, desglosa mi trabajo de administrador de plataformas en skills reales..."
                 className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none"
               />
+              {revisionLoading && (
+                <div className="rounded-2xl border border-amber-200 bg-white p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-slate-950">Aplicando cambios con IA</p>
+                      <p className="mt-1 text-xs text-slate-500">{revisionProgressSteps[revisionStepIndex]?.label || 'Procesando ajuste...'}</p>
+                    </div>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-bold text-amber-700">{revisionProgress}%</span>
+                  </div>
+                  <div className="mt-3 h-3 overflow-hidden rounded-full bg-amber-50">
+                    <div className="h-full rounded-full bg-amber-500 transition-all duration-700" style={{ width: `${revisionProgress}%` }} />
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                 <p className="text-xs text-slate-500">{revisionInstruction.length}/1200 caracteres</p>
                 <button
-                  onClick={applyRevisionInstruction}
+                  onClick={() => applyRevisionInstruction()}
                   disabled={revisionLoading || !revisionInstruction.trim()}
                   className="w-full md:w-auto px-5 py-3 rounded-full font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
                 >
                   {revisionLoading ? 'Aplicando ajuste...' : 'Aplicar cambio con IA'}
                 </button>
               </div>
+              {revisionAddedSkills.length > 0 && (
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-900">
+                  <p className="font-bold mb-2">Skills agregadas o reforzadas por la IA:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {revisionAddedSkills.map((skill) => <span key={skill} className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-emerald-700">{skill}</span>)}
+                  </div>
+                </div>
+              )}
               {revisionNotes.length > 0 && (
                 <div className="rounded-xl bg-white border border-amber-100 p-3 text-sm text-slate-700">
                   <p className="font-bold text-slate-900 mb-1">Notas del ajuste:</p>
@@ -915,7 +1098,19 @@ export default function SignupPage() {
 
             {result.coverLetter && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 className="font-bold text-slate-900 mb-3">Mini cover letter</h3>
+                <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Mensaje para aplicar</p>
+                    <h3 className="font-bold text-slate-900">Mini cover letter</h3>
+                    <p className="mt-1 text-sm text-slate-500">Esta parte no se descarga con el CV. Cópiala y pégala en el email, LinkedIn o el portal donde vas a aplicar.</p>
+                  </div>
+                  <button
+                    onClick={copyCoverLetter}
+                    className="rounded-full border-2 border-purple-200 px-4 py-2 text-sm font-bold text-purple-700 hover:bg-purple-50"
+                  >
+                    Copiar cover letter
+                  </button>
+                </div>
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{result.coverLetter}</p>
               </section>
             )}
@@ -955,7 +1150,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setBlockedChanges([]) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setBlockedChanges([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
                 Analizar otra vacante
