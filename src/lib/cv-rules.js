@@ -108,6 +108,7 @@ Business rules:
 27. Do not discard self-owned, open-source, founder, portfolio, or side projects when they show public traction or credible outcomes. Preserve project names and verified metrics such as GitHub stars, Product Hunt ranking, adoption by teams/users, seed capital, revenue, downloads, usage, accessible component counts, releases, or public links. If relevant to the target role, put them under optimizedCV.featuredProjects as a Featured Projects section; if space is tight, condense bullets but keep the strongest metrics.
 28. Apply a role-agnostic evidence policy. Do not create special-case rules for UX, tech, admin, design, marketing, sales, healthcare, or any other profession. For every vacancy, reason from evidence: explicit evidence in the CV, transferable evidence, missing evidence, and interview risk.
 29. If the CV and vacancy do not clearly match, ask up to 3 critical clarification questions ONLY when the answers could materially change the recommendation or make the positioning truthful. Keep questions simple and answerable by a nontechnical job seeker.
+29a. Each clarification question MUST include contextual answer options, not generic yes/no buttons. Generate 3 suggested options based on the vacancy + CV evidence and one final free-text option. The options should help users recognize experience they may not know how to name. Example: for a design-software requirement, options could be "I worked directly with design/product teams reviewing flows or screens", "I supported design/software projects from operations, support, QA, analytics, or documentation", "Only in a specific project or occasional collaboration", plus "Other: describe my case". Do not make the options role-specific templates; generate them from the actual vacancy and CV.
 30. If missing evidence is essential and unlikely to be fixed by clarification, do not keep forcing optimization. Recommend trying another vacancy or a more adjacent role. Still explain the truthful bridge if one exists.
 31. Never ask endless questions. Use a maximum of 3. If after 3 questions the role still lacks essential evidence, the recommendation should be "not_recommended" or "optimize_with_caution", not more interrogation.
 
@@ -127,7 +128,13 @@ Return ONLY valid JSON with this exact shape:
   "positioningAngle": string,
   "applicationDecision": "optimize" | "optimize_with_caution" | "needs_clarification" | "not_recommended",
   "decisionReason": string,
-  "clarificationQuestions": string[],
+  "clarificationQuestions": [
+    {
+      "question": string,
+      "options": string[],
+      "freeTextLabel": string
+    }
+  ],
   "strengths": string[],
   "gaps": string[],
   "keywordsToInclude": string[],

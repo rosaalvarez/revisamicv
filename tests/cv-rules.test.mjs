@@ -91,6 +91,10 @@ test('buildOptimizerSystemPrompt uses role-agnostic evidence policy with limited
   assert.match(prompt, /Never ask endless questions/i)
   assert.match(prompt, /"applicationDecision"/)
   assert.match(prompt, /"clarificationQuestions"/)
+  assert.match(prompt, /contextual answer options/i)
+  assert.match(prompt, /help users recognize experience/i)
+  assert.match(prompt, /"options"/)
+  assert.match(prompt, /"freeTextLabel"/)
 })
 
 test('buildRevisionSystemPrompt permits user corrections but blocks invented experience', async () => {

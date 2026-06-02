@@ -6,6 +6,12 @@ import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 
+type ClarificationPrompt = {
+  question: string
+  options?: string[]
+  freeTextLabel?: string
+}
+
 type ProcessResult = {
   compatibilityScore?: number
   matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
@@ -13,7 +19,7 @@ type ProcessResult = {
   positioningAngle?: string
   applicationDecision?: 'optimize' | 'optimize_with_caution' | 'needs_clarification' | 'not_recommended'
   decisionReason?: string
-  clarificationQuestions?: string[]
+  clarificationQuestions?: Array<string | ClarificationPrompt>
   strengths?: string[]
   gaps?: string[]
   keywordsToInclude?: string[]
@@ -70,7 +76,7 @@ const revisionProgressSteps = [
   { pct: 94, label: 'Preparando resumen de cambios...' },
 ]
 
-const clarificationOptions = ['Sí', 'No', 'Parcialmente', 'No estoy segura']
+const fallbackClarificationOptions = ['Sí, tengo experiencia relacionada', 'No directamente', 'Parcialmente o en un proyecto puntual', 'Otro: escribir mi caso']
 
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
@@ -106,10 +112,35 @@ function getAddedSkills(beforeCv: any, afterCv: any) {
   return collectCvSkills(afterCv).filter((item) => !before.has(item.toLowerCase())).slice(0, 12)
 }
 
-function buildClarificationInstruction(questions: string[], answers: Record<number, { option: string; detail: string }>) {
-  const lines = questions.map((question, index) => {
+function normalizeClarificationPrompts(value: ProcessResult['clarificationQuestions']) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item): ClarificationPrompt | null => {
+      if (typeof item === 'string') {
+        const question = item.trim()
+        return question ? { question, options: fallbackClarificationOptions, freeTextLabel: 'Escribe tu caso con tus palabras' } : null
+      }
+      if (item && typeof item === 'object') {
+        const question = String(item.question || '').trim()
+        const options = Array.isArray(item.options)
+          ? item.options.map((option) => String(option || '').trim()).filter(Boolean).slice(0, 4)
+          : []
+        return question ? {
+          question,
+          options: options.length ? options : fallbackClarificationOptions,
+          freeTextLabel: item.freeTextLabel || 'Otro: escribe tu caso',
+        } : null
+      }
+      return null
+    })
+    .filter(Boolean)
+    .slice(0, 3) as ClarificationPrompt[]
+}
+
+function buildClarificationInstruction(prompts: ClarificationPrompt[], answers: Record<number, { option: string; detail: string }>) {
+  const lines = prompts.map((prompt, index) => {
     const answer = answers[index]
-    return `${index + 1}. Pregunta: ${question}\nRespuesta rápida: ${answer?.option || 'Sin seleccionar'}\nDetalle del usuario: ${answer?.detail || 'Sin detalle adicional'}`
+    return `${index + 1}. Pregunta: ${prompt.question}\nOpción seleccionada: ${answer?.option || 'Sin seleccionar'}\nDetalle del usuario: ${answer?.detail || 'Sin detalle adicional'}`
   })
 
   return `Usa estas respuestas de aclaración para ajustar el CV a la vacante. Agrega solo skills, enfoque o evidencia que estén soportados por las respuestas del usuario. Si una respuesta dice no, no estoy segura o no da evidencia suficiente, no inventes; deja una nota de seguridad.\n\n${lines.join('\n\n')}`
@@ -290,7 +321,7 @@ function renderActionPlan(result: ProcessResult) {
 
 function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void) {
   const decision = result.applicationDecision
-  const questions = result.clarificationQuestions?.filter(Boolean).slice(0, 3) || []
+  const questions = normalizeClarificationPrompts(result.clarificationQuestions)
   if (!decision && !questions.length && !result.decisionReason) return null
 
   const copy = decision ? decisionCopy[decision] : decisionCopy.optimize_with_caution
@@ -306,10 +337,10 @@ function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void)
         <div className="mt-4 rounded-2xl bg-white/70 p-4">
           <p className="text-sm font-bold">Máximo 3 preguntas para no adivinar:</p>
           <ol className="mt-3 space-y-2 text-sm leading-6">
-            {questions.map((question, index) => (
-              <li key={question} className="flex gap-3">
+            {questions.map((prompt, index) => (
+              <li key={prompt.question} className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{index + 1}</span>
-                <span>{question}</span>
+                <span>{prompt.question}</span>
               </li>
             ))}
           </ol>
@@ -732,7 +763,7 @@ export default function SignupPage() {
   }
 
   const submitClarificationAnswers = async () => {
-    const questions = result?.clarificationQuestions?.filter(Boolean).slice(0, 3) || []
+    const questions = normalizeClarificationPrompts(result?.clarificationQuestions)
     if (!questions.length) return setClarificationModalOpen(false)
     await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
   }
@@ -922,20 +953,21 @@ export default function SignupPage() {
                     <button onClick={() => setClarificationModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-slate-50">Cerrar</button>
                   </div>
                   <div className="mt-5 space-y-4">
-                    {result.clarificationQuestions.filter(Boolean).slice(0, 3).map((question, index) => {
+                    {normalizeClarificationPrompts(result.clarificationQuestions).map((prompt, index) => {
                       const answer = clarificationAnswers[index] || { option: '', detail: '' }
+                      const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
                       return (
-                        <div key={question} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                          <p className="font-bold text-slate-950">{index + 1}. {question}</p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {clarificationOptions.map((option) => (
+                        <div key={prompt.question} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <p className="font-bold text-slate-950">{index + 1}. {prompt.question}</p>
+                          <div className="mt-3 grid gap-2">
+                            {options.map((option, optionIndex) => (
                               <button
-                                key={option}
+                                key={`${prompt.question}-${optionIndex}`}
                                 type="button"
                                 onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
-                                className={`rounded-full border px-3 py-2 text-xs font-bold transition ${answer.option === option ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300'}`}
+                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300'}`}
                               >
-                                {option}
+                                <span className="mr-2 text-xs opacity-70">Opción {optionIndex + 1}</span>{option}
                               </button>
                             ))}
                           </div>
@@ -943,7 +975,7 @@ export default function SignupPage() {
                             value={answer.detail}
                             onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
                             rows={3}
-                            placeholder="Agrega contexto si aplica: herramientas, proyecto, alcance, años, resultado, responsabilidad real..."
+                            placeholder={prompt.freeTextLabel || 'Opción libre: escribe tu caso con tus palabras...'}
                             className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
                           />
                         </div>
