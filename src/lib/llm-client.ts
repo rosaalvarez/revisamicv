@@ -13,34 +13,40 @@ const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 let anthropicClient: Anthropic | null = null
 let openaiClient: OpenAI | null = null
 
+function cleanEnvValue(value?: string) {
+  return value?.trim().replace(/^['"]|['"]$/g, '') || ''
+}
+
 function getAnthropicClient() {
-  if (!process.env.ANTHROPIC_API_KEY) return null
+  const apiKey = cleanEnvValue(process.env.ANTHROPIC_API_KEY)
+  if (!apiKey) return null
   if (!anthropicClient) {
-    anthropicClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    anthropicClient = new Anthropic({ apiKey })
   }
   return anthropicClient
 }
 
 function getOpenAiClient() {
-  if (!process.env.OPENAI_API_KEY) return null
+  const apiKey = cleanEnvValue(process.env.OPENAI_API_KEY)
+  if (!apiKey) return null
   if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    openaiClient = new OpenAI({ apiKey })
   }
   return openaiClient
 }
 
 function getAnthropicModel(task?: JsonCompletionOptions['task']) {
   if (task === 'cv_revision') {
-    return process.env.ANTHROPIC_REVISION_MODEL || process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL
+    return cleanEnvValue(process.env.ANTHROPIC_REVISION_MODEL) || cleanEnvValue(process.env.ANTHROPIC_MODEL) || DEFAULT_ANTHROPIC_MODEL
   }
-  return process.env.ANTHROPIC_CV_MODEL || process.env.ANTHROPIC_MODEL || DEFAULT_ANTHROPIC_MODEL
+  return cleanEnvValue(process.env.ANTHROPIC_CV_MODEL) || cleanEnvValue(process.env.ANTHROPIC_MODEL) || DEFAULT_ANTHROPIC_MODEL
 }
 
 function getOpenAiModel(task?: JsonCompletionOptions['task']) {
   if (task === 'cv_revision') {
-    return process.env.OPENAI_REVISION_MODEL || process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL
+    return cleanEnvValue(process.env.OPENAI_REVISION_MODEL) || cleanEnvValue(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL
   }
-  return process.env.OPENAI_CV_MODEL || process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL
+  return cleanEnvValue(process.env.OPENAI_CV_MODEL) || cleanEnvValue(process.env.OPENAI_MODEL) || DEFAULT_OPENAI_MODEL
 }
 
 function extractAnthropicText(response: Anthropic.Messages.Message) {
