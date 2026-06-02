@@ -51,12 +51,17 @@ export default function DashboardPage() {
       setNotice(`Pack ${PACKS[pack].name} seleccionado. Escribe tu email y presiona comprar para acreditar tus tokens.`)
     }
 
-    if (payment === 'success') setNotice('Pago recibido. Tus tokens pueden tardar unos segundos en aparecer.')
+    const sessionId = params.get('session_id') || ''
+    if (payment === 'success') setNotice(sessionId ? 'Confirmando pago con Stripe y acreditando tokens...' : 'Pago recibido. Tus tokens pueden tardar unos segundos en aparecer.')
     if (payment === 'cancelled') setNotice('Pago cancelado. No se hizo ningún cargo.')
 
     if (initialEmail) {
       setEmail(initialEmail)
-      checkAccount(initialEmail)
+      if (payment === 'success' && sessionId) {
+        recoverPayment(sessionId, initialEmail)
+      } else {
+        checkAccount(initialEmail)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -96,6 +101,34 @@ export default function DashboardPage() {
       setHistory(historyData.history || [])
     } catch (err: any) {
       setError(getFriendlyApiError(err.message, 'No pude cargar tu cuenta'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const recoverPayment = async (sessionId: string, emailToCheck: string) => {
+    const emailError = validateEmail(emailToCheck)
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/stripe/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, email: emailToCheck.trim().toLowerCase() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
+      setNotice(data.message || 'Pago confirmado. Tokens acreditados.')
+      await checkAccount(data.email || emailToCheck)
+    } catch (err: any) {
+      setError(getFriendlyApiError(err.message, 'No pude confirmar el pago'))
+      await checkAccount(emailToCheck)
     } finally {
       setLoading(false)
     }

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     if (!packData) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim()
-    const success_url = `${appUrl}/dashboard?payment=success&email=${encodeURIComponent(email || '')}`
+    const success_url = `${appUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email || '')}`
     const cancel_url = `${appUrl}/dashboard?payment=cancelled&email=${encodeURIComponent(email || '')}`
 
     const session = await stripe.checkout.sessions.create({
@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
       ],
       mode: 'payment',
       customer_email: email,
+      invoice_creation: { enabled: true },
+      payment_intent_data: email ? { receipt_email: email } : undefined,
       success_url,
       cancel_url,
       metadata: { pack, email, cvCount: packData.cvCount.toString() },
