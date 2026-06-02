@@ -62,6 +62,14 @@ export default function EditableCvForm({ cv, onChange }: EditableCvFormProps) {
     onChange({ ...cv, experience })
   }
 
+  const updateProject = (index: number, key: string, value: any) => {
+    const featuredProjects = Array.isArray(cv.featuredProjects || cv.projects) ? [...(cv.featuredProjects || cv.projects)] : []
+    featuredProjects[index] = { ...(featuredProjects[index] || {}), [key]: value }
+    onChange({ ...cv, featuredProjects })
+  }
+
+  const featuredProjects = Array.isArray(cv.featuredProjects || cv.projects) ? (cv.featuredProjects || cv.projects) : []
+
   return (
     <section className="rounded-2xl border border-purple-200 bg-purple-50/60 p-5 space-y-5">
       <div>
@@ -128,6 +136,36 @@ export default function EditableCvForm({ cv, onChange }: EditableCvFormProps) {
                 onChange={(value) => updateExperience(index, 'bullets', textToList(value))}
                 rows={5}
                 helper="Un logro por línea. No agregues experiencia inventada."
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {featuredProjects.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="font-bold text-slate-900">Proyectos destacados</h4>
+          {featuredProjects.map((project: any, index: number) => (
+            <div key={index} className="rounded-2xl bg-white border border-slate-200 p-4 space-y-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field label="Proyecto" value={project.name || ''} onChange={(value) => updateProject(index, 'name', value)} />
+                <Field label="Descripción" value={project.description || ''} onChange={(value) => updateProject(index, 'description', value)} />
+                <Field label="Rol" value={project.role || ''} onChange={(value) => updateProject(index, 'role', value)} />
+                <Field label="Fechas" value={project.dates || ''} onChange={(value) => updateProject(index, 'dates', value)} />
+              </div>
+              <TextArea
+                label="Stack / herramientas del proyecto"
+                value={listToText([...(project.techStack || []), ...(project.tools || [])])}
+                onChange={(value) => updateProject(index, 'techStack', textToList(value))}
+                rows={3}
+                helper="Tecnologías reales del proyecto, si estaban en el CV."
+              />
+              <TextArea
+                label="Tracción / logros verificables"
+                value={listToText(project.bullets || project.achievements)}
+                onChange={(value) => updateProject(index, 'bullets', textToList(value))}
+                rows={4}
+                helper="Ej: GitHub stars, Product Hunt, usuarios/equipos, capital semilla."
               />
             </div>
           ))}

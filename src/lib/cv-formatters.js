@@ -7,6 +7,7 @@ const LABELS = {
     roleTools: 'Herramientas del rol',
     tools: 'Herramientas',
     experience: 'Experiencia profesional',
+    featuredProjects: 'Proyectos destacados',
     education: 'Educación',
     certifications: 'Certificaciones',
     languages: 'Idiomas',
@@ -20,6 +21,7 @@ const LABELS = {
     roleTools: 'Role Tools',
     tools: 'Tools',
     experience: 'Professional Experience',
+    featuredProjects: 'Featured Projects',
     education: 'Education',
     certifications: 'Certifications',
     languages: 'Languages',
@@ -123,6 +125,26 @@ export function optimizedCvToPlainText(cv, language = 'english') {
       })
     : []
   pushSection(lines, labels.experience, experienceLines)
+
+  const projectLines = Array.isArray(cv.featuredProjects || cv.projects)
+    ? (cv.featuredProjects || cv.projects).flatMap((project) => {
+        const header = [project?.name, project?.description, project?.role, project?.dates]
+          .map(cleanText)
+          .filter(Boolean)
+          .join(' | ')
+        const techStack = normalizeStringArray(project?.techStack).join(', ')
+        const tools = normalizeStringArray(project?.tools).join(', ')
+        const bullets = normalizeStringArray(project?.bullets || project?.achievements).map((bullet) => `- ${bullet}`)
+        return [
+          header,
+          techStack ? `${labels.roleTechStack}: ${techStack}` : '',
+          tools ? `${labels.roleTools}: ${tools}` : '',
+          ...bullets,
+          '',
+        ].filter(Boolean)
+      })
+    : []
+  pushSection(lines, labels.featuredProjects, projectLines)
 
   pushSection(lines, labels.education, normalizeStringArray(cv.education).map((item) => `- ${item}`))
   pushSection(lines, labels.certifications, normalizeStringArray(cv.certifications).map((item) => `- ${item}`))

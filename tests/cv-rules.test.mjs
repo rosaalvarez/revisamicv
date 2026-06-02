@@ -71,6 +71,17 @@ test('buildOptimizerSystemPrompt requires an ATS resume schema with contact and 
   assert.match(prompt, /If unavailable, return empty strings/i)
 })
 
+test('buildOptimizerSystemPrompt requires preserving self-owned projects with public traction', () => {
+  const prompt = buildOptimizerSystemPrompt('english')
+
+  assert.match(prompt, /Featured Projects/i)
+  assert.match(prompt, /"featuredProjects"/)
+  assert.match(prompt, /GitHub stars/i)
+  assert.match(prompt, /Product Hunt/i)
+  assert.match(prompt, /seed capital/i)
+  assert.match(prompt, /Do not discard/i)
+})
+
 test('buildRevisionSystemPrompt permits user corrections but blocks invented experience', async () => {
   const { buildRevisionSystemPrompt } = await import('../src/lib/cv-rules.js')
   const prompt = buildRevisionSystemPrompt('spanish')

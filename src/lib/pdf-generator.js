@@ -43,6 +43,7 @@ function getLabels(language) {
         roleTools: 'Herramientas del rol',
         tools: 'Herramientas',
         experience: 'Experiencia profesional',
+        featuredProjects: 'Proyectos destacados',
         education: 'Educación',
         certifications: 'Certificaciones',
         languages: 'Idiomas',
@@ -56,6 +57,7 @@ function getLabels(language) {
         roleTools: 'Role Tools',
         tools: 'Tools',
         experience: 'Professional Experience',
+        featuredProjects: 'Featured Projects',
         education: 'Education',
         certifications: 'Certifications',
         languages: 'Languages',
@@ -169,6 +171,32 @@ function drawExperience(doc, experience, labels) {
   }
 }
 
+function drawProjects(doc, projects, labels) {
+  for (const project of Array.isArray(projects) ? projects : []) {
+    const name = clean(project?.name)
+    const description = clean(project?.description)
+    const role = clean(project?.role)
+    const dates = clean(project?.dates)
+    if (!name && !description) continue
+
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10.5)
+      .fillColor('#111111')
+      .text(name || description)
+
+    const meta = [description, role, dates].filter(Boolean).join(' | ')
+    if (meta) {
+      doc.font('Helvetica').fontSize(9.5).fillColor('#111111').text(meta)
+    }
+
+    drawMetaLine(doc, labels.roleTechStack, project?.techStack)
+    drawMetaLine(doc, labels.roleTools, project?.tools)
+    drawBulletList(doc, project?.bullets || project?.achievements)
+    doc.moveDown(0.35)
+  }
+}
+
 function drawPlainCv(doc, value) {
   const text = String(value || '').slice(0, MAX_TEXT_LENGTH)
   doc.font('Helvetica').fontSize(10).fillColor('#111111').text(text, {
@@ -254,6 +282,12 @@ export async function generateCvPdfBuffer(payload) {
     if (Array.isArray(optimizedCV?.experience) && optimizedCV.experience.length) {
       drawSectionTitle(doc, labels.experience)
       drawExperience(doc, optimizedCV.experience, labels)
+    }
+
+    const featuredProjects = optimizedCV?.featuredProjects || optimizedCV?.projects
+    if (Array.isArray(featuredProjects) && featuredProjects.length) {
+      drawSectionTitle(doc, labels.featuredProjects)
+      drawProjects(doc, featuredProjects, labels)
     }
 
     if (hasItems(optimizedCV?.education)) {

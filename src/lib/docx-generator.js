@@ -98,6 +98,21 @@ export async function generateCvDocxBuffer(payload) {
   }
   addSection(children, labels.experience, experienceParagraphs)
 
+  const projectParagraphs = []
+  const featuredProjects = cv.featuredProjects || cv.projects
+  if (Array.isArray(featuredProjects)) {
+    for (const project of featuredProjects) {
+      const header = [project?.name, project?.description, project?.role, project?.dates].map(cleanText).filter(Boolean).join(' | ')
+      if (header) projectParagraphs.push(textParagraph(header, { bold: true, after: 70 }))
+      const techStack = metaParagraph(labels.roleTechStack, project?.techStack)
+      if (techStack) projectParagraphs.push(techStack)
+      const projectTools = metaParagraph(labels.roleTools, project?.tools)
+      if (projectTools) projectParagraphs.push(projectTools)
+      projectParagraphs.push(...listParagraphs(project?.bullets || project?.achievements))
+    }
+  }
+  addSection(children, labels.featuredProjects, projectParagraphs)
+
   addSection(children, labels.education, listParagraphs(cv.education))
   addSection(children, labels.certifications, listParagraphs(cv.certifications))
   addSection(children, labels.tools, normalizeStringArray(cv.tools).length ? [textParagraph(normalizeStringArray(cv.tools).join(', '))] : [])

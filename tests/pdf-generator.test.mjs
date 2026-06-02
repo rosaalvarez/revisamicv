@@ -69,6 +69,15 @@ test('generateCvPdfBuffer renders a complete ATS resume structure', async () => 
           bullets: ['Launched AI document workflows for customer acquisition and activation.'],
         },
       ],
+      featuredProjects: [
+        {
+          name: 'Lumen UI',
+          description: 'Open-source design system',
+          role: 'Creator and maintainer',
+          dates: '2021 - Present',
+          bullets: ['Earned 3,000+ GitHub stars and adoption by 40+ product teams.'],
+        },
+      ],
       education: ['Systems Engineering, Universidad del Magdalena'],
       certifications: ['Scrum Product Owner'],
       languages: ['Spanish Native', 'English Professional Working Proficiency'],
@@ -85,6 +94,10 @@ test('generateCvPdfBuffer renders a complete ATS resume structure', async () => 
   assert.match(text, /Professional Experience/i)
   assert.match(text, /Tech Stack/i)
   assert.match(text, /React 18/i)
+  assert.match(text, /Featured Projects/i)
+  assert.match(text, /Lumen UI/i)
+  assert.match(text, /3,000\+ GitHub stars/i)
+  assert.match(text, /40\+ product teams/i)
   assert.match(text, /Education/i)
   assert.match(text, /Certifications/i)
   assert.match(text, /Tools/i)

@@ -33,3 +33,37 @@ test('optimizedCvToPlainText formats contact and ATS sections', () => {
   assert.match(text, /Role Tools: Figma/)
   assert.match(text, /- Reduced churn/)
 })
+
+test('optimizedCvToPlainText preserves featured projects with public traction metrics', () => {
+  const text = optimizedCvToPlainText({
+    candidateName: 'Alex Rivera',
+    targetTitle: 'Frontend Engineer',
+    featuredProjects: [{
+      name: 'Lumen UI',
+      description: 'Open-source design system',
+      role: 'Creator and maintainer',
+      dates: '2021 - Present',
+      bullets: [
+        'Earned 3,000+ GitHub stars and adoption by 40+ product teams.',
+        'Built 80+ accessible components documented in Storybook with weekly releases.',
+      ],
+    }, {
+      name: 'PixelKit',
+      description: 'Prototyping tool',
+      role: 'Co-founder',
+      dates: '2020',
+      bullets: [
+        'Reached #1 Product Hunt product of the day and secured USD 15,000 in seed capital.',
+      ],
+    }],
+  }, 'english')
+
+  assert.match(text, /FEATURED PROJECTS/)
+  assert.match(text, /Lumen UI \| Open-source design system \| Creator and maintainer \| 2021 - Present/)
+  assert.match(text, /3,000\+ GitHub stars/)
+  assert.match(text, /40\+ product teams/)
+  assert.match(text, /80\+ accessible components/)
+  assert.match(text, /PixelKit \| Prototyping tool \| Co-founder \| 2020/)
+  assert.match(text, /#1 Product Hunt product of the day/)
+  assert.match(text, /USD 15,000 in seed capital/)
+})

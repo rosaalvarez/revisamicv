@@ -271,6 +271,23 @@ function renderOptimizedCV(cv: any) {
           </div>
         )}
 
+        {((cv.featuredProjects || cv.projects)?.length > 0) && (
+          <div className="space-y-4 border-t border-slate-200 pt-4">
+            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">Featured Projects</h4>
+            {(cv.featuredProjects || cv.projects).map((project: any, index: number) => (
+              <div key={index}>
+                <p className="font-semibold text-slate-950">{project.name}</p>
+                <p className="text-sm text-slate-600">{[project.description, project.role, project.dates].filter(Boolean).join(' | ')}</p>
+                {project.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">Tech Stack:</span> {project.techStack.join(', ')}</p>}
+                {project.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">Tools:</span> {project.tools.join(', ')}</p>}
+                <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
+                  {(project.bullets || project.achievements)?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+
         {renderSimpleSection('Education', cv.education)}
         {renderSimpleSection('Certifications', cv.certifications)}
         {cv.tools?.length > 0 && <div className="border-t border-slate-200 pt-4"><h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Tools</h4>{renderChipList(cv.tools)}</div>}

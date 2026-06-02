@@ -86,7 +86,7 @@ Business rules:
 7. Do not claim strong spoken English if the CV indicates limited English.
 8. Use vacancy keywords only when truthful.
 9. Optimize for ATS: one-column text layout, standard section headings, relevant keywords, quantified achievements when supported, reverse chronological experience when dates are available.
-10. Use standard ATS section order in the final CV: Contact Information, Professional Summary, Skills, Technical Skills, Professional Experience, Education, Certifications, Tools, Languages.
+10. Use standard ATS section order in the final CV: Contact Information, Professional Summary, Skills, Technical Skills, Professional Experience, Featured Projects, Education, Certifications, Tools, Languages. Include Featured Projects only when the original CV contains standalone projects, open-source work, portfolio products, or founder/side projects with meaningful evidence.
 11. The CV should read like a real international ATS resume/CV, not like an analysis report. Avoid first-person prose in the final CV.
 12. Do not use photos, icons, skill bars, tables, columns, graphics, hidden keywords, or sensitive personal data.
 13. candidateName and contact fields must come only from the original CV. If unavailable, return empty strings.
@@ -103,6 +103,7 @@ Business rules:
 24. Filename guidance: fitVerdict or positioningAngle may mention a recommended filename like Candidate_Name_Target_Title_CV.pdf when candidate and target are available.
 25. For technical roles, preserve role-specific tech stack details from the original CV when truthful, including framework/library names and versions (for example React 16.13.1, Typescript 3.7.2, GraphQL 15.0.0). Put these in each experience item as techStack/tools instead of flattening everything into one generic skills list.
 26. Do not remove important engineering context from each role: responsibilities, product scope, tech stack, tools, and scale/traction metrics that are explicitly present in the original CV. Condense them, but keep the evidence that supports the target role.
+27. Do not discard self-owned, open-source, founder, portfolio, or side projects when they show public traction or credible outcomes. Preserve project names and verified metrics such as GitHub stars, Product Hunt ranking, adoption by teams/users, seed capital, revenue, downloads, usage, accessible component counts, releases, or public links. If relevant to the target role, put them under optimizedCV.featuredProjects as a Featured Projects section; if space is tight, condense bullets but keep the strongest metrics.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -148,6 +149,17 @@ Return ONLY valid JSON with this exact shape:
         "bullets": string[]
       }
     ],
+    "featuredProjects": [
+      {
+        "name": string,
+        "description": string,
+        "role": string,
+        "dates": string,
+        "techStack": string[],
+        "tools": string[],
+        "bullets": string[]
+      }
+    ],
     "education": string[],
     "certifications": string[],
     "languages": string[]
@@ -178,6 +190,7 @@ Allowed changes:
 6. Add only low-risk factual details that the user explicitly provides in the revision request: contact data, location, portfolio links, preferred title/headline wording, or wording clarifications.
 7. Keep the same JSON structure as the current CV.
 8. Preserve and edit role-level techStack/tools arrays when present. Do not merge all role-specific versions into one generic tools list if the original CV ties those technologies to specific jobs.
+9. Preserve and edit featuredProjects/projects when present. Do not remove self-owned, open-source, founder, portfolio, or side projects with GitHub stars, Product Hunt ranking, adoption, seed capital, revenue, users, downloads, releases, or other public traction unless the user explicitly asks to remove them.
 
 Safety rules:
 1. Do not invent employers, job titles, degrees, certifications, seniority, years of experience, tools, metrics, languages, regulated credentials, or domain experience.
@@ -208,6 +221,17 @@ Return ONLY valid JSON with this exact shape:
         "title": string,
         "company": string,
         "location": string,
+        "dates": string,
+        "techStack": string[],
+        "tools": string[],
+        "bullets": string[]
+      }
+    ],
+    "featuredProjects": [
+      {
+        "name": string,
+        "description": string,
+        "role": string,
         "dates": string,
         "techStack": string[],
         "tools": string[],
