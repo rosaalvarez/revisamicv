@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
 import { validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+import { createJsonCompletion } from '@/lib/llm-client'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,23 +88,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Process CV with OpenAI
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: buildOptimizerSystemPrompt(outputLanguage) },
-        {
-          role: 'user',
-          content: `Real CV text:\n\n${cvText.substring(0, 10000)}\n\n---\n\nTarget job vacancy:\n\n${jobDescription.substring(0, 6000)}\n\n---\n\nSelected final CV language: ${outputLanguage}`,
-        },
-      ],
-      temperature: 0.35,
-      max_tokens: 3500,
-    })
+    const userPrompt = `Real CV text:\n\n${cvText.substring(0, 10000)}\n\n---\n\nTarget job vacancy:\n\n${jobDescription.substring(0, 6000)}\n\n---\n\nSelected final CV language: ${outputLanguage}`
 
-    const rawText =
-      completion.choices[0]?.message?.content || '{"fitVerdict":"Error generating CV. Please try again."}'
+    const completion = await createJsonCompletion(
+      buildOptimizerSystemPrompt(outputLanguage),
+      userPrompt,
+      { task: 'cv_generation', temperature: 0.25, maxTokens: 6000 }
+    )
+
+    const rawText = completion.text || '{"fitVerdict":"Error generating CV. Please try again."}'
 
     let parsed: any
     try {

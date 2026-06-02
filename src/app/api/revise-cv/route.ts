@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 import { buildRevisionSystemPrompt, normalizeOutputLanguage } from '@/lib/cv-rules'
 import { validateEmail } from '@/lib/input-validation'
 import { getUserTokenState } from '@/lib/token-service'
+import { createJsonCompletion } from '@/lib/llm-client'
 
 export const runtime = 'nodejs'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -75,25 +74,19 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: buildRevisionSystemPrompt(outputLanguage) },
-        {
-          role: 'user',
-          content: JSON.stringify({
-            revisionInstruction,
-            outputLanguage,
-            currentOptimizedCV: optimizedCV,
-          }),
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 3200,
+    const userPrompt = JSON.stringify({
+      revisionInstruction,
+      outputLanguage,
+      currentOptimizedCV: optimizedCV,
     })
 
-    const rawText = completion.choices[0]?.message?.content || '{}'
+    const completion = await createJsonCompletion(
+      buildRevisionSystemPrompt(outputLanguage),
+      userPrompt,
+      { task: 'cv_revision', temperature: 0.2, maxTokens: 4200 }
+    )
+
+    const rawText = completion.text || '{}'
     let parsed: any
     try {
       parsed = JSON.parse(rawText)
