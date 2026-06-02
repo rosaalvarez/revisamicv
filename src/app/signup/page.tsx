@@ -403,9 +403,9 @@ export default function SignupPage() {
 
             <div className="grid md:grid-cols-2 gap-5">
               {renderList('Fortalezas para esta vacante', result.strengths)}
-              {renderList('Brechas o riesgos', result.gaps)}
+              {renderList('Fechas, brechas o datos para revisar', result.gaps)}
               {renderList('Keywords que debe incluir', result.keywordsToInclude)}
-              {renderList('Advertencias para no inventar', result.honestyWarnings)}
+              {renderList('Recomendaciones de honestidad antes de enviar', result.honestyWarnings)}
             </div>
 
             <EditableCvForm cv={editableCv} onChange={setEditableCv} />
@@ -415,7 +415,7 @@ export default function SignupPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Ajuste con IA</p>
                 <h3 className="text-xl font-bold text-slate-950">Pídele un cambio específico antes de descargar</h3>
                 <p className="text-sm text-slate-600 mt-1">
-                  Úsalo para cambios puntuales: actualizar ciudad/email, quitar algo, reescribir el perfil o agregar un dato que tú confirmas. No debe inventar experiencia.
+                  Úsalo para cambios puntuales: actualizar ciudad/email, ajustar formato de fechas, quitar algo, reescribir el perfil o desglosar responsabilidades reales en skills más claras. La idea es hacerlo robusto sin inventar experiencia.
                 </p>
               </div>
               <textarea
@@ -423,7 +423,7 @@ export default function SignupPage() {
                 onChange={(e) => setRevisionInstruction(e.target.value)}
                 rows={4}
                 maxLength={1200}
-                placeholder="Ej: cambia mi ciudad a Bogotá, actualiza mi email a nuevo@email.com, quita la certificación X, reescribe el perfil más orientado a ventas SaaS..."
+                placeholder="Ej: cambia mi ciudad a Bogotá, normaliza mis fechas, marca si alguna fecha no coincide, reescribe el perfil más orientado a ventas SaaS, desglosa mi trabajo de administrador de plataformas en skills reales..."
                 className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none"
               />
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
