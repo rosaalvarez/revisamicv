@@ -11,6 +11,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/favicon.ico'],
+  },
   openGraph: {
     title: 'RevisaMiCV.lat — ¿Qué tan compatible eres con esta vacante?',
     description: 'Sube tu CV, pega una vacante y recibe score, brechas, keywords y CV adaptado descargable en PDF.',
