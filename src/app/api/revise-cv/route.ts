@@ -1,21 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 import { buildRevisionSystemPrompt, normalizeOutputLanguage } from '@/lib/cv-rules'
+import { validateEmail } from '@/lib/input-validation'
+import { getUserTokenState } from '@/lib/token-service'
 
 export const runtime = 'nodejs'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 const MAX_INSTRUCTION_LENGTH = 1200
+const MAX_OPTIMIZED_CV_CHARS = 12000
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const optimizedCV = body?.optimizedCV
     const revisionInstruction = String(body?.revisionInstruction || '').trim()
+    const email = String(body?.email || '').trim().toLowerCase()
     const outputLanguage = normalizeOutputLanguage(body?.outputLanguage)
+
+    const emailError = validateEmail(email)
+    if (emailError) {
+      return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
+    }
+
+    let userState
+    try {
+      userState = await getUserTokenState(supabaseAdmin, email)
+    } catch (err: any) {
+      console.error('Revision user check error:', err?.message || err)
+      return NextResponse.json(
+        { error: 'db_error', message: 'No pude validar tu usuario para aplicar el ajuste. Intenta de nuevo en unos minutos.' },
+        { status: 503 }
+      )
+    }
+
+    if (!userState.exists || (!userState.free_used && userState.tokens <= 0)) {
+      return NextResponse.json(
+        { error: 'revision_not_allowed', message: 'Primero genera un CV desde la app antes de pedir ajustes con IA.' },
+        { status: 403 }
+      )
+    }
 
     if (!optimizedCV) {
       return NextResponse.json({ error: 'optimizedCV is required' }, { status: 400 })
+    }
+
+    const optimizedCvJson = JSON.stringify(optimizedCV)
+    if (optimizedCvJson.length > MAX_OPTIMIZED_CV_CHARS) {
+      return NextResponse.json(
+        {
+          error: 'optimizedCV is too large',
+          message: 'El CV es muy largo para aplicar ajustes automáticos. Edita los campos manualmente o descarga el DOCX.',
+        },
+        { status: 400 }
+      )
     }
 
     if (!revisionInstruction) {
@@ -40,10 +83,10 @@ export async function POST(req: NextRequest) {
         {
           role: 'user',
           content: JSON.stringify({
-            currentOptimizedCV: optimizedCV,
             revisionInstruction,
             outputLanguage,
-          }).slice(0, 14000),
+            currentOptimizedCV: optimizedCV,
+          }),
         },
       ],
       temperature: 0.2,

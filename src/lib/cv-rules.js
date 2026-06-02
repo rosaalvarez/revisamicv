@@ -150,12 +150,12 @@ Allowed changes:
 1. Apply contact data corrections: name, email, phone, location, LinkedIn, portfolio, website.
 2. Remove incorrect, outdated, duplicated, or unwanted information.
 3. Reword sections for clarity, ATS readability, and consistency.
-4. Add factual details only when the user explicitly provides them in the revision request or they already exist in the current CV JSON.
+4. Add only low-risk factual details that the user explicitly provides in the revision request: contact data, location, portfolio links, preferred title/headline wording, or wording clarifications.
 5. Keep the same JSON structure as the current CV.
 
 Safety rules:
 1. Do not invent employers, job titles, degrees, certifications, seniority, years of experience, tools, metrics, languages, regulated credentials, or domain experience.
-2. If the user asks to add unsupported achievements, certifications, jobs, or metrics, do not add them. Instead include a short warning in "revisionNotes".
+2. If the user asks to add unsupported achievements, certifications, jobs, employers, tools, languages, dates, credentials, or metrics that are not already present in the current CV JSON, do not add them. Instead include a short warning in "revisionNotes" and "blockedChanges".
 3. Do not change facts unrelated to the requested revision.
 4. Do not include markdown, explanations, comments, or extra text outside JSON.
 5. Preserve truthful ATS-friendly language and standard section names.

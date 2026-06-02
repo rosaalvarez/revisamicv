@@ -68,6 +68,8 @@ test('buildRevisionSystemPrompt permits user corrections but blocks invented exp
   assert.match(prompt, /Spanish/)
   assert.match(prompt, /contact data corrections/i)
   assert.match(prompt, /Do not invent employers/i)
+  assert.match(prompt, /blockedChanges/i)
+  assert.match(prompt, /not already present in the current CV JSON/i)
   assert.match(prompt, /Return ONLY valid JSON/i)
   assert.match(prompt, /"optimizedCV"/)
 })
