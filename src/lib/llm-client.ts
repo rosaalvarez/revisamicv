@@ -7,7 +7,7 @@ type JsonCompletionOptions = {
   maxTokens?: number
 }
 
-const DEFAULT_ANTHROPIC_MODEL = 'claude-3-5-sonnet-latest'
+const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-20250514'
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 
 let anthropicClient: Anthropic | null = null
