@@ -105,6 +105,15 @@ Business rules:
 Return ONLY valid JSON with this exact shape:
 {
   "compatibilityScore": number,
+  "matchBreakdown": {
+    "requiredSkills": { "score": number, "summary": string },
+    "preferredSkills": { "score": number, "summary": string },
+    "keywordMatch": { "score": number, "summary": string },
+    "experienceAlignment": { "score": number, "summary": string },
+    "educationCertification": { "score": number, "summary": string },
+    "atsFormattingRisk": { "score": number, "summary": string },
+    "honestyRisk": { "score": number, "summary": string }
+  },
   "fitVerdict": string,
   "positioningAngle": string,
   "strengths": string[],

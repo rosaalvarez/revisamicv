@@ -8,6 +8,7 @@ import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 
 type ProcessResult = {
   compatibilityScore?: number
+  matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
   fitVerdict?: string
   positioningAngle?: string
   strengths?: string[]
@@ -48,6 +49,57 @@ function renderList(title: string, items?: string[]) {
       <ul className="space-y-2 text-sm text-slate-700 list-disc pl-5">
         {items.map((item, index) => <li key={index}>{item}</li>)}
       </ul>
+    </section>
+  )
+}
+
+const matchBreakdownLabels: Record<string, string> = {
+  requiredSkills: 'Skills obligatorias',
+  preferredSkills: 'Skills deseables',
+  keywordMatch: 'Keywords de la vacante',
+  experienceAlignment: 'Experiencia alineada',
+  educationCertification: 'Educación / certificaciones',
+  atsFormattingRisk: 'Riesgo de formato ATS',
+  honestyRisk: 'Riesgo de honestidad',
+}
+
+function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
+  if (!breakdown || typeof breakdown !== 'object') return null
+
+  const entries = Object.entries(breakdown)
+    .map(([key, value]) => {
+      if (typeof value === 'number' || typeof value === 'string') {
+        return { key, label: matchBreakdownLabels[key] || key, score: value, summary: '' }
+      }
+      return {
+        key,
+        label: matchBreakdownLabels[key] || key,
+        score: value?.score,
+        summary: value?.summary || '',
+      }
+    })
+    .filter((item) => item.score !== undefined || item.summary)
+
+  if (!entries.length) return null
+
+  return (
+    <section className="rounded-2xl border border-purple-100 bg-purple-50/70 p-5">
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Diagnóstico por categorías</p>
+        <h3 className="text-xl font-bold text-slate-950">Dónde encaja tu CV y dónde hay brechas</h3>
+        <p className="text-sm text-slate-600 mt-1">Esto ayuda a entender el score sin depender de un solo número.</p>
+      </div>
+      <div className="grid md:grid-cols-2 gap-3">
+        {entries.map((item) => (
+          <div key={item.key} className="rounded-xl bg-white border border-purple-100 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-semibold text-slate-900 text-sm">{item.label}</p>
+              {item.score !== undefined && <span className="text-sm font-bold text-purple-700">{item.score}/100</span>}
+            </div>
+            {item.summary && <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.summary}</p>}
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
@@ -400,6 +452,8 @@ export default function SignupPage() {
               {result.fitVerdict && <p className="mt-4 text-lg">{result.fitVerdict}</p>}
               {result.positioningAngle && <p className="mt-2 text-sm text-slate-300">{result.positioningAngle}</p>}
             </section>
+
+            {renderMatchBreakdown(result.matchBreakdown)}
 
             <div className="grid md:grid-cols-2 gap-5">
               {renderList('Fortalezas para esta vacante', result.strengths)}
