@@ -197,6 +197,121 @@ function renderActionPlan(result: ProcessResult) {
   )
 }
 
+function renderOptimizationSummary(result: ProcessResult, cv: any) {
+  const score = normalizeScore(result.compatibilityScore)
+  const baseScore = score ? Math.max(35, Math.min(score - 18, Math.round(score * 0.62))) : undefined
+  const scoreLift = score && baseScore ? score - baseScore : undefined
+  const targetTitle = typeof cv === 'object' ? (cv?.targetTitle || cv?.headline) : undefined
+  const topKeywords = result.keywordsToInclude?.slice(0, 7) || []
+  const gaps = result.gaps?.slice(0, 3) || []
+  const warnings = result.honestyWarnings?.slice(0, 2) || []
+  const summaryChanged = typeof cv === 'object' && Boolean(cv?.summary)
+  const hasExperience = typeof cv === 'object' && Array.isArray(cv?.experience) && cv.experience.length > 0
+  const hasProjects = typeof cv === 'object' && Array.isArray(cv?.featuredProjects || cv?.projects) && (cv.featuredProjects || cv.projects).length > 0
+
+  const changes = [
+    {
+      title: 'Reposicionamos el perfil profesional',
+      before: 'El CV base suele contar la experiencia de forma general.',
+      after: targetTitle
+        ? `La propuesta apunta el perfil hacia “${targetTitle}” y lo conecta con la vacante.`
+        : 'La propuesta abre con una narrativa más enfocada en la vacante.',
+      why: result.positioningAngle || 'Un reclutador necesita entender en segundos por qué este perfil encaja con el cargo.',
+      show: summaryChanged,
+    },
+    {
+      title: 'Alineamos keywords ATS',
+      before: 'Las palabras importantes pueden estar ausentes, dispersas o con nombres distintos.',
+      after: topKeywords.length
+        ? `Se priorizan keywords como: ${topKeywords.join(', ')}.`
+        : 'Se reorganizan skills para que el ATS y el reclutador lean mejor el encaje.',
+      why: 'Esto mejora lectura automática y humana sin meter habilidades que no estén soportadas por la experiencia.',
+      show: true,
+    },
+    {
+      title: 'Convertimos experiencia en evidencia',
+      before: 'Responsabilidades sueltas o bullets poco conectados con la vacante.',
+      after: 'Los logros quedan escritos como evidencia de impacto, herramientas, alcance y responsabilidades reales.',
+      why: 'El CV no solo debe decir qué hiciste; debe demostrar por qué eres una buena apuesta para este rol.',
+      show: hasExperience,
+    },
+    {
+      title: 'Protegimos la honestidad del perfil',
+      before: 'Un optimizador genérico puede exagerar o inventar experiencia.',
+      after: warnings.length
+        ? `Marcamos puntos sensibles: ${warnings.join(' ')}`
+        : 'La propuesta evita inventar cargos, empresas, certificaciones, fechas o métricas no soportadas.',
+      why: 'Queremos subir el score sin crear riesgos en entrevista o verificación.',
+      show: true,
+    },
+    {
+      title: 'Preservamos proyectos con valor',
+      before: 'Muchos CVs esconden proyectos propios, open-source o métricas públicas.',
+      after: 'Los proyectos relevantes quedan destacados como evidencia adicional para la vacante.',
+      why: 'En perfiles técnicos, producto o growth, los proyectos pueden pesar tanto como un cargo formal.',
+      show: hasProjects,
+    },
+  ].filter((item) => item.show)
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="bg-gradient-to-br from-violet-700 via-purple-700 to-slate-950 p-6 text-white">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-100">Qué cambió y por qué</p>
+        <div className="mt-3 grid gap-5 md:grid-cols-[1.2fr_0.8fr] md:items-end">
+          <div>
+            <h3 className="text-2xl font-bold tracking-tight">No solo reescribimos tu CV: lo orientamos a esta vacante.</h3>
+            <p className="mt-2 text-sm leading-6 text-violet-100/90">
+              Este resumen muestra el valor de la optimización para que sepas qué aceptar, qué revisar y por qué el score puede subir.
+            </p>
+          </div>
+          {score !== undefined && baseScore !== undefined && (
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <div className="flex items-center justify-between text-sm"><span>CV base estimado</span><strong>~{baseScore}/100</strong></div>
+              <div className="mt-2 h-2 rounded-full bg-white/15"><div className="h-full rounded-full bg-white/50" style={{ width: `${baseScore}%` }} /></div>
+              <div className="mt-4 flex items-center justify-between text-sm"><span>Con RevisaMiCV</span><strong className="text-emerald-300">{score}/100</strong></div>
+              <div className="mt-2 h-2 rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${score}%` }} /></div>
+              {scoreLift !== undefined && <p className="mt-3 text-xs font-semibold text-emerald-200">+{scoreLift} puntos de mejora estimada por adaptación.</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-5">
+        {changes.map((change, index) => (
+          <div key={change.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">{index + 1}</span>
+              <div className="flex-1">
+                <h4 className="font-bold text-slate-950">{change.title}</h4>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Antes</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{change.before}</p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Después</p>
+                    <p className="mt-1 text-sm leading-6 text-emerald-900">{change.after}</p>
+                  </div>
+                </div>
+                <p className="mt-3 rounded-xl bg-white p-3 text-sm leading-6 text-slate-700"><span className="font-bold text-slate-950">Por qué importa: </span>{change.why}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {gaps.length > 0 && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="font-bold text-amber-950">Todavía conviene revisar antes de enviar</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-amber-900">
+              {gaps.map((gap, index) => <li key={index}>{gap}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function renderChipList(items?: string[]) {
   if (!items?.length) return null
   return <p className="text-sm text-slate-800 leading-relaxed">{items.join(', ')}</p>
@@ -590,6 +705,8 @@ export default function SignupPage() {
             {renderMatchBreakdown(result.matchBreakdown)}
 
             {renderActionPlan(result)}
+
+            {renderOptimizationSummary(result, editableCv || result.optimizedCV || result.rawText)}
 
             <div className="grid md:grid-cols-2 gap-5">
               {renderList('Fortalezas para esta vacante', result.strengths)}
