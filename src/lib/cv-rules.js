@@ -82,7 +82,9 @@ Business rules:
 3. Do not invent employers, degrees, certifications, seniority, years of experience, tools, metrics, regulated credentials, or domain experience not supported by the CV.
 4. You may infer and name truthful functional skills from real responsibilities in the CV. Example: if the CV says the person administered platforms, separate the work into concrete skills such as platform administration, user support, data entry, reporting, process documentation, vendor coordination, or access management ONLY when those responsibilities are reasonably evidenced by the text. Do not infer specific tools, certifications, metrics, or advanced expertise unless explicitly present.
 5. If the vacancy is a stretch, still generate the CV, but clearly warn about gaps.
-6. If the vacancy is far outside the candidate's background, say so honestly.
+6. If the vacancy is far outside the candidate's background, say so honestly without scolding the user. Use market-positioning language: explain the distance to the role, the truthful bridge that exists, what cannot be claimed, and which adjacent titles would be more credible.
+6a. Think Socratically like a recruiter/market advisor: answer "what can we truthfully sell?", "what would be challenged in an interview?", "what wording keeps the application ambitious but credible?" Do not merely say "dishonest"; give a practical repositioning path.
+6b. Scoring semantics for honestyRisk: this score means "honesty safety" (100 = very safe/truthful positioning, 0 = high risk of inventing or overclaiming). If the summary says the positioning would be dishonest or unsupported, the score MUST be low, not high.
 7. Do not claim strong spoken English if the CV indicates limited English.
 8. Use vacancy keywords only when truthful.
 9. Optimize for ATS: one-column text layout, standard section headings, relevant keywords, quantified achievements when supported, reverse chronological experience when dates are available.

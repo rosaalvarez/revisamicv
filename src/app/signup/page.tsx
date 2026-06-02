@@ -26,6 +26,16 @@ const languageOptions = [
   { value: 'spanish', label: 'Español', helper: 'Para España, LATAM o vacantes en español' },
 ] as const
 
+const analysisProgressSteps = [
+  { pct: 12, label: 'Subiendo y leyendo tu CV...' },
+  { pct: 24, label: 'Extrayendo experiencia, skills y fechas...' },
+  { pct: 38, label: 'Leyendo requisitos de la vacante...' },
+  { pct: 52, label: 'Comparando tu CV base contra la vacante...' },
+  { pct: 68, label: 'Detectando brechas y oportunidades transferibles...' },
+  { pct: 82, label: 'Redactando propuesta optimizada sin inventar experiencia...' },
+  { pct: 94, label: 'Preparando diagnóstico, editor y descargas...' },
+]
+
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
   const rawTarget = typeof cv === 'object' ? (cv?.targetTitle || cv?.headline || 'cv') : 'cv'
@@ -119,19 +129,36 @@ function normalizeScore(value: unknown) {
   return Math.max(0, Math.min(100, Math.round(score)))
 }
 
+function looksLikeRiskyHonestySummary(summary?: string) {
+  if (!summary) return false
+  const text = summary.toLowerCase()
+  return /deshonesto|no está presente|no esta presente|fuera del perfil|requiere experiencia|sin experiencia|inventar|no soportad|salto profesional|brecha/.test(text)
+}
+
+function getBreakdownDisplayScore(key: string, score?: number, summary?: string) {
+  if (score === undefined) return undefined
+  if (key === 'honestyRisk' && score >= 70 && looksLikeRiskyHonestySummary(summary)) {
+    return Math.max(0, Math.min(100, 100 - score))
+  }
+  return score
+}
+
 function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
   if (!breakdown || typeof breakdown !== 'object') return null
 
   const entries = Object.entries(breakdown)
     .map(([key, value]) => {
       if (typeof value === 'number' || typeof value === 'string') {
-        return { key, label: matchBreakdownLabels[key] || key, score: normalizeScore(value), summary: '' }
+        const rawScore = normalizeScore(value)
+        return { key, label: matchBreakdownLabels[key] || key, score: getBreakdownDisplayScore(key, rawScore, ''), summary: '' }
       }
+      const summary = value?.summary || ''
+      const rawScore = normalizeScore(value?.score)
       return {
         key,
         label: matchBreakdownLabels[key] || key,
-        score: normalizeScore(value?.score),
-        summary: value?.summary || '',
+        score: getBreakdownDisplayScore(key, rawScore, summary),
+        summary,
       }
     })
     .filter((item) => item.score !== undefined || item.summary)
@@ -418,6 +445,8 @@ export default function SignupPage() {
   const [jobDescription, setJobDescription] = useState('')
   const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('english')
   const [loading, setLoading] = useState(false)
+  const [analysisProgress, setAnalysisProgress] = useState(0)
+  const [analysisStepIndex, setAnalysisStepIndex] = useState(0)
   const [result, setResult] = useState<ProcessResult | null>(null)
   const [editableCv, setEditableCv] = useState<any | null>(null)
   const [error, setError] = useState('')
@@ -431,8 +460,37 @@ export default function SignupPage() {
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
+    const savedJob = window.localStorage.getItem('revisamicv_job_description')
+    const savedLanguage = window.localStorage.getItem('revisamicv_output_language') as 'english' | 'spanish' | null
     if (savedEmail) setEmail(savedEmail)
+    if (savedJob) setJobDescription(savedJob)
+    if (savedLanguage === 'english' || savedLanguage === 'spanish') setOutputLanguage(savedLanguage)
   }, [])
+
+  useEffect(() => {
+    if (!loading) return
+    setAnalysisProgress(8)
+    setAnalysisStepIndex(0)
+    const interval = window.setInterval(() => {
+      setAnalysisProgress((current) => {
+        const next = Math.min(94, current + (current < 55 ? 4 : current < 82 ? 3 : 1))
+        const nextIndex = analysisProgressSteps.reduce((lastIndex, step, index) => next >= step.pct ? index : lastIndex, 0)
+        setAnalysisStepIndex(Math.max(0, nextIndex))
+        return next
+      })
+    }, 900)
+    return () => window.clearInterval(interval)
+  }, [loading])
+
+  useEffect(() => {
+    if (!loading) return
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = 'El análisis sigue en proceso. Si recargas, tendrás que volver a subir el archivo.'
+    }
+    window.addEventListener('beforeunload', warnBeforeUnload)
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload)
+  }, [loading])
 
   const setAndRememberEmail = (value: string) => {
     setEmail(value)
@@ -452,6 +510,8 @@ export default function SignupPage() {
     if (jobError) return setError(jobError)
 
     setLoading(true)
+    setAnalysisProgress(8)
+    setAnalysisStepIndex(0)
     setError('')
 
     try {
@@ -465,7 +525,9 @@ export default function SignupPage() {
       const data = await res.json()
 
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
+      setAnalysisProgress(100)
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
+      window.localStorage.setItem('revisamicv_output_language', outputLanguage)
       setResult(data)
       setEditableCv(data.optimizedCV || null)
       setRevisionInstruction('')
@@ -608,7 +670,10 @@ export default function SignupPage() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setOutputLanguage(option.value)}
+                    onClick={() => {
+                      setOutputLanguage(option.value)
+                      window.localStorage.setItem('revisamicv_output_language', option.value)
+                    }}
                     className={`rounded-2xl border-2 p-4 text-left transition ${
                       outputLanguage === option.value ? 'border-purple-500 bg-purple-50' : 'border-slate-200 hover:border-purple-200'
                     }`}
@@ -649,7 +714,11 @@ export default function SignupPage() {
               <label className="block text-sm font-semibold text-slate-700 mb-2">Vacante objetivo</label>
               <textarea
                 value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setJobDescription(value)
+                  window.localStorage.setItem('revisamicv_job_description', value)
+                }}
                 rows={8}
                 placeholder="Pega la descripción completa del trabajo al que quieres aplicar..."
                 className="w-full border border-slate-300 rounded-xl bg-white p-4 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
@@ -660,12 +729,30 @@ export default function SignupPage() {
 
             {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
 
+            {loading && (
+              <section className="rounded-2xl border border-purple-200 bg-purple-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-purple-950">Analizando tu CV</p>
+                    <p className="mt-1 text-xs text-purple-700">{analysisProgressSteps[analysisStepIndex]?.label || 'Procesando...'}</p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-purple-700">{analysisProgress}%</span>
+                </div>
+                <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                  <div className="h-full rounded-full bg-purple-600 transition-all duration-700" style={{ width: `${analysisProgress}%` }} />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  No cierres ni recargues esta página. Guardamos el email y la vacante, pero por seguridad del navegador tendrías que volver a subir el archivo si recargas.
+                </p>
+              </section>
+            )}
+
             <button
               type="submit"
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-4 rounded-full font-semibold text-lg hover:bg-purple-700 transition disabled:opacity-50"
             >
-              {loading ? <span>Analizando compatibilidad...</span> : <><SparklesIcon className="w-5 h-5" /> Analizar y adaptar mi CV</>}
+              {loading ? <span>{analysisProgressSteps[analysisStepIndex]?.label || 'Analizando compatibilidad...'}</span> : <><SparklesIcon className="w-5 h-5" /> Analizar y adaptar mi CV</>}
             </button>
           </form>
         ) : (
@@ -808,10 +895,10 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setBlockedChanges([]) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setBlockedChanges([]) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
-                Probar otra vacante
+                Analizar otra vacante
               </button>
               <a
                 href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`}
