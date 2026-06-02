@@ -128,6 +128,10 @@ export default function SignupPage() {
   const [editableCv, setEditableCv] = useState<any | null>(null)
   const [error, setError] = useState('')
   const [downloadLoading, setDownloadLoading] = useState<'pdf' | 'docx' | 'txt' | null>(null)
+  const [revisionInstruction, setRevisionInstruction] = useState('')
+  const [revisionLoading, setRevisionLoading] = useState(false)
+  const [revisionNotes, setRevisionNotes] = useState<string[]>([])
+  const [blockedChanges, setBlockedChanges] = useState<string[]>([])
   const [copySuccess, setCopySuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -170,6 +174,9 @@ export default function SignupPage() {
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       setResult(data)
       setEditableCv(data.optimizedCV || null)
+      setRevisionInstruction('')
+      setRevisionNotes([])
+      setBlockedChanges([])
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -226,6 +233,42 @@ export default function SignupPage() {
       setError('')
     } catch {
       setError('No pude copiar el CV. Intenta descargar el TXT.')
+    }
+  }
+
+  const applyRevisionInstruction = async () => {
+    const cvToRevise = editableCv || result?.optimizedCV
+    if (!cvToRevise) return setError('Primero genera un CV adaptado')
+    if (!revisionInstruction.trim()) return setError('Escribe qué cambio quieres aplicar')
+
+    setRevisionLoading(true)
+    setError('')
+    setCopySuccess('')
+    setRevisionNotes([])
+    setBlockedChanges([])
+
+    try {
+      const res = await fetch('/api/revise-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          optimizedCV: cvToRevise,
+          revisionInstruction: revisionInstruction.trim(),
+          outputLanguage,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude aplicar el ajuste. Intenta de nuevo.'))
+      setEditableCv(data.optimizedCV)
+      setRevisionNotes(Array.isArray(data.revisionNotes) ? data.revisionNotes : [])
+      setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges : [])
+      setRevisionInstruction('')
+      setCopySuccess('Cambios aplicados. Revisa el CV antes de descargar.')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setRevisionLoading(false)
     }
   }
 
@@ -351,6 +394,46 @@ export default function SignupPage() {
 
             <EditableCvForm cv={editableCv} onChange={setEditableCv} />
 
+            <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Ajuste con IA</p>
+                <h3 className="text-xl font-bold text-slate-950">Pídele un cambio específico antes de descargar</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  Úsalo para cambios puntuales: actualizar ciudad/email, quitar algo, reescribir el perfil o agregar un dato que tú confirmas. No debe inventar experiencia.
+                </p>
+              </div>
+              <textarea
+                value={revisionInstruction}
+                onChange={(e) => setRevisionInstruction(e.target.value)}
+                rows={4}
+                maxLength={1200}
+                placeholder="Ej: cambia mi ciudad a Bogotá, actualiza mi email a nuevo@email.com, quita la certificación X, reescribe el perfil más orientado a ventas SaaS..."
+                className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">{revisionInstruction.length}/1200 caracteres</p>
+                <button
+                  onClick={applyRevisionInstruction}
+                  disabled={revisionLoading || !revisionInstruction.trim()}
+                  className="w-full md:w-auto px-5 py-3 rounded-full font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+                >
+                  {revisionLoading ? 'Aplicando ajuste...' : 'Aplicar cambio con IA'}
+                </button>
+              </div>
+              {revisionNotes.length > 0 && (
+                <div className="rounded-xl bg-white border border-amber-100 p-3 text-sm text-slate-700">
+                  <p className="font-bold text-slate-900 mb-1">Notas del ajuste:</p>
+                  <ul className="list-disc pl-5 space-y-1">{revisionNotes.map((note, index) => <li key={index}>{note}</li>)}</ul>
+                </div>
+              )}
+              {blockedChanges.length > 0 && (
+                <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-sm text-red-800">
+                  <p className="font-bold mb-1">Cambios no aplicados por seguridad:</p>
+                  <ul className="list-disc pl-5 space-y-1">{blockedChanges.map((change, index) => <li key={index}>{change}</li>)}</ul>
+                </div>
+              )}
+            </section>
+
             {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
 
             {result.coverLetter && (
@@ -395,7 +478,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); setCopySuccess('') }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setBlockedChanges([]) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
                 Probar otra vacante

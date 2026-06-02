@@ -53,12 +53,21 @@ test('buildOptimizerSystemPrompt includes selected output language and anti-inve
 
 test('buildOptimizerSystemPrompt requires an ATS resume schema with contact and skills sections', () => {
   const prompt = buildOptimizerSystemPrompt('english')
-  assert.match(prompt, /candidateName/i)
-  assert.match(prompt, /contact/i)
-  assert.match(prompt, /targetTitle/i)
-  assert.match(prompt, /technicalSkills/i)
-  assert.match(prompt, /tools/i)
-  assert.match(prompt, /languages/i)
+
+  assert.match(prompt, /"contact"/)
+  assert.match(prompt, /"coreCompetencies"/)
+  assert.match(prompt, /"technicalSkills"/)
   assert.match(prompt, /standard ATS section order/i)
   assert.match(prompt, /If unavailable, return empty strings/i)
+})
+
+test('buildRevisionSystemPrompt permits user corrections but blocks invented experience', async () => {
+  const { buildRevisionSystemPrompt } = await import('../src/lib/cv-rules.js')
+  const prompt = buildRevisionSystemPrompt('spanish')
+
+  assert.match(prompt, /Spanish/)
+  assert.match(prompt, /contact data corrections/i)
+  assert.match(prompt, /Do not invent employers/i)
+  assert.match(prompt, /Return ONLY valid JSON/i)
+  assert.match(prompt, /"optimizedCV"/)
 })
