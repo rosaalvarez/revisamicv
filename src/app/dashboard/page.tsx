@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
-import { ArrowRightIcon, DocumentIcon, SparklesIcon } from '@/components/icons'
+import { ArrowRightIcon, ChartBarIcon, CheckIcon, ClockIcon, DocumentIcon, DownloadIcon, ShieldCheckIcon, SparklesIcon, UserIcon } from '@/components/icons'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 
 type UserState = {
@@ -29,6 +29,27 @@ const PACKS = TOKEN_PACKS as Record<string, {
   popular: boolean
 }>
 
+function StatusPill({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'purple' | 'slate' }) {
+  const styles = {
+    green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    purple: 'border-violet-200 bg-violet-50 text-violet-700',
+    slate: 'border-slate-200 bg-white text-slate-600',
+  }
+  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>{children}</span>
+}
+
+function MiniMetric({ label, value, icon, dark = false }: { label: string; value: string | number; icon: React.ReactNode; dark?: boolean }) {
+  return (
+    <div className={`rounded-3xl border p-5 shadow-sm ${dark ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-950'}`}>
+      <div className="flex items-center justify-between gap-4">
+        <p className={`text-sm ${dark ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
+        <div className={`grid h-10 w-10 place-items-center rounded-2xl ${dark ? 'bg-white/10 text-violet-200' : 'bg-violet-50 text-violet-700'}`}>{icon}</div>
+      </div>
+      <p className={`mt-3 text-4xl font-semibold tracking-tight ${dark ? 'text-violet-200' : 'text-slate-950'}`}>{value}</p>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -39,6 +60,14 @@ export default function DashboardPage() {
   const [notice, setNotice] = useState('')
   const [selectedPack, setSelectedPack] = useState<string>('')
 
+  const usedAnalyses = history.length
+  const accountStatus = useMemo(() => {
+    if (!user) return 'Sin cuenta cargada'
+    if (user.tokens > 0) return 'Lista para analizar vacantes'
+    if (user.has_free_cv) return 'Tienes un análisis gratis disponible'
+    return 'Sin créditos disponibles'
+  }, [user])
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const queryEmail = params.get('email') || ''
@@ -48,7 +77,7 @@ export default function DashboardPage() {
     const pack = params.get('pack') || ''
     if (pack && PACKS[pack]) {
       setSelectedPack(pack)
-      setNotice(`Pack ${PACKS[pack].name} seleccionado. Escribe tu email y presiona comprar para acreditar tus tokens.`)
+      setNotice(`Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus tokens.`)
     }
 
     const sessionId = params.get('session_id') || ''
@@ -75,19 +104,19 @@ export default function DashboardPage() {
 
     setLoading(true)
     setError('')
-    setNotice((current) => current)
 
     try {
+      const normalizedEmail = emailToCheck.trim().toLowerCase()
       const [userRes, historyRes] = await Promise.all([
         fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailToCheck.trim().toLowerCase() }),
+          body: JSON.stringify({ email: normalizedEmail }),
         }),
         fetch('/api/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailToCheck.trim().toLowerCase() }),
+          body: JSON.stringify({ email: normalizedEmail }),
         }),
       ])
 
@@ -96,7 +125,7 @@ export default function DashboardPage() {
       if (!userRes.ok) throw new Error(userData.message || userData.error)
       if (!historyRes.ok) throw new Error(historyData.message || historyData.error)
 
-      window.localStorage.setItem('revisamicv_email', emailToCheck.trim().toLowerCase())
+      window.localStorage.setItem('revisamicv_email', normalizedEmail)
       setUser(userData)
       setHistory(historyData.history || [])
     } catch (err: any) {
@@ -117,15 +146,16 @@ export default function DashboardPage() {
     setError('')
 
     try {
+      const normalizedEmail = emailToCheck.trim().toLowerCase()
       const res = await fetch('/api/stripe/recover', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, email: emailToCheck.trim().toLowerCase() }),
+        body: JSON.stringify({ session_id: sessionId, email: normalizedEmail }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
       setNotice(data.message || 'Pago confirmado. Tokens acreditados.')
-      await checkAccount(data.email || emailToCheck)
+      await checkAccount(data.email || normalizedEmail)
     } catch (err: any) {
       setError(getFriendlyApiError(err.message, 'No pude confirmar el pago'))
       await checkAccount(emailToCheck)
@@ -143,12 +173,14 @@ export default function DashboardPage() {
     const emailError = validateEmail(email)
     if (emailError) return setError(emailError)
     setError('')
+    setNotice('Abriendo checkout seguro de Stripe...')
 
     try {
+      const normalizedEmail = email.trim().toLowerCase()
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pack, email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ pack, email: normalizedEmail }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || data.message || 'No pude iniciar el pago')
@@ -194,108 +226,173 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4">
-      <div className="max-w-5xl mx-auto pt-10 pb-16">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Mi cuenta RevisaMiCV</h1>
-          <p className="text-slate-600">Consulta tokens, historial y descarga CVs generados.</p>
-        </div>
+    <main className="min-h-screen bg-[#f7f8ff] text-slate-950">
+      <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,#ede9fe,transparent_32%),radial-gradient(circle_at_top_right,#dbeafe,transparent_28%)]" />
+      <div className="relative mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+        <header className="mb-8 flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#533AFD] text-lg font-bold text-white shadow-lg shadow-violet-200">R</div>
+            <div>
+              <p className="font-semibold tracking-tight text-slate-950">RevisaMiCV</p>
+              <p className="text-xs text-slate-500">Centro de aplicaciones</p>
+            </div>
+          </a>
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
+            <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Nuevo análisis</a>
+            <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
+            <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar tokens</a>
+          </nav>
+        </header>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm max-w-2xl mx-auto mb-6">
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Tu email</label>
-          <div className="flex flex-col md:flex-row gap-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                const nextEmail = e.target.value
-                setEmail(nextEmail)
-                if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
-              }}
-              placeholder="tu@email.com"
-              className="flex-1 border border-slate-300 rounded-xl bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
-              required
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-700 transition disabled:opacity-50"
-            >
-              {loading ? 'Cargando...' : 'Ver cuenta'}
-            </button>
+        <section className="mb-6 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-xl shadow-slate-200">
+            <div className="relative p-6 md:p-8">
+              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-violet-500/30 blur-3xl" />
+              <div className="relative z-10">
+                <StatusPill tone={user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{accountStatus}</StatusPill>
+                <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
+                  Tus créditos, CVs y próximas aplicaciones en un solo lugar.
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+                  Usa RevisaMiCV como una mesa de control: compara una vacante, descarga tu CV adaptado y vuelve a recuperar tus resultados cuando los necesites.
+                </p>
+
+                <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur md:flex-row">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      const nextEmail = e.target.value
+                      setEmail(nextEmail)
+                      if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
+                    }}
+                    placeholder="tu@email.com"
+                    className="min-h-12 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-violet-300"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-50 disabled:opacity-60"
+                  >
+                    {loading ? 'Cargando...' : 'Ver cuenta'}
+                  </button>
+                  <a
+                    href="/signup"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-semibold text-white transition hover:bg-violet-400"
+                  >
+                    Analizar vacante <ArrowRightIcon className="h-4 w-4" />
+                  </a>
+                </form>
+
+                {notice && <p className="mt-4 rounded-2xl border border-violet-300/30 bg-violet-400/10 p-3 text-sm text-violet-100">{notice}</p>}
+                {error && <p className="mt-4 rounded-2xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
+              </div>
+            </div>
           </div>
-          {notice && <p className="text-sm text-purple-700 bg-purple-50 rounded-xl p-3 mt-4">{notice}</p>}
-          {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
-        </form>
+
+          <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Estado de cuenta</p>
+                <p className="mt-1 break-all text-lg font-semibold text-slate-950">{user?.email || 'Ingresa tu email'}</p>
+              </div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700"><UserIcon className="h-5 w-5" /></div>
+            </div>
+            <div className="mt-6 space-y-3 text-sm text-slate-600">
+              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>Stripe confirma pagos antes de acreditar tokens.</span></div>
+              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>Si un pago vuelve de Stripe, la app recupera tokens automáticamente.</span></div>
+              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>No prometemos inventar experiencia: optimizamos lo que sí existe.</span></div>
+            </div>
+            <div className="mt-6 rounded-3xl bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves tokens?</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos con el email de pago y lo conciliamos manualmente.</p>
+            </div>
+          </aside>
+        </section>
 
         {user && (
           <div className="space-y-8">
-            <section className="grid md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                <p className="text-slate-500 text-sm">Cuenta</p>
-                <p className="font-semibold text-slate-900 mt-1 break-all">{user.email}</p>
-              </div>
-              <div className="bg-slate-900 rounded-2xl p-6 shadow-sm text-white">
-                <p className="text-slate-300 text-sm">Tokens disponibles</p>
-                <p className="text-5xl font-bold text-purple-300 mt-1">{user.tokens}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                <p className="text-slate-500 text-sm">CV gratis</p>
-                <p className={`font-bold mt-1 ${user.has_free_cv ? 'text-green-600' : 'text-slate-500'}`}>
-                  {user.has_free_cv ? 'Disponible' : 'Ya usado'}
-                </p>
-                <a href="/signup" className="inline-flex items-center gap-2 text-purple-600 font-semibold mt-3">
-                  Crear CV <ArrowRightIcon className="w-4 h-4" />
-                </a>
-              </div>
+            <section className="grid gap-4 md:grid-cols-3">
+              <MiniMetric label="Tokens disponibles" value={user.tokens} icon={<SparklesIcon className="h-5 w-5" />} dark />
+              <MiniMetric label="Análisis realizados" value={usedAnalyses} icon={<ChartBarIcon className="h-5 w-5" />} />
+              <MiniMetric label="CV gratis" value={user.has_free_cv ? 'Activo' : 'Usado'} icon={<ShieldCheckIcon className="h-5 w-5" />} />
             </section>
 
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Historial de CVs</h2>
-                <a href="/signup" className="inline-flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-full font-semibold hover:bg-green-700 transition">
-                  <SparklesIcon className="w-4 h-4" /> Nuevo análisis
+            <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Siguiente paso</p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Analiza una vacante real antes de aplicar</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Cada token compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
+                <a href="/signup" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 md:w-auto">
+                  Nuevo análisis <ArrowRightIcon className="h-4 w-4" />
                 </a>
+                <div className="mt-6 grid gap-3 text-sm text-slate-600">
+                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">1.</span> Sube CV PDF/DOCX/TXT</div>
+                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">2.</span> Pega la vacante completa</div>
+                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">3.</span> Recibe score, brechas y CV adaptado</div>
+                </div>
               </div>
 
-              {history.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center">
-                  <DocumentIcon className="w-10 h-10 mx-auto text-slate-400 mb-3" />
-                  <p className="font-semibold text-slate-900">Todavía no tienes CVs generados</p>
-                  <p className="text-slate-500 text-sm mt-1">Cuando generes uno, aparecerá aquí para descargarlo otra vez.</p>
+              <section id="historial" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Historial de análisis</h2>
+                    <p className="mt-1 text-sm text-slate-500">Recupera resultados anteriores sin volver a gastar tokens.</p>
+                  </div>
+                  <StatusPill tone="purple">{history.length} guardado{history.length === 1 ? '' : 's'}</StatusPill>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {history.map((item) => (
-                    <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col md:flex-row md:items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <span className="font-bold text-slate-900">Score: {item.compatibility_score ?? '—'}/100</span>
-                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
-                            {item.output_language === 'english' ? 'English' : 'Español'}
-                          </span>
-                          <span className="text-xs text-slate-400">
-                            {new Date(item.created_at).toLocaleDateString()}
-                          </span>
+
+                {history.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-slate-400" />
+                    <p className="font-semibold text-slate-950">Todavía no tienes CVs generados</p>
+                    <p className="mt-1 text-sm text-slate-500">Cuando hagas tu primer análisis, aparecerá aquí para descargarlo otra vez.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {history.map((item) => (
+                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-violet-200 hover:shadow-md">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700">
+                            <DocumentIcon className="h-5 w-5" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-slate-950">Score: {item.compatibility_score ?? '—'}/100</span>
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                                {item.output_language === 'english' ? 'English' : 'Español'}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-xs text-slate-400"><ClockIcon className="h-3 w-3" />{new Date(item.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="line-clamp-2 text-sm text-slate-600">{item.job_preview || 'Vacante sin preview'}</p>
+                          </div>
+                          <button
+                            onClick={() => handleDownloadPdf(item)}
+                            disabled={pdfLoadingId === item.id}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
+                          >
+                            <DownloadIcon className="h-4 w-4" /> {pdfLoadingId === item.id ? 'Generando...' : 'Descargar'}
+                          </button>
                         </div>
-                        <p className="text-sm text-slate-600">{item.job_preview || 'Vacante sin preview'}</p>
                       </div>
-                      <button
-                        onClick={() => handleDownloadPdf(item)}
-                        disabled={pdfLoadingId === item.id}
-                        className="px-5 py-3 rounded-full bg-slate-900 text-white font-semibold hover:bg-slate-800 transition disabled:opacity-50"
-                      >
-                        {pdfLoadingId === item.id ? 'Generando...' : 'Descargar PDF'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </section>
             </section>
 
-            <section>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Comprar más tokens</h2>
-              <div className="grid md:grid-cols-3 gap-4">
+            <section id="comprar" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Compra más análisis cuando compares más vacantes</h2>
+                  <p className="mt-2 text-sm text-slate-500">Un token = un CV comparado contra una vacante. Los tokens quedan guardados en tu email.</p>
+                </div>
+                <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
                 {Object.entries(PACKS).map(([pack, p]) => (
                   <button
                     key={pack}
@@ -303,17 +400,23 @@ export default function DashboardPage() {
                       setSelectedPack(pack)
                       handleBuy(pack)
                     }}
-                    className={`rounded-2xl border-2 p-5 text-center transition hover:shadow-md ${
+                    className={`group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${
                       selectedPack === pack
-                        ? 'border-green-500 bg-green-50 shadow-md'
-                        : p.popular ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-white'
+                        ? 'border-emerald-400 bg-emerald-50'
+                        : p.popular ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white'
                     }`}
                   >
-                    {p.popular && <p className="text-xs font-bold text-purple-600 mb-1">MÁS POPULAR</p>}
-                    <p className="font-bold text-slate-900">{p.name}</p>
-                    <p className="text-3xl font-bold text-purple-600 my-1">${p.priceUSD}</p>
-                    <p className="text-sm text-slate-500">{p.cvCount} análisis</p>
-                    <p className="text-xs text-slate-400 mt-2">{p.description}</p>
+                    {p.popular && <span className="mb-4 inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">MEJOR VALOR</span>}
+                    <p className="text-lg font-semibold text-slate-950">{p.name}</p>
+                    <div className="my-3 flex items-end gap-2">
+                      <p className="text-4xl font-semibold tracking-tight text-slate-950">${p.priceUSD}</p>
+                      <p className="pb-1 text-sm text-slate-500">USD</p>
+                    </div>
+                    <p className="font-semibold text-violet-700">{p.cvCount} análisis</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
+                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm">
+                      Comprar pack <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
+                    </div>
                   </button>
                 ))}
               </div>
