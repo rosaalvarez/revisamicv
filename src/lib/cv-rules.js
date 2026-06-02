@@ -106,6 +106,10 @@ Business rules:
 25. For technical roles, preserve role-specific tech stack details from the original CV when truthful, including framework/library names and versions (for example React 16.13.1, Typescript 3.7.2, GraphQL 15.0.0). Put these in each experience item as techStack/tools instead of flattening everything into one generic skills list.
 26. Do not remove important engineering context from each role: responsibilities, product scope, tech stack, tools, and scale/traction metrics that are explicitly present in the original CV. Condense them, but keep the evidence that supports the target role.
 27. Do not discard self-owned, open-source, founder, portfolio, or side projects when they show public traction or credible outcomes. Preserve project names and verified metrics such as GitHub stars, Product Hunt ranking, adoption by teams/users, seed capital, revenue, downloads, usage, accessible component counts, releases, or public links. If relevant to the target role, put them under optimizedCV.featuredProjects as a Featured Projects section; if space is tight, condense bullets but keep the strongest metrics.
+28. Apply a role-agnostic evidence policy. Do not create special-case rules for UX, tech, admin, design, marketing, sales, healthcare, or any other profession. For every vacancy, reason from evidence: explicit evidence in the CV, transferable evidence, missing evidence, and interview risk.
+29. If the CV and vacancy do not clearly match, ask up to 3 critical clarification questions ONLY when the answers could materially change the recommendation or make the positioning truthful. Keep questions simple and answerable by a nontechnical job seeker.
+30. If missing evidence is essential and unlikely to be fixed by clarification, do not keep forcing optimization. Recommend trying another vacancy or a more adjacent role. Still explain the truthful bridge if one exists.
+31. Never ask endless questions. Use a maximum of 3. If after 3 questions the role still lacks essential evidence, the recommendation should be "not_recommended" or "optimize_with_caution", not more interrogation.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -121,6 +125,9 @@ Return ONLY valid JSON with this exact shape:
   },
   "fitVerdict": string,
   "positioningAngle": string,
+  "applicationDecision": "optimize" | "optimize_with_caution" | "needs_clarification" | "not_recommended",
+  "decisionReason": string,
+  "clarificationQuestions": string[],
   "strengths": string[],
   "gaps": string[],
   "keywordsToInclude": string[],

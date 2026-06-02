@@ -82,6 +82,17 @@ test('buildOptimizerSystemPrompt requires preserving self-owned projects with pu
   assert.match(prompt, /Do not discard/i)
 })
 
+test('buildOptimizerSystemPrompt uses role-agnostic evidence policy with limited clarification questions', () => {
+  const prompt = buildOptimizerSystemPrompt('spanish')
+
+  assert.match(prompt, /role-agnostic evidence policy/i)
+  assert.match(prompt, /Do not create special-case rules for UX, tech, admin, design, marketing/i)
+  assert.match(prompt, /ask up to 3 critical clarification questions/i)
+  assert.match(prompt, /Never ask endless questions/i)
+  assert.match(prompt, /"applicationDecision"/)
+  assert.match(prompt, /"clarificationQuestions"/)
+})
+
 test('buildRevisionSystemPrompt permits user corrections but blocks invented experience', async () => {
   const { buildRevisionSystemPrompt } = await import('../src/lib/cv-rules.js')
   const prompt = buildRevisionSystemPrompt('spanish')

@@ -11,6 +11,9 @@ type ProcessResult = {
   matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
   fitVerdict?: string
   positioningAngle?: string
+  applicationDecision?: 'optimize' | 'optimize_with_caution' | 'needs_clarification' | 'not_recommended'
+  decisionReason?: string
+  clarificationQuestions?: string[]
   strengths?: string[]
   gaps?: string[]
   keywordsToInclude?: string[]
@@ -25,6 +28,29 @@ const languageOptions = [
   { value: 'english', label: 'English', helper: 'Para USA, Canadá, remoto global o vacantes en inglés' },
   { value: 'spanish', label: 'Español', helper: 'Para España, LATAM o vacantes en español' },
 ] as const
+
+const decisionCopy = {
+  optimize: {
+    label: 'Podemos optimizar con buena base',
+    title: 'Hay suficiente evidencia para adaptar el CV',
+    tone: 'border-emerald-200 bg-emerald-50 text-emerald-950',
+  },
+  optimize_with_caution: {
+    label: 'Optimizar con cuidado',
+    title: 'Hay puente, pero conviene revisar brechas antes de aplicar',
+    tone: 'border-amber-200 bg-amber-50 text-amber-950',
+  },
+  needs_clarification: {
+    label: 'Faltan datos críticos',
+    title: 'Responde estas preguntas antes de decidir si esta vacante conviene',
+    tone: 'border-purple-200 bg-purple-50 text-purple-950',
+  },
+  not_recommended: {
+    label: 'No recomendado para este perfil',
+    title: 'La vacante exige evidencia que el CV no demuestra',
+    tone: 'border-red-200 bg-red-50 text-red-950',
+  },
+} as const
 
 const analysisProgressSteps = [
   { pct: 12, label: 'Subiendo y leyendo tu CV...' },
@@ -220,6 +246,38 @@ function renderActionPlan(result: ProcessResult) {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+function renderDecisionGate(result: ProcessResult) {
+  const decision = result.applicationDecision
+  const questions = result.clarificationQuestions?.filter(Boolean).slice(0, 3) || []
+  if (!decision && !questions.length && !result.decisionReason) return null
+
+  const copy = decision ? decisionCopy[decision] : decisionCopy.optimize_with_caution
+  const shouldShowQuestions = questions.length > 0 && (decision === 'needs_clarification' || decision === 'optimize_with_caution' || decision === 'not_recommended')
+
+  return (
+    <section className={`rounded-2xl border p-5 shadow-sm ${copy.tone}`}>
+      <p className="text-xs font-bold uppercase tracking-wide opacity-70">Filtro inteligente de evidencia</p>
+      <h3 className="mt-1 text-xl font-bold">{copy.title}</h3>
+      <p className="mt-2 inline-flex rounded-full bg-white/70 px-3 py-1 text-xs font-bold">{copy.label}</p>
+      {result.decisionReason && <p className="mt-3 text-sm leading-6 opacity-90">{result.decisionReason}</p>}
+      {shouldShowQuestions && (
+        <div className="mt-4 rounded-2xl bg-white/70 p-4">
+          <p className="text-sm font-bold">Máximo 3 preguntas para no adivinar:</p>
+          <ol className="mt-3 space-y-2 text-sm leading-6">
+            {questions.map((question, index) => (
+              <li key={question} className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-bold text-white">{index + 1}</span>
+                <span>{question}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-3 text-xs opacity-75">Si estas respuestas no existen en tu experiencia real, es mejor probar otra vacante más alineada.</p>
+        </div>
+      )}
     </section>
   )
 }
@@ -790,6 +848,8 @@ export default function SignupPage() {
             </section>
 
             {renderMatchBreakdown(result.matchBreakdown)}
+
+            {renderDecisionGate(result)}
 
             {renderActionPlan(result)}
 
