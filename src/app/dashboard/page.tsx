@@ -70,10 +70,12 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedPack, setSelectedPack] = useState<string>('')
+  const [checkoutIntent, setCheckoutIntent] = useState(false)
   const [authToken, setAuthToken] = useState('')
   const [linkSent, setLinkSent] = useState(false)
 
   const usedAnalyses = history.length
+  const selectedPackDetails = selectedPack ? PACKS[selectedPack] : null
   const accountStatus = useMemo(() => {
     if (!user) return 'Ingresa tu email para ver tu cuenta'
     if (user.tokens > 0) return 'Lista para analizar vacantes'
@@ -91,12 +93,17 @@ export default function DashboardPage() {
     const initialAuth = queryAuth || savedAuth
     const payment = params.get('payment')
     const pack = params.get('pack') || ''
-    trackEvent('dashboard_view', { payment: payment || 'none', pack: pack || 'none' })
+    const intent = params.get('intent')
+    const wantsCheckout = intent === 'checkout' && Boolean(pack && PACKS[pack])
+    setCheckoutIntent(wantsCheckout)
+    trackEvent('dashboard_view', { payment: payment || 'none', pack: pack || 'none', intent: intent || 'none' })
 
     if (pack && PACKS[pack]) {
       setSelectedPack(pack)
-      trackEvent('dashboard_pack_prefilled', { pack })
-      setNotice(`Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus créditos.`)
+      trackEvent('dashboard_pack_prefilled', { pack, intent: intent || 'none' })
+      setNotice(wantsCheckout
+        ? `Estás comprando el Pack ${PACKS[pack].name}. Escribe tu email y toca “Ir a pagar ahora”.`
+        : `Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus créditos.`)
     }
 
     const sessionId = params.get('session_id') || ''
@@ -243,6 +250,10 @@ export default function DashboardPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (checkoutIntent && selectedPack) {
+      await handleBuy(selectedPack)
+      return
+    }
     await checkAccount(email)
   }
 
@@ -336,16 +347,24 @@ export default function DashboardPage() {
             <div className="relative p-6 md:p-8">
               <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-violet-500/30 blur-3xl" />
               <div className="relative z-10">
-                <StatusPill tone={user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{accountStatus}</StatusPill>
+                <StatusPill tone={checkoutIntent ? 'purple' : user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{checkoutIntent && selectedPackDetails ? `Comprar Pack ${selectedPackDetails.name}` : accountStatus}</StatusPill>
                 <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                  Consulta tus créditos, CVs e historial con enlace seguro.
+                  {checkoutIntent && selectedPackDetails
+                    ? `Estás comprando ${selectedPackDetails.cvCount} análisis por $${selectedPackDetails.priceUSD} USD.`
+                    : 'Consulta tus créditos, CVs e historial con enlace seguro.'}
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                  Ingresa el email que usaste en tu análisis gratis o en Stripe. Te enviaremos un enlace mágico para entrar sin contraseña y recuperar tus créditos, CVs generados e historial.
+                  {checkoutIntent && selectedPackDetails
+                    ? 'Solo necesitamos el email donde quieres guardar tus créditos. Después te llevamos directo a Stripe para pagar.'
+                    : 'Ingresa el email que usaste en tu análisis gratis o en Stripe. Te enviaremos un enlace mágico para entrar sin contraseña y recuperar tus créditos, CVs generados e historial.'}
                 </p>
 
                 <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">Usa el mismo email con el que analizaste gratis o compraste créditos en Stripe. Ahí quedan guardados tus créditos e historial.</p>
+                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">
+                    {checkoutIntent && selectedPackDetails
+                      ? `Pack ${selectedPackDetails.name}: ${selectedPackDetails.cvCount} análisis. Usa el email donde quieres recibir y guardar tus créditos.`
+                      : 'Usa el mismo email con el que analizaste gratis o compraste créditos en Stripe. Ahí quedan guardados tus créditos e historial.'}
+                  </p>
                   <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row">
                   <input
                     type="email"
@@ -365,14 +384,16 @@ export default function DashboardPage() {
                     disabled={loading}
                     className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-50 disabled:opacity-60"
                   >
-                    {loading ? 'Cargando...' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
+                    {loading ? 'Cargando...' : checkoutIntent ? 'Ir a pagar ahora' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
                   </button>
-                  <a
-                    href="/signup"
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-semibold text-white transition hover:bg-violet-400"
-                  >
-                    Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
-                  </a>
+                  {!checkoutIntent && (
+                    <a
+                      href="/signup"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-semibold text-white transition hover:bg-violet-400"
+                    >
+                      Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
+                    </a>
+                  )}
                   </form>
                 </div>
 

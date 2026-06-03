@@ -369,7 +369,7 @@ export default function Home() {
               <div className="pp"><b>{plan.price}</b><span>USD</span></div>
               <div className="punit">{plan.unit}</div>
               <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-              <Link href={`/dashboard?pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing' })} className={`btn ${plan.popular ? 'btn-primary' : 'btn-ghost'} pcta`}>Elegir {plan.name}</Link>
+              <Link href={`/dashboard?intent=checkout&pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing', intent: 'checkout' })} className={`btn ${plan.popular ? 'btn-primary' : 'btn-ghost'} pcta`}>Comprar {plan.name}</Link>
             </div>)}
           </div>
           <p className="price-note">Empieza gratis, sin tarjeta. Si te sirve, compras más análisis. Te pediremos tu email solo para guardar tus créditos e historial.</p>

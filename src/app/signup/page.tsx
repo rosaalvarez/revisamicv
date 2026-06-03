@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import type { ReactNode } from 'react'
 import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
+import { buildRiskyRevisionPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
 
 type ClarificationPrompt = {
   question: string
@@ -495,6 +497,23 @@ function renderSimpleSection(title: string, items?: string[]) {
   )
 }
 
+function ResultAccordion({ title, summary, defaultOpen = false, children }: { title: string; summary?: string; defaultOpen?: boolean; children: ReactNode }) {
+  return (
+    <details open={defaultOpen} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5">
+        <div>
+          <h3 className="font-bold text-slate-950">{title}</h3>
+          {summary && <p className="mt-1 text-sm leading-6 text-slate-500">{summary}</p>}
+        </div>
+        <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 group-open:bg-purple-100 group-open:text-purple-700">
+          <span className="group-open:hidden">Abrir</span><span className="hidden group-open:inline">Cerrar</span>
+        </span>
+      </summary>
+      <div className="border-t border-slate-100 p-5 pt-4">{children}</div>
+    </details>
+  )
+}
+
 function renderOptimizedCV(cv: any) {
   if (!cv) return null
   if (typeof cv === 'string') {
@@ -595,9 +614,11 @@ export default function SignupPage() {
   const [revisionProgress, setRevisionProgress] = useState(0)
   const [revisionStepIndex, setRevisionStepIndex] = useState(0)
   const [revisionAddedSkills, setRevisionAddedSkills] = useState<string[]>([])
+  const [revisionChanges, setRevisionChanges] = useState<Array<{ label: string; detail: string }>>([])
   const [revisionNotes, setRevisionNotes] = useState<string[]>([])
   const [blockedChanges, setBlockedChanges] = useState<string[]>([])
   const [clarificationModalOpen, setClarificationModalOpen] = useState(false)
+  const [manualClarificationPrompts, setManualClarificationPrompts] = useState<ClarificationPrompt[]>([])
   const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string }>>({})
   const [copySuccess, setCopySuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -717,6 +738,8 @@ export default function SignupPage() {
       setRevisionNotes([])
       setBlockedChanges([])
       setRevisionAddedSkills([])
+      setRevisionChanges([])
+      setManualClarificationPrompts([])
       setClarificationAnswers({})
       setClarificationModalOpen(Array.isArray(data.clarificationQuestions) && data.clarificationQuestions.length > 0)
     } catch (err: any) {
@@ -796,7 +819,9 @@ export default function SignupPage() {
   }
 
   const submitClarificationAnswers = async () => {
-    const questions = normalizeClarificationPrompts(result?.clarificationQuestions)
+    const questions = manualClarificationPrompts.length
+      ? manualClarificationPrompts
+      : normalizeClarificationPrompts(result?.clarificationQuestions)
     if (!questions.length) return setClarificationModalOpen(false)
     await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
   }
@@ -807,6 +832,18 @@ export default function SignupPage() {
     if (!cvToRevise) return setError('Primero genera un CV adaptado')
     if (!instruction) return setError('Escribe qué cambio quieres aplicar')
 
+    if (!instructionOverride) {
+      const prompt = buildRiskyRevisionPrompt(instruction)
+      if (prompt) {
+        setManualClarificationPrompts([prompt])
+        setClarificationAnswers({})
+        setClarificationModalOpen(true)
+        setCopySuccess('Te hago 3 preguntas rápidas para ajustar sin inventar y sin enredarte.')
+        trackEvent('revision_clarification_prompted', { source: 'manual' })
+        return
+      }
+    }
+
     trackEvent('revision_started', { source: instructionOverride ? 'clarification' : 'manual' })
     setRevisionLoading(true)
     setRevisionProgress(12)
@@ -816,6 +853,7 @@ export default function SignupPage() {
     setRevisionNotes([])
     setBlockedChanges([])
     setRevisionAddedSkills([])
+    setRevisionChanges([])
 
     try {
       const beforeCv = cvToRevise
@@ -848,13 +886,16 @@ export default function SignupPage() {
         ...(revisedScore !== undefined ? { revisedCompatibilityScore: revisedScore } : {}),
         ...(typeof data.revisionScoreExplanation === 'string' ? { revisionScoreExplanation: data.revisionScoreExplanation } : {}),
       } : current)
-      setRevisionAddedSkills(getAddedSkills(beforeCv, data.optimizedCV))
+      const addedSkills = getAddedSkills(beforeCv, data.optimizedCV)
+      setRevisionAddedSkills(addedSkills)
+      setRevisionChanges(summarizeCvChanges(beforeCv, data.optimizedCV))
       setRevisionNotes(Array.isArray(data.revisionNotes) ? data.revisionNotes : [])
-      setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges : [])
+      setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges.map(coachBlockedChange) : [])
       setRevisionInstruction('')
+      setManualClarificationPrompts([])
       setClarificationModalOpen(false)
-      trackEvent('revision_completed', { added_skills: getAddedSkills(beforeCv, data.optimizedCV).length, blocked_changes: Array.isArray(data.blockedChanges) ? data.blockedChanges.length : 0 })
-      setCopySuccess('Cambios aplicados. Abajo te muestro qué se agregó o qué se bloqueó por seguridad.')
+      trackEvent('revision_completed', { added_skills: addedSkills.length, blocked_changes: Array.isArray(data.blockedChanges) ? data.blockedChanges.length : 0 })
+      setCopySuccess('Listo. Te muestro qué cambió y qué dejamos como recomendación para cuidar tu credibilidad.')
     } catch (err: any) {
       trackEvent('revision_failed', { message: String(err.message || '').slice(0, 80) })
       setError(err.message)
@@ -996,7 +1037,7 @@ export default function SignupPage() {
           </form>
         ) : (
           <div className="space-y-5">
-            {clarificationModalOpen && result.clarificationQuestions?.length ? (
+            {clarificationModalOpen && (manualClarificationPrompts.length || result.clarificationQuestions?.length) ? (
               <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm md:items-center">
                 <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
                   <div className="flex items-start justify-between gap-4">
@@ -1005,10 +1046,10 @@ export default function SignupPage() {
                       <h2 className="mt-1 text-2xl font-bold text-slate-950">Aclaremos esto antes de ajustar tu CV</h2>
                       <p className="mt-2 text-sm leading-6 text-slate-600">Responde rápido. La IA usará estas respuestas solo si son experiencia real; si no hay evidencia suficiente, no inventará.</p>
                     </div>
-                    <button onClick={() => setClarificationModalOpen(false)} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-slate-50">Cerrar</button>
+                    <button onClick={() => { setClarificationModalOpen(false); setManualClarificationPrompts([]) }} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-slate-50">Cerrar</button>
                   </div>
                   <div className="mt-5 space-y-4">
-                    {normalizeClarificationPrompts(result.clarificationQuestions).map((prompt, index) => {
+                    {(manualClarificationPrompts.length ? manualClarificationPrompts : normalizeClarificationPrompts(result.clarificationQuestions)).map((prompt, index) => {
                       const answer = clarificationAnswers[index] || { option: '', detail: '' }
                       const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
                       return (
@@ -1101,29 +1142,52 @@ export default function SignupPage() {
               })()}
             </section>
 
-            {renderMatchBreakdown(result.matchBreakdown)}
-
-            {renderDecisionGate(result, () => setClarificationModalOpen(true))}
+            <div className="grid gap-4 md:grid-cols-3">
+              {(result.gaps?.slice(0, 2) || []).map((gap, index) => (
+                <div key={index} className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Prioridad {index + 1}</p>
+                  <p className="mt-1">{gap}</p>
+                </div>
+              ))}
+              {(result.keywordsToInclude?.length || 0) > 0 && (
+                <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4 text-sm leading-6 text-purple-950">
+                  <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Keywords clave</p>
+                  <p className="mt-1">{result.keywordsToInclude?.slice(0, 5).join(', ')}</p>
+                </div>
+              )}
+            </div>
 
             {renderActionPlan(result)}
 
-            {renderOptimizationSummary(result, editableCv || result.optimizedCV || result.rawText)}
+            {renderDecisionGate(result, () => setClarificationModalOpen(true))}
 
-            <div className="grid md:grid-cols-2 gap-5">
-              {renderList('Fortalezas para esta vacante', result.strengths)}
-              {renderList('Fechas, brechas o datos para revisar', result.gaps)}
-              {renderList('Keywords que debe incluir', result.keywordsToInclude)}
-              {renderList('Recomendaciones de honestidad antes de enviar', result.honestyWarnings)}
-            </div>
+            <ResultAccordion title="Diagnóstico completo por categorías" summary="Ábrelo si quieres entender de dónde sale el score." defaultOpen={false}>
+              {renderMatchBreakdown(result.matchBreakdown)}
+            </ResultAccordion>
 
-            <EditableCvForm
-              cv={editableCv}
-              onChange={setEditableCv}
-              score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
-              gaps={result.gaps}
-              keywords={result.keywordsToInclude}
-              honestyWarnings={result.honestyWarnings}
-            />
+            <ResultAccordion title="Qué cambió y por qué" summary="Resumen de cómo se orientó tu CV a esta vacante." defaultOpen>
+              {renderOptimizationSummary(result, editableCv || result.optimizedCV || result.rawText)}
+            </ResultAccordion>
+
+            <ResultAccordion title="Fortalezas, brechas y keywords" summary="Detalle útil para revisar sin leer todo el informe de una vez." defaultOpen={false}>
+              <div className="grid gap-5 md:grid-cols-2">
+                {renderList('Fortalezas para esta vacante', result.strengths)}
+                {renderList('Fechas, brechas o datos para revisar', result.gaps)}
+                {renderList('Keywords que debe incluir', result.keywordsToInclude)}
+                {renderList('Recomendaciones para cuidar tu credibilidad', result.honestyWarnings)}
+              </div>
+            </ResultAccordion>
+
+            <ResultAccordion title="Editor del CV adaptado" summary="Ábrelo si quieres revisar o editar campos antes de descargar." defaultOpen={false}>
+              <EditableCvForm
+                cv={editableCv}
+                onChange={setEditableCv}
+                score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
+                gaps={result.gaps}
+                keywords={result.keywordsToInclude}
+                honestyWarnings={result.honestyWarnings}
+              />
+            </ResultAccordion>
 
             <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
               <div>
@@ -1165,6 +1229,19 @@ export default function SignupPage() {
                   {revisionLoading ? 'Aplicando ajuste...' : 'Aplicar cambio con IA'}
                 </button>
               </div>
+              {revisionChanges.length > 0 && (
+                <div className="rounded-xl bg-white border border-emerald-100 p-4 text-sm text-slate-700">
+                  <p className="font-bold text-slate-950 mb-3">Qué cambió en tu CV:</p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {revisionChanges.map((change) => (
+                      <div key={change.label} className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3">
+                        <p className="font-bold text-emerald-950">{change.label}</p>
+                        <p className="mt-1 text-xs leading-5 text-emerald-800">{change.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {revisionAddedSkills.length > 0 && (
                 <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-sm text-emerald-900">
                   <p className="font-bold mb-2">Skills agregadas o reforzadas por la IA:</p>
@@ -1180,14 +1257,16 @@ export default function SignupPage() {
                 </div>
               )}
               {blockedChanges.length > 0 && (
-                <div className="rounded-xl bg-red-50 border border-red-100 p-3 text-sm text-red-800">
-                  <p className="font-bold mb-1">Cambios no aplicados por seguridad:</p>
+                <div className="rounded-xl bg-purple-50 border border-purple-100 p-3 text-sm text-purple-900">
+                  <p className="font-bold mb-1">Para cuidar tu credibilidad, esto quedó como recomendación:</p>
                   <ul className="list-disc pl-5 space-y-1">{blockedChanges.map((change, index) => <li key={index}>{change}</li>)}</ul>
                 </div>
               )}
             </section>
 
-            {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
+            <ResultAccordion title="CV adaptado completo" summary="Lo dejamos cerrado para que no tengas que atravesar una chorrera de texto. Ábrelo solo para revisar el documento final." defaultOpen={false}>
+              {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
+            </ResultAccordion>
 
             {result.coverLetter && (
               <section className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -1243,7 +1322,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setBlockedChanges([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
               >
                 Analizar otra vacante
