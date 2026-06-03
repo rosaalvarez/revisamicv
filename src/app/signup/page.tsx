@@ -7,7 +7,7 @@ import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
-import { buildRiskyRevisionPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
+import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
 
 type ClarificationPrompt = {
   question: string
@@ -739,9 +739,12 @@ export default function SignupPage() {
       setBlockedChanges([])
       setRevisionAddedSkills([])
       setRevisionChanges([])
-      setManualClarificationPrompts([])
+      const modelPrompts = Array.isArray(data.clarificationQuestions) ? data.clarificationQuestions : []
+      const lowScorePrompt = modelPrompts.length ? null : buildLowScoreCoachingPrompt(data.compatibilityScore)
+      setManualClarificationPrompts(lowScorePrompt ? [lowScorePrompt] : [])
       setClarificationAnswers({})
-      setClarificationModalOpen(Array.isArray(data.clarificationQuestions) && data.clarificationQuestions.length > 0)
+      setClarificationModalOpen(modelPrompts.length > 0 || Boolean(lowScorePrompt))
+      if (lowScorePrompt) trackEvent('low_score_coaching_prompt_shown', { score: normalizeScore(data.compatibilityScore) ?? -1 })
     } catch (err: any) {
       trackEvent('analysis_failed', { message: String(err.message || '').slice(0, 80) })
       setError(err.message)

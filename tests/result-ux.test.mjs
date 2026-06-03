@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   buildRiskyRevisionPrompt,
+  buildLowScoreCoachingPrompt,
   summarizeCvChanges,
   coachBlockedChange,
 } from '../src/lib/result-ux.js'
@@ -21,8 +22,29 @@ test('buildRiskyRevisionPrompt detects forceful UX/UI repositioning requests and
   assert.match(prompt.freeTextLabel, /contexto real/i)
 })
 
-test('buildRiskyRevisionPrompt ignores normal editing requests', () => {
+test('buildRiskyRevisionPrompt ignores normal editing requests and role names', () => {
   assert.equal(buildRiskyRevisionPrompt('Haz el resumen más corto y profesional'), null)
+  assert.equal(buildRiskyRevisionPrompt('Quiero adaptar mi experiencia a una vacante UX UI'), null)
+})
+
+test('buildLowScoreCoachingPrompt appears automatically for low scores without keyword matching', () => {
+  const prompt = buildLowScoreCoachingPrompt(50)
+
+  assert.ok(prompt)
+  assert.match(prompt.question, /50%/)
+  assert.match(prompt.question, /mejorar/i)
+  assert.equal(prompt.options.length, 3)
+  assert.deepEqual(prompt.options, [
+    'Sí, ayúdame a reforzar mi CV con experiencia real que ya tengo',
+    'Tengo más contexto real para agregar antes de ajustar',
+    'Muéstrame una versión más estratégica sin inventar nada',
+  ])
+  assert.doesNotMatch(prompt.question, /UX\/UI|UX UI|forzar/i)
+})
+
+test('buildLowScoreCoachingPrompt does not interrupt when score is already strong enough', () => {
+  assert.equal(buildLowScoreCoachingPrompt(75), null)
+  assert.equal(buildLowScoreCoachingPrompt(undefined), null)
 })
 
 test('coachBlockedChange rewrites blocked copy without judging the candidate', () => {

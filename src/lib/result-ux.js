@@ -15,8 +15,6 @@ const RISKY_REVISION_TERMS = [
   'certificación',
   'certificacion',
   'años de experiencia',
-  'ux/ui',
-  'ux ui',
 ]
 
 export function buildRiskyRevisionPrompt(instruction = '') {
@@ -32,6 +30,23 @@ export function buildRiskyRevisionPrompt(instruction = '') {
       'Muéstrame una alternativa más segura para esta vacante',
     ],
     freeTextLabel: 'Si tienes contexto real adicional, escríbelo aquí. Ej: proyecto, curso, herramienta, logro o evidencia concreta.',
+  }
+}
+
+export function buildLowScoreCoachingPrompt(score, threshold = 65) {
+  const normalizedScore = Number(score)
+  if (!Number.isFinite(normalizedScore)) return null
+  const roundedScore = Math.max(0, Math.min(100, Math.round(normalizedScore)))
+  if (roundedScore > threshold) return null
+
+  return {
+    question: `Tu CV quedó en ${roundedScore}%. ¿Quieres que intentemos mejorarlo sin inventar experiencia?`,
+    options: [
+      'Sí, ayúdame a reforzar mi CV con experiencia real que ya tengo',
+      'Tengo más contexto real para agregar antes de ajustar',
+      'Muéstrame una versión más estratégica sin inventar nada',
+    ],
+    freeTextLabel: 'Si tienes proyectos, herramientas, cursos, logros o responsabilidades reales que no aparecieron en tu CV, escríbelos aquí.',
   }
 }
 
