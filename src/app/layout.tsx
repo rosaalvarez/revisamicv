@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat'
+const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim().replace(/\/+$/, '')
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
