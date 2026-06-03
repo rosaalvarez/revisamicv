@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
 import { ArrowRightIcon, ChartBarIcon, CheckIcon, ClockIcon, DocumentIcon, DownloadIcon, ShieldCheckIcon, SparklesIcon, UserIcon } from '@/components/icons'
+import { SUPPORT_WHATSAPP_URL } from '@/components/LegalShell'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 
 type UserState = {
@@ -36,6 +37,15 @@ function StatusPill({ children, tone = 'slate' }: { children: React.ReactNode; t
     slate: 'border-slate-200 bg-white text-slate-600',
   }
   return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>{children}</span>
+}
+
+function TrustNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+      <span>{children}</span>
+    </div>
+  )
 }
 
 function MiniMetric({ label, value, icon, dark = false }: { label: string; value: string | number; icon: React.ReactNode; dark?: boolean }) {
@@ -241,6 +251,7 @@ export default function DashboardPage() {
             <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
             <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
             <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar tokens</a>
+            <a href={SUPPORT_WHATSAPP_URL} className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
           </nav>
         </header>
 
@@ -254,10 +265,12 @@ export default function DashboardPage() {
                   Tus créditos, CVs y próximas aplicaciones en un solo lugar.
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                  Usa RevisaMiCV como una mesa de control: compara una vacante, descarga tu CV adaptado y vuelve a recuperar tus resultados cuando los necesites.
+                  Usa RevisaMiCV como una mesa de control: compara una vacante, descarga tu CV adaptado y vuelve a recuperar tus resultados cuando los necesites. Tu cuenta se identifica por email, sin contraseña.
                 </p>
 
-                <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur md:flex-row">
+                <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
+                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">Usa el mismo email con el que analizaste gratis o compraste tokens en Stripe. Ahí quedan guardados tus créditos e historial.</p>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row">
                   <input
                     type="email"
                     value={email}
@@ -284,7 +297,8 @@ export default function DashboardPage() {
                   >
                     Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
                   </a>
-                </form>
+                  </form>
+                </div>
 
                 {notice && <p className="mt-4 rounded-2xl border border-violet-300/30 bg-violet-400/10 p-3 text-sm text-violet-100">{notice}</p>}
                 {error && <p className="mt-4 rounded-2xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
@@ -301,16 +315,35 @@ export default function DashboardPage() {
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700"><UserIcon className="h-5 w-5" /></div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-slate-600">
-              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>Stripe confirma pagos antes de acreditar tokens.</span></div>
-              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>Si un pago vuelve de Stripe, la app recupera tokens automáticamente.</span></div>
-              <div className="flex items-start gap-3"><CheckIcon className="mt-0.5 h-4 w-4 text-emerald-600" /><span>No prometemos inventar experiencia: optimizamos lo que sí existe.</span></div>
+              <TrustNote>Tu cuenta se crea y se recupera con tu email. No necesitas contraseña.</TrustNote>
+              <TrustNote>Stripe confirma pagos antes de acreditar tokens; la app intenta recuperarlos al volver del checkout.</TrustNote>
+              <TrustNote>No vendemos tu CV ni inventamos experiencia: optimizamos lo que sí existe.</TrustNote>
+              <TrustNote>Los CVs generados quedan en historial para volver a descargarlos sin gastar otro token.</TrustNote>
             </div>
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves tokens?</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos con el email de pago y lo conciliamos manualmente.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos por soporte con el email de pago y lo conciliamos manualmente.</p>
+              <a href={SUPPORT_WHATSAPP_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Contactar soporte</a>
             </div>
           </aside>
         </section>
+
+        {!user && (
+          <section className="mb-6 grid gap-4 md:grid-cols-3">
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-950">1 token = 1 vacante</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Cada análisis compara tu CV contra una vacante concreta y genera descargas PDF, DOCX y TXT.</p>
+            </div>
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-950">Pago seguro con Stripe</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">No guardamos tu tarjeta. Los créditos se asocian al email de compra.</p>
+            </div>
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-950">Privacidad primero</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">Puedes revisar privacidad, términos y solicitar eliminación de datos desde soporte.</p>
+            </div>
+          </section>
+        )}
 
         {user && (
           <div className="space-y-8">
@@ -424,6 +457,16 @@ export default function DashboardPage() {
             </section>
           </div>
         )}
+        <footer className="mt-10 rounded-[2rem] border border-slate-200 bg-white/80 p-5 text-sm text-slate-600 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p>RevisaMiCV — CVs adaptados a vacantes reales, sin inventar experiencia.</p>
+            <div className="flex flex-wrap gap-3 font-medium">
+              <a href="/privacidad" className="hover:text-violet-700">Privacidad</a>
+              <a href="/terminos" className="hover:text-violet-700">Términos</a>
+              <a href="/soporte" className="hover:text-violet-700">Soporte</a>
+            </div>
+          </div>
+        </footer>
       </div>
     </main>
   )

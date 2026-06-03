@@ -35,6 +35,12 @@ const trustCards = [
   ['✎', 'Tú tienes la última palabra', 'Puedes editar todo antes de descargar y exportar en PDF, Word DOCX o TXT compatible con ATS.'],
 ]
 
+const dataTrustCards = [
+  ['Datos personales', 'Tu CV contiene información sensible. Por eso agregamos privacidad visible, soporte y opción de solicitar eliminación de datos.'],
+  ['Pagos seguros', 'Stripe procesa el pago. RevisaMiCV no guarda los datos completos de tu tarjeta; solo acredita tokens al email usado.'],
+  ['Tokens justos', 'Un token equivale a un análisis contra una vacante. Si un error técnico verificable falla antes de generar valor, revisamos el caso.'],
+]
+
 const useCases = [
   ['“Tengo varias vacantes parecidas. ¿A cuál aplico primero?”', 'Comparar oportunidades', 'Un score distinto por cada vacante. Sabes dónde vale la pena el esfuerzo.'],
   ['“Puedo aplicar a PM, UX o Dev. Mi CV grita uno solo.”', 'Perfil multidisciplinario', 'Reposiciona tus fortalezas transferibles por rol, sin inventar cargos.'],
@@ -77,6 +83,7 @@ const faqs = [
   ['¿Por qué no lo hago gratis con ChatGPT o Claude?', 'Puedes. Si tienes el prompt perfecto, lees el PDF a mano, iteras, formateas, traduces al idioma correcto y exportas. Cada vez. Aquí pegas tu CV y la vacante, y en ~3 minutos tienes score, brechas, keywords y un CV adaptado —en español o en inglés— listo para descargar. Pagas por no perder esos 30 minutos, multiplicados por cada vacante.'],
   ['¿El score es real o es decorativo?', 'Es real: mide qué tan alineado está tu CV con el texto de esa vacante específica — keywords, experiencia relevante y brechas. No predice el algoritmo interno de cada empresa, y no promete entrevistas. Sirve para algo concreto: priorizar a cuál aplicar fuerte y qué arreglar antes de enviar.'],
   ['¿Tengo que suscribirme?', 'No. Compras tokens una sola vez y no vencen. Sin cobros mensuales, sin tarjeta para el primer análisis, sin la trampa de la suscripción que se te olvidó cancelar.'],
+  ['¿Qué pasa con mi CV y mis datos?', 'Tu CV se procesa para generar el diagnóstico y el documento adaptado. No vendemos tus datos ni los usamos para inventar experiencia. Puedes revisar la política de privacidad y pedir eliminación de datos desde soporte.'],
 ]
 
 function SectionHeading({ label, title, intro, centered = false }: { label: string; title: string; intro?: string; centered?: boolean }) {
@@ -227,7 +234,7 @@ export default function Home() {
       <section className="band reveal">
         <div className="wrap no-pad">
           <div className="stats">
-            <div className="stat"><div className="big">ATS</div><div className="cap">Muchos CVs nunca llegan a lectura humana porque no conectan con los filtros y keywords de la vacante.</div><div className="src">Problema de formato + lenguaje</div></div>
+            <div className="stat"><div className="big">Filtros ATS</div><div className="cap">Sistemas automáticos que leen formato y keywords antes de que un reclutador vea tu CV.</div><div className="src">Problema de formato + lenguaje</div></div>
             <div className="stat"><div className="big">20–30 min</div><div className="cap">puede tomar adaptar un CV a mano por cada aplicación si quieres hacerlo con cuidado.</div><div className="src">Tiempo que RevisaMiCV reduce</div></div>
             <div className="stat"><div className="big accent">~3 min</div><div className="cap">para tener diagnóstico, brechas, keywords y una versión adaptada descargable.</div><div className="src">RevisaMiCV</div></div>
           </div>
@@ -236,7 +243,7 @@ export default function Home() {
 
       <section className="sec" id="dolor">
         <div className="wrap">
-          <SectionHeading label="El dolor real" title="Si te suena familiar, no estás solo." intro="Esto es lo que viven personas buscando trabajo: aplicar mucho, adaptar a mano, cambiar el CV una y otra vez y no saber qué está fallando." />
+          <SectionHeading label="Situaciones comunes" title="Si te suena familiar, no estás solo." intro="Dolores típicos de personas buscando trabajo: aplicar mucho, adaptar a mano, cambiar el CV una y otra vez y no saber qué está fallando." />
           <div className="pain-grid">
             {painCards.map(([quote, who], index) => <div key={quote} className={`pain reveal d${index + 1}`}><div className="qt"><span>{quote}</span></div><div className="who">{who}</div></div>)}
           </div>
@@ -304,6 +311,19 @@ export default function Home() {
 
       <section className="sec">
         <div className="wrap">
+          <SectionHeading label="Privacidad y soporte" title="Puedes subir tu CV sabiendo qué pasa después." intro="Un producto de CVs no puede pedir confianza a ciegas. Dejamos visibles las reglas de datos, pagos y soporte antes de que pagues o subas información sensible." />
+          <div className="trust-grid">
+            {dataTrustCards.map(([title, text], index) => <div key={title} className={`trust reveal d${index + 1}`}><div className="ico">◇</div><div><h4>{title}</h4><p>{text}</p></div></div>)}
+          </div>
+          <div className="hero-cta reveal d3" style={{ justifyContent: 'center', marginTop: 28 }}>
+            <Link href="/privacidad" className="btn btn-ghost">Ver privacidad</Link>
+            <Link href="/soporte" className="btn btn-ghost">Contactar soporte</Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="sec">
+        <div className="wrap">
           <SectionHeading label="Para quién es" title="Úsalo antes de gastar energía aplicando." />
           <div className="uc-grid">
             {useCases.map(([quote, label, out], index) => <div key={label} className={`uc reveal d${index + 1}`}><div className="quote">{quote}</div><div className="label">{label}</div><div className="out">{out}</div></div>)}
@@ -354,7 +374,15 @@ export default function Home() {
       <footer>
         <div className="wrap foot-inner">
           <p>© 2026 RevisaMiCV — CVs adaptados a vacantes reales, sin inventar experiencia.</p>
-          <div className="foot-links"><a href="#dolor">El problema</a><a href="#como">Cómo funciona</a><a href="#precios">Precios</a></div>
+          <div className="foot-links">
+            <a href="#dolor">El problema</a>
+            <a href="#como">Cómo funciona</a>
+            <a href="#precios">Precios</a>
+            <Link href="/privacidad">Privacidad</Link>
+            <Link href="/terminos">Términos</Link>
+            <Link href="/soporte">Soporte</Link>
+            <Link href="/dashboard">Dashboard</Link>
+          </div>
         </div>
       </footer>
 
