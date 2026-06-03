@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { buildOptimizerSystemPrompt, getCompatibilityBand, normalizeOutputLanguage } from '@/lib/cv-rules'
-import { validateEmail, validateJobDescription } from '@/lib/input-validation'
+import { validateCvText, validateEmail, validateJobDescription } from '@/lib/input-validation'
 import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
@@ -54,8 +54,9 @@ export async function POST(req: NextRequest) {
     if (emailError) {
       return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
     }
-    if (!cvText?.trim()) {
-      return NextResponse.json({ error: 'empty_cv', message: 'No pude encontrar texto útil dentro del CV.' }, { status: 400 })
+    const cvError = validateCvText(cvText)
+    if (cvError) {
+      return NextResponse.json({ error: 'invalid_cv_text', message: cvError }, { status: 400 })
     }
     const jobError = validateJobDescription(jobDescription)
     if (jobError) {
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('CV processing error:', error)
     return NextResponse.json(
-      { error: error.message || 'Error processing CV' },
+      { error: 'processing_error', message: 'No pude completar el análisis en este momento. Intenta de nuevo en unos minutos.' },
       { status: 500 }
     )
   }

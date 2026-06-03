@@ -5,9 +5,23 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat'
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: 'RevisaMiCV.lat — Score de compatibilidad + CV adaptado a cada vacante',
-  description: 'Cruza tu CV real contra una vacante específica, descubre tu porcentaje de compatibilidad y descarga un CV adaptado en inglés o español sin inventar experiencia.',
-  keywords: ['CV ATS', 'compatibilidad laboral', 'curriculum vitae', 'vacantes remotas', 'empleo LATAM', 'CV en inglés', 'CV en español'],
+  title: {
+    default: 'RevisaMiCV.lat — Adapta tu CV a cada vacante con score ATS',
+    template: '%s | RevisaMiCV.lat',
+  },
+  description: 'Optimiza tu CV para una vacante específica: score de compatibilidad, keywords ATS, brechas y CV adaptado descargable en PDF, DOCX o TXT, en inglés o español, sin inventar experiencia.',
+  keywords: [
+    'adaptar CV a vacante',
+    'optimizar CV ATS',
+    'score de compatibilidad CV',
+    'CV para vacantes remotas',
+    'mejorar curriculum vitae',
+    'CV en inglés',
+    'CV en español',
+    'curriculum ATS',
+    'analizador de CV',
+    'RevisaMiCV',
+  ],
   alternates: {
     canonical: '/',
   },
@@ -21,7 +35,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'RevisaMiCV.lat — ¿Qué tan compatible eres con esta vacante?',
-    description: 'Sube tu CV, pega una vacante y recibe score, brechas, keywords y CV adaptado descargable en PDF.',
+    description: 'Sube tu CV, pega una vacante y recibe score, brechas, keywords ATS y CV adaptado descargable en PDF, DOCX o TXT.',
     url: appUrl,
     siteName: 'RevisaMiCV.lat',
     images: [
@@ -37,8 +51,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RevisaMiCV.lat — Score + CV adaptado',
-    description: 'Cruza tu CV real contra una vacante y descarga un CV adaptado en PDF.',
+    title: 'RevisaMiCV.lat — Score ATS + CV adaptado',
+    description: 'Optimiza tu CV para una vacante específica y descarga una versión adaptada sin inventar experiencia.',
     images: ['/og.png'],
   },
 }

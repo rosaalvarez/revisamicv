@@ -6,6 +6,7 @@ import {
   getFriendlyApiError,
   isValidEmail,
   validateCvFile,
+  validateCvText,
   validateEmail,
   validateJobDescription,
 } from '../src/lib/input-validation.js'
@@ -25,6 +26,12 @@ test('validates CV file extension and size', () => {
   assert.equal(validateCvFile({ name: 'cv.docx', size: 100 }), '')
 })
 
+test('validates extracted CV text length', () => {
+  assert.equal(validateCvText(''), 'No pude encontrar texto útil dentro del CV.')
+  assert.equal(validateCvText('too short'), 'El CV parece demasiado corto para generar una adaptación útil. Sube un CV más completo o pega más experiencia.')
+  assert.equal(validateCvText('Experiencia en producto, operaciones y soporte. '.repeat(8)), '')
+})
+
 test('validates job description length', () => {
   assert.equal(validateJobDescription(''), 'Pega la vacante completa para poder calcular compatibilidad.')
   assert.equal(validateJobDescription('too short'), 'La vacante está muy corta. Pega responsabilidades, requisitos y skills para que el score sea útil.')
@@ -32,6 +39,6 @@ test('validates job description length', () => {
 })
 
 test('maps known API errors to friendly copy', () => {
-  assert.equal(getFriendlyApiError('no_tokens'), 'No tienes CVs disponibles. Compra más tokens para continuar.')
+  assert.equal(getFriendlyApiError('no_tokens'), 'No tienes análisis disponibles. Compra más créditos para continuar.')
   assert.equal(getFriendlyApiError('custom error'), 'custom error')
 })

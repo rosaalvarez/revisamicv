@@ -87,6 +87,30 @@ const faqs = [
   ['¿Qué pasa con mi CV y mis datos?', 'Tu CV se procesa para generar el diagnóstico y el documento adaptado. No vendemos tus datos ni los usamos para inventar experiencia. Puedes revisar la política de privacidad y pedir eliminación de datos desde soporte.'],
 ]
 
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'RevisaMiCV.lat',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  url: 'https://revisamicv.lat',
+  description: 'Herramienta para adaptar un CV a una vacante específica con score de compatibilidad, keywords ATS, brechas y CV descargable en PDF, DOCX o TXT.',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    description: 'Primer análisis gratis; packs de créditos disponibles para análisis adicionales.',
+  },
+  featureList: [
+    'Score de compatibilidad CV vs vacante',
+    'Keywords ATS por vacante',
+    'CV adaptado en español o inglés',
+    'Descarga en PDF, DOCX y TXT',
+    'Reglas anti-invención de experiencia',
+  ],
+}
+
 function SectionHeading({ label, title, intro, centered = false }: { label: string; title: string; intro?: string; centered?: boolean }) {
   return (
     <div className={`reveal ${centered ? 'center' : ''}`}>
@@ -181,6 +205,7 @@ export default function Home() {
 
   return (
     <main className="landing-page">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <header className="nav" id="nav">
         <div className="wrap nav-inner">
           <Link href="/" className="logo"><span className="dot">R</span> RevisaMiCV</Link>
