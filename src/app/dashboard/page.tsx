@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
 import { ArrowRightIcon, ChartBarIcon, CheckIcon, ClockIcon, DocumentIcon, DownloadIcon, ShieldCheckIcon, SparklesIcon, UserIcon } from '@/components/icons'
-import { SUPPORT_WHATSAPP_URL } from '@/components/LegalShell'
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL } from '@/components/LegalShell'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 import { trackEvent } from '@/lib/analytics'
 
@@ -274,7 +274,7 @@ export default function DashboardPage() {
             <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
             <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
             <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar tokens</a>
-            <a href={SUPPORT_WHATSAPP_URL} className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
+            <a href={SUPPORT_EMAIL_URL} className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
           </nav>
         </header>
 
@@ -345,8 +345,8 @@ export default function DashboardPage() {
             </div>
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves tokens?</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos por soporte con el email de pago.</p>
-              <a href={SUPPORT_WHATSAPP_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Contactar soporte</a>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
+              <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
             </div>
           </aside>
         </section>

@@ -1,4 +1,4 @@
-import { SUPPORT_WHATSAPP_URL, LegalSection, LegalShell } from '@/components/LegalShell'
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL, LegalSection, LegalShell } from '@/components/LegalShell'
 
 export default function SupportPage() {
   return (
@@ -8,8 +8,8 @@ export default function SupportPage() {
       intro="La prioridad es que no pierdas tokens ni tiempo. Escríbenos con el email correcto y revisamos tu caso."
     >
       <LegalSection title="Canal principal">
-        <p>Por ahora el soporte se atiende por WhatsApp. Incluye el email usado en RevisaMiCV y, si compraste tokens, el mismo email usado en Stripe.</p>
-        <p><a href={SUPPORT_WHATSAPP_URL} className="inline-flex rounded-full bg-[#b24aed] px-5 py-3 text-sm font-semibold text-white">Abrir soporte por WhatsApp</a></p>
+        <p>Por ahora el soporte se atiende por email. Escríbenos a {SUPPORT_EMAIL}. Incluye el email usado en RevisaMiCV y, si compraste créditos, el mismo email usado en Stripe.</p>
+        <p><a href={SUPPORT_EMAIL_URL} className="inline-flex rounded-full bg-[#b24aed] px-5 py-3 text-sm font-semibold text-white">Enviar email a soporte</a></p>
       </LegalSection>
       <LegalSection title="Si pagaste y no ves tokens">
         <p>Primero entra al dashboard y escribe exactamente el mismo email usado al pagar en Stripe. Si los tokens siguen sin aparecer, envíanos ese email y revisamos la acreditación manualmente.</p>

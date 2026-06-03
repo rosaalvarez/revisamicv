@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { ArrowRightIcon, CheckIcon, ShieldCheckIcon } from '@/components/icons'
 
-export const SUPPORT_WHATSAPP_URL = 'https://wa.me/573052469181?text=Hola%20RevisaMiCV%2C%20necesito%20ayuda%20con%20mi%20cuenta%20o%20tokens'
+export const SUPPORT_EMAIL = 'soporte@revisamicv.lat'
+export const SUPPORT_EMAIL_URL = `mailto:${SUPPORT_EMAIL}?subject=Soporte%20RevisaMiCV&body=Hola%20RevisaMiCV%2C%0A%0ANecesito%20ayuda%20con%3A%0A-%20Email%20usado%20en%20RevisaMiCV%20o%20Stripe%3A%0A-%20Qu%C3%A9%20pas%C3%B3%3A%0A-%20Fecha%20aproximada%3A%0A`
 
 export function LegalShell({
   eyebrow,
@@ -29,7 +30,7 @@ export function LegalShell({
           <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#c8c1d1]">
             <Link href="/signup" className="rounded-full px-4 py-2 hover:bg-white/10">Analizar gratis</Link>
             <Link href="/dashboard" className="rounded-full px-4 py-2 hover:bg-white/10">Dashboard</Link>
-            <a href={SUPPORT_WHATSAPP_URL} className="rounded-full bg-white px-4 py-2 font-semibold text-[#120d18] hover:bg-violet-100">Soporte</a>
+            <a href={SUPPORT_EMAIL_URL} className="rounded-full bg-white px-4 py-2 font-semibold text-[#120d18] hover:bg-violet-100">Soporte</a>
           </nav>
         </header>
 
@@ -62,8 +63,8 @@ export function LegalShell({
             </div>
             <div className="mt-6 rounded-3xl border border-[#b24aed]/25 bg-[#b24aed]/10 p-4">
               <p className="font-semibold text-white">¿Necesitas ayuda?</p>
-              <p className="mt-1 text-sm leading-6 text-[#c8c1d1]">Escríbenos por WhatsApp con el email usado en RevisaMiCV o Stripe.</p>
-              <a href={SUPPORT_WHATSAPP_URL} className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#120d18]">Abrir WhatsApp</a>
+              <p className="mt-1 text-sm leading-6 text-[#c8c1d1]">Escríbenos a {SUPPORT_EMAIL} con el email usado en RevisaMiCV o Stripe.</p>
+              <a href={SUPPORT_EMAIL_URL} className="mt-4 inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#120d18]">Enviar email</a>
             </div>
           </aside>
 
