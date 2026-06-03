@@ -15,6 +15,8 @@ type ClarificationPrompt = {
 
 type ProcessResult = {
   compatibilityScore?: number
+  revisedCompatibilityScore?: number
+  revisionScoreExplanation?: string
   matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
   fitVerdict?: string
   positioningAngle?: string
@@ -825,13 +827,27 @@ export default function SignupPage() {
           optimizedCV: cvToRevise,
           revisionInstruction: instruction,
           outputLanguage,
+          jobDescription,
+          currentCompatibilityScore: result?.revisedCompatibilityScore ?? result?.compatibilityScore,
+          matchBreakdown: result?.matchBreakdown,
+          gaps: result?.gaps,
+          keywordsToInclude: result?.keywordsToInclude,
+          honestyWarnings: result?.honestyWarnings,
+          applicationDecision: result?.applicationDecision,
         }),
       })
       const data = await res.json()
 
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude aplicar el ajuste. Intenta de nuevo.'))
       setRevisionProgress(100)
+      const revisedScore = normalizeScore(data.revisedCompatibilityScore)
       setEditableCv(data.optimizedCV)
+      setResult((current) => current ? {
+        ...current,
+        optimizedCV: data.optimizedCV,
+        ...(revisedScore !== undefined ? { revisedCompatibilityScore: revisedScore } : {}),
+        ...(typeof data.revisionScoreExplanation === 'string' ? { revisionScoreExplanation: data.revisionScoreExplanation } : {}),
+      } : current)
       setRevisionAddedSkills(getAddedSkills(beforeCv, data.optimizedCV))
       setRevisionNotes(Array.isArray(data.revisionNotes) ? data.revisionNotes : [])
       setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges : [])
@@ -852,7 +868,7 @@ export default function SignupPage() {
       <div className="max-w-4xl mx-auto py-10">
         <nav className="mb-6 flex flex-wrap items-center justify-center gap-3 text-sm">
           <a href="/" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Inicio</a>
-          <a href="/#pricing" className="rounded-full border border-purple-200 bg-white px-4 py-2 font-semibold text-purple-700 hover:bg-purple-50">Ver planes</a>
+          <a href="/#precios" className="rounded-full border border-purple-200 bg-white px-4 py-2 font-semibold text-purple-700 hover:bg-purple-50">Ver planes</a>
           <a href="/dashboard" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Dashboard</a>
         </nav>
         <div className="text-center mb-8">
@@ -1049,18 +1065,23 @@ export default function SignupPage() {
             ) : null}
             <section className="rounded-3xl bg-slate-900 text-white p-6 shadow-xl shadow-slate-200">
               {(() => {
-                const score = normalizeScore(result.compatibilityScore)
+                const originalScore = normalizeScore(result.compatibilityScore)
+                const revisedScore = normalizeScore(result.revisedCompatibilityScore)
+                const score = revisedScore ?? originalScore
                 const tone = getScoreTone(score)
 
                 return (
                   <>
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                       <div>
-                        <p className="text-slate-300 text-sm mb-2">Compatibilidad estimada</p>
+                        <p className="text-slate-300 text-sm mb-2">{revisedScore !== undefined ? 'Compatibilidad después del ajuste con IA' : 'Compatibilidad estimada'}</p>
                         <div className="flex items-end gap-3">
                           <span className="text-6xl font-bold text-purple-300">{score ?? '—'}</span>
                           {score !== undefined && <span className="text-2xl mb-2">/100</span>}
                         </div>
+                        {revisedScore !== undefined && originalScore !== undefined && (
+                          <p className="mt-2 text-sm text-slate-300">Antes del ajuste: {originalScore}/100 · Cambio: {revisedScore >= originalScore ? '+' : ''}{revisedScore - originalScore} puntos</p>
+                        )}
                       </div>
                       <div className={`rounded-2xl px-4 py-3 ${tone.bg} ${tone.text} md:max-w-xs`}>
                         <p className="text-sm font-bold">{tone.label}</p>
@@ -1073,6 +1094,7 @@ export default function SignupPage() {
                       </div>
                     )}
                     {result.fitVerdict && <p className="mt-4 text-lg">{result.fitVerdict}</p>}
+                    {result.revisionScoreExplanation && <p className="mt-3 rounded-2xl border border-purple-300/20 bg-white/10 p-3 text-sm leading-6 text-purple-50">Por qué quedó en ese porcentaje: {result.revisionScoreExplanation}</p>}
                     {result.positioningAngle && <p className="mt-2 text-sm text-slate-300">{result.positioningAngle}</p>}
                   </>
                 )
@@ -1097,7 +1119,7 @@ export default function SignupPage() {
             <EditableCvForm
               cv={editableCv}
               onChange={setEditableCv}
-              score={normalizeScore(result.compatibilityScore)}
+              score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
               gaps={result.gaps}
               keywords={result.keywordsToInclude}
               honestyWarnings={result.honestyWarnings}
@@ -1233,7 +1255,7 @@ export default function SignupPage() {
                 Enviarme enlace al dashboard <ArrowRightIcon className="w-4 h-4" />
               </a>
               <a
-                href="/#pricing"
+                href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}#comprar`}
                 className="flex-1 flex items-center justify-center gap-2 border-2 border-purple-200 text-purple-700 py-3 rounded-full font-semibold hover:bg-purple-50 transition"
               >
                 Comprar más créditos

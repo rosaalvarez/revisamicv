@@ -327,7 +327,7 @@ export default function DashboardPage() {
             <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
             <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
             <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar créditos</a>
-            <a href={SUPPORT_EMAIL_URL} className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
+            <a href="/soporte" className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
           </nav>
         </header>
 
@@ -422,13 +422,14 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {user && (
-          <div className="space-y-8">
-            <section className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-8">
+            {user && (
+              <section className="grid gap-4 md:grid-cols-3">
               <MiniMetric label="Créditos disponibles" value={user.tokens} icon={<SparklesIcon className="h-5 w-5" />} dark />
               <MiniMetric label="Análisis realizados" value={usedAnalyses} icon={<ChartBarIcon className="h-5 w-5" />} />
               <MiniMetric label="CV gratis" value={user.has_free_cv ? 'Activo' : 'Usado'} icon={<ShieldCheckIcon className="h-5 w-5" />} />
             </section>
+            )}
 
             <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -454,7 +455,13 @@ export default function DashboardPage() {
                   <StatusPill tone="purple">{history.length} guardado{history.length === 1 ? '' : 's'}</StatusPill>
                 </div>
 
-                {history.length === 0 ? (
+                {!user ? (
+                  <div className="rounded-3xl border border-dashed border-violet-200 bg-violet-50 p-8 text-center">
+                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-violet-400" />
+                    <p className="font-semibold text-slate-950">Para ver historial necesitas entrar con enlace seguro</p>
+                    <p className="mt-1 text-sm text-slate-500">Escribe tu email arriba y toca “Enviar enlace”. Así protegemos tus CVs y créditos.</p>
+                  </div>
+                ) : history.length === 0 ? (
                   <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                     <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-slate-400" />
                     <p className="font-semibold text-slate-950">Todavía no tienes CVs generados</p>
@@ -499,6 +506,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Compra más análisis cuando compares más vacantes</h2>
                   <p className="mt-2 text-sm text-slate-500">Un crédito = un CV comparado contra una vacante. Los créditos quedan guardados en tu email.</p>
+                  {!email.trim() && <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">Primero escribe tu email arriba para asociar la compra a tu cuenta.</p>}
                 </div>
                 <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
               </div>
@@ -533,7 +541,6 @@ export default function DashboardPage() {
               </div>
             </section>
           </div>
-        )}
         <footer className="mt-10 rounded-[2rem] border border-slate-200 bg-white/80 p-5 text-sm text-slate-600 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <p>RevisaMiCV — CVs adaptados a vacantes reales, sin inventar experiencia.</p>

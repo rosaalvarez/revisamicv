@@ -197,6 +197,8 @@ export function buildRevisionSystemPrompt(outputLanguage) {
 Revise an already-generated CV JSON according to the user's requested changes.
 The final CV must be written in ${languageLabel}.
 
+The user prompt may include an analysisContext with the original vacancy, current score, gaps, keywords, honesty warnings, and match breakdown. Use that context to estimate a post-revision score. This score is NOT a promise of hiring; it is a practical compatibility estimate after the accepted truthful edits.
+
 Allowed changes:
 1. Apply contact data corrections: name, email, phone, location, LinkedIn, portfolio, website.
 2. Remove incorrect, outdated, duplicated, or unwanted information.
@@ -214,6 +216,8 @@ Safety rules:
 3. Do not change facts unrelated to the requested revision.
 4. Do not include markdown, explanations, comments, or extra text outside JSON.
 5. Preserve truthful ATS-friendly language and standard section names.
+6. Do not inflate the revised score just because the user asks to "force" a match. If essential evidence is still missing, keep the score cautious and explain why.
+7. The revisedCompatibilityScore must be between 0 and 100. It can improve when truthful edits add/reframe evidence, but should stay low/medium if the vacancy requires experience the CV still does not demonstrate.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -258,6 +262,8 @@ Return ONLY valid JSON with this exact shape:
     "certifications": string[],
     "languages": string[]
   },
+  "revisedCompatibilityScore": number,
+  "revisionScoreExplanation": string,
   "revisionNotes": string[],
   "blockedChanges": string[]
 }`

@@ -15,6 +15,12 @@ const supabaseAdmin = createClient(
 const MAX_INSTRUCTION_LENGTH = 1200
 const MAX_OPTIMIZED_CV_CHARS = 12000
 
+function normalizeScore(value: unknown) {
+  const score = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(score)) return undefined
+  return Math.max(0, Math.min(100, Math.round(score)))
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -79,6 +85,15 @@ export async function POST(req: NextRequest) {
       revisionInstruction,
       outputLanguage,
       currentOptimizedCV: optimizedCV,
+      analysisContext: {
+        jobDescription: String(body?.jobDescription || '').slice(0, 5000),
+        currentCompatibilityScore: normalizeScore(body?.currentCompatibilityScore),
+        matchBreakdown: body?.matchBreakdown || null,
+        gaps: Array.isArray(body?.gaps) ? body.gaps.slice(0, 12) : [],
+        keywordsToInclude: Array.isArray(body?.keywordsToInclude) ? body.keywordsToInclude.slice(0, 20) : [],
+        honestyWarnings: Array.isArray(body?.honestyWarnings) ? body.honestyWarnings.slice(0, 12) : [],
+        applicationDecision: body?.applicationDecision || null,
+      },
     })
 
     const completion = await createJsonCompletion(
@@ -106,8 +121,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const revisedScore = normalizeScore(parsed.revisedCompatibilityScore)
+
     return NextResponse.json({
       optimizedCV: revisedCv,
+      revisedCompatibilityScore: revisedScore,
+      revisionScoreExplanation: typeof parsed.revisionScoreExplanation === 'string' ? parsed.revisionScoreExplanation : '',
       revisionNotes: Array.isArray(parsed.revisionNotes) ? parsed.revisionNotes : [],
       blockedChanges: Array.isArray(parsed.blockedChanges) ? parsed.blockedChanges : [],
     })
