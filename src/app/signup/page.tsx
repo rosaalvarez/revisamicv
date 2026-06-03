@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
+import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 
 type ClarificationPrompt = {
@@ -606,6 +607,7 @@ export default function SignupPage() {
     if (savedEmail) setEmail(savedEmail)
     if (savedJob) setJobDescription(savedJob)
     if (savedLanguage === 'english' || savedLanguage === 'spanish') setOutputLanguage(savedLanguage)
+    trackEvent('signup_view')
   }, [])
 
   useEffect(() => {
@@ -656,14 +658,30 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const emailError = validateEmail(email)
-    if (emailError) return setError(emailError)
+    if (emailError) {
+      trackEvent('analysis_validation_error', { field: 'email' })
+      return setError(emailError)
+    }
 
     const fileError = validateCvFile(file)
-    if (fileError) return setError(fileError)
+    if (fileError) {
+      trackEvent('analysis_validation_error', { field: 'cv_file', extension: getFileExtensionForAnalytics(file?.name), size: getFileSizeBucket(file?.size) })
+      return setError(fileError)
+    }
     const selectedFile = file as File
 
     const jobError = validateJobDescription(jobDescription)
-    if (jobError) return setError(jobError)
+    if (jobError) {
+      trackEvent('analysis_validation_error', { field: 'job_description', chars: jobDescription.trim().length })
+      return setError(jobError)
+    }
+
+    trackEvent('analysis_started', {
+      language: outputLanguage,
+      extension: getFileExtensionForAnalytics(selectedFile.name),
+      size: getFileSizeBucket(selectedFile.size),
+      job_chars_bucket: jobDescription.length < 1000 ? '<1k' : jobDescription.length < 4000 ? '1-4k' : '4k+',
+    })
 
     setLoading(true)
     setAnalysisProgress(8)
@@ -684,6 +702,12 @@ export default function SignupPage() {
       setAnalysisProgress(100)
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       window.localStorage.setItem('revisamicv_output_language', outputLanguage)
+      trackEvent('analysis_completed', {
+        language: outputLanguage,
+        score: typeof data.compatibilityScore === 'number' ? Math.round(data.compatibilityScore) : -1,
+        decision: data.applicationDecision || 'unknown',
+        tokens_remaining: typeof data.tokens_remaining === 'number' ? data.tokens_remaining : -1,
+      })
       setResult(data)
       setEditableCv(data.optimizedCV || null)
       setRevisionInstruction('')
@@ -693,6 +717,7 @@ export default function SignupPage() {
       setClarificationAnswers({})
       setClarificationModalOpen(Array.isArray(data.clarificationQuestions) && data.clarificationQuestions.length > 0)
     } catch (err: any) {
+      trackEvent('analysis_failed', { message: String(err.message || '').slice(0, 80) })
       setError(err.message)
     } finally {
       setLoading(false)
@@ -703,6 +728,7 @@ export default function SignupPage() {
     const cvForDownload = editableCv || result?.optimizedCV
     if (!cvForDownload) return setError('Primero genera un CV adaptado')
 
+    trackEvent('download_started', { format })
     setDownloadLoading(format)
     setError('')
     setCopySuccess('')
@@ -731,7 +757,9 @@ export default function SignupPage() {
       link.click()
       link.remove()
       URL.revokeObjectURL(url)
+      trackEvent('download_completed', { format })
     } catch (err: any) {
+      trackEvent('download_failed', { format, message: String(err.message || '').slice(0, 80) })
       setError(err.message)
     } finally {
       setDownloadLoading(null)
@@ -744,6 +772,7 @@ export default function SignupPage() {
 
     try {
       await navigator.clipboard.writeText(typeof cvForCopy === 'string' ? cvForCopy : optimizedCvToPlainText(cvForCopy, outputLanguage))
+      trackEvent('cv_copied')
       setCopySuccess('CV copiado al portapapeles')
       setError('')
     } catch {
@@ -755,6 +784,7 @@ export default function SignupPage() {
     if (!result?.coverLetter) return setError('No hay cover letter para copiar')
     try {
       await navigator.clipboard.writeText(result.coverLetter)
+      trackEvent('cover_letter_copied')
       setCopySuccess('Cover letter copiada. Pégala en el email, LinkedIn o portal de aplicación.')
       setError('')
     } catch {
@@ -774,6 +804,7 @@ export default function SignupPage() {
     if (!cvToRevise) return setError('Primero genera un CV adaptado')
     if (!instruction) return setError('Escribe qué cambio quieres aplicar')
 
+    trackEvent('revision_started', { source: instructionOverride ? 'clarification' : 'manual' })
     setRevisionLoading(true)
     setRevisionProgress(12)
     setRevisionStepIndex(0)
@@ -805,8 +836,10 @@ export default function SignupPage() {
       setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges : [])
       setRevisionInstruction('')
       setClarificationModalOpen(false)
+      trackEvent('revision_completed', { added_skills: getAddedSkills(beforeCv, data.optimizedCV).length, blocked_changes: Array.isArray(data.blockedChanges) ? data.blockedChanges.length : 0 })
       setCopySuccess('Cambios aplicados. Abajo te muestro qué se agregó o qué se bloqueó por seguridad.')
     } catch (err: any) {
+      trackEvent('revision_failed', { message: String(err.message || '').slice(0, 80) })
       setError(err.message)
     } finally {
       setRevisionLoading(false)
@@ -856,6 +889,7 @@ export default function SignupPage() {
                     type="button"
                     onClick={() => {
                       setOutputLanguage(option.value)
+                      trackEvent('language_selected', { language: option.value })
                       window.localStorage.setItem('revisamicv_output_language', option.value)
                     }}
                     className={`rounded-2xl border-2 p-4 text-left transition ${
@@ -888,7 +922,11 @@ export default function SignupPage() {
                   ref={fileRef}
                   type="file"
                   accept=".pdf,.docx,.txt"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0] || null
+                    setFile(selected)
+                    if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                  }}
                   className="hidden"
                 />
               </div>

@@ -5,6 +5,7 @@ import { TOKEN_PACKS } from '@/lib/token-rules'
 import { ArrowRightIcon, ChartBarIcon, CheckIcon, ClockIcon, DocumentIcon, DownloadIcon, ShieldCheckIcon, SparklesIcon, UserIcon } from '@/components/icons'
 import { SUPPORT_WHATSAPP_URL } from '@/components/LegalShell'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
+import { trackEvent } from '@/lib/analytics'
 
 type UserState = {
   email: string
@@ -85,8 +86,11 @@ export default function DashboardPage() {
     const initialEmail = queryEmail || savedEmail
     const payment = params.get('payment')
     const pack = params.get('pack') || ''
+    trackEvent('dashboard_view', { payment: payment || 'none', pack: pack || 'none' })
+
     if (pack && PACKS[pack]) {
       setSelectedPack(pack)
+      trackEvent('dashboard_pack_prefilled', { pack })
       setNotice(`Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus tokens.`)
     }
 
@@ -108,6 +112,7 @@ export default function DashboardPage() {
   const checkAccount = async (emailToCheck = email) => {
     const emailError = validateEmail(emailToCheck)
     if (emailError) {
+      trackEvent('dashboard_email_validation_error')
       setError(emailError)
       return
     }
@@ -136,9 +141,15 @@ export default function DashboardPage() {
       if (!historyRes.ok) throw new Error(historyData.message || historyData.error)
 
       window.localStorage.setItem('revisamicv_email', normalizedEmail)
+      trackEvent('dashboard_account_loaded', {
+        tokens: typeof userData.tokens === 'number' ? userData.tokens : -1,
+        has_free_cv: Boolean(userData.has_free_cv),
+        history_count: Array.isArray(historyData.history) ? historyData.history.length : 0,
+      })
       setUser(userData)
       setHistory(historyData.history || [])
     } catch (err: any) {
+      trackEvent('dashboard_account_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude cargar tu cuenta'))
     } finally {
       setLoading(false)
@@ -148,6 +159,7 @@ export default function DashboardPage() {
   const recoverPayment = async (sessionId: string, emailToCheck: string) => {
     const emailError = validateEmail(emailToCheck)
     if (emailError) {
+      trackEvent('payment_recovery_email_error')
       setError(emailError)
       return
     }
@@ -164,9 +176,11 @@ export default function DashboardPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
+      trackEvent('payment_recovery_completed')
       setNotice(data.message || 'Pago confirmado. Tokens acreditados.')
       await checkAccount(data.email || normalizedEmail)
     } catch (err: any) {
+      trackEvent('payment_recovery_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude confirmar el pago'))
       await checkAccount(emailToCheck)
     } finally {
@@ -181,7 +195,11 @@ export default function DashboardPage() {
 
   const handleBuy = async (pack: string) => {
     const emailError = validateEmail(email)
-    if (emailError) return setError(emailError)
+    if (emailError) {
+      trackEvent('checkout_validation_error', { pack })
+      return setError(emailError)
+    }
+    trackEvent('checkout_started', { pack })
     setError('')
     setNotice('Abriendo checkout seguro de Stripe...')
 
@@ -194,13 +212,16 @@ export default function DashboardPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || data.message || 'No pude iniciar el pago')
+      trackEvent('checkout_redirect_created', { pack })
       if (data.url) window.location.href = data.url
     } catch (err: any) {
+      trackEvent('checkout_failed', { pack, message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude iniciar el pago'))
     }
   }
 
   const handleDownloadPdf = async (item: HistoryItem) => {
+    trackEvent('history_pdf_download_started')
     setPdfLoadingId(item.id)
     setError('')
 
@@ -228,7 +249,9 @@ export default function DashboardPage() {
       link.click()
       link.remove()
       URL.revokeObjectURL(url)
+      trackEvent('history_pdf_download_completed')
     } catch (err: any) {
+      trackEvent('history_pdf_download_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude generar el PDF'))
     } finally {
       setPdfLoadingId(null)

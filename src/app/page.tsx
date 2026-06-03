@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, type CSSProperties } from 'react'
+import { trackEvent } from '@/lib/analytics'
 
 const painCards = [
   ['Mandé 400 aplicaciones. Ni un rechazo. Silencio total.', '— 3 años de experiencia, en búsqueda activa'],
@@ -214,7 +215,7 @@ export default function Home() {
             <a href="#como" className="lk">Cómo funciona</a>
             <a href="#comparacion" className="lk">vs. IA genérica</a>
             <a href="#precios" className="lk">Precios</a>
-            <Link href="/signup" className="btn btn-primary nav-cta">Analizar gratis</Link>
+            <Link href="/signup" onClick={() => trackEvent('landing_cta_click', { location: 'nav' })} className="btn btn-primary nav-cta">Analizar gratis</Link>
           </nav>
         </div>
       </header>
@@ -226,7 +227,7 @@ export default function Home() {
             <h1 className="hero-title">No es tu experiencia. Es que tu CV <span className="mark dark" style={{ '--mark-delay': '.5s' } as CSSProperties}><span>no le habla</span></span> a esa vacante.</h1>
             <p className="hero-sub">Sube tu CV, pega una vacante y en minutos sabes <b>qué tan compatible eres</b>, dónde están tus brechas y recibes un <b>CV adaptado y descargable, en español o en inglés</b>. Deja de quemar horas adaptando —y traduciendo— a mano. Sin inventar experiencia.</p>
             <div className="hero-cta">
-              <Link href="/signup" className="btn btn-primary">Analiza tu primer CV gratis <span className="arr">→</span></Link>
+              <Link href="/signup" onClick={() => trackEvent('landing_cta_click', { location: 'hero' })} className="btn btn-primary">Analiza tu primer CV gratis <span className="arr">→</span></Link>
               <a href="#como" className="btn btn-ghost">Ver cómo funciona</a>
             </div>
             <div className="hero-meta">
@@ -368,7 +369,7 @@ export default function Home() {
               <div className="pp"><b>{plan.price}</b><span>USD</span></div>
               <div className="punit">{plan.unit}</div>
               <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-              <Link href={`/dashboard?pack=${plan.key}`} className={`btn ${plan.popular ? 'btn-primary' : 'btn-ghost'} pcta`}>Elegir {plan.name}</Link>
+              <Link href={`/dashboard?pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing' })} className={`btn ${plan.popular ? 'btn-primary' : 'btn-ghost'} pcta`}>Elegir {plan.name}</Link>
             </div>)}
           </div>
           <p className="price-note">Empieza gratis, sin tarjeta. Si te sirve, compras más análisis. Te pediremos tu email solo para guardar tus créditos e historial.</p>
@@ -388,7 +389,7 @@ export default function Home() {
         <div className="wrap">
           <div className="big reveal">Antes de mandar otro CV genérico, <span className="mark dark"><span>revisa si encaja.</span></span></div>
           <p className="reveal d1">El primer análisis es gratis. Si te sirve, compras tokens. Sin suscripción.</p>
-          <div className="reveal d2 final-button"><Link href="/signup" className="btn btn-primary big-btn">Analiza tu primer CV gratis <span className="arr">→</span></Link></div>
+          <div className="reveal d2 final-button"><Link href="/signup" onClick={() => trackEvent('landing_cta_click', { location: 'final' })} className="btn btn-primary big-btn">Analiza tu primer CV gratis <span className="arr">→</span></Link></div>
           <div className="hero-meta reveal d3 final-meta">
             <span><span className="ck">✓</span> Sin tarjeta</span>
             <span><span className="ck">✓</span> 3 minutos</span>
