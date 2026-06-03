@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
       tokens: result.tokens,
       tokens_added: result.credited ? result.tokensToAdd : 0,
       already_credited: result.alreadyCredited,
+      pack: session.metadata?.pack || null,
+      purchase_value: typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
+      currency: session.currency?.toUpperCase() || 'USD',
+      transaction_id: session.id,
       message: result.credited
         ? `Pago confirmado. Se acreditaron ${result.tokensToAdd} créditos.`
         : 'Pago confirmado. Tus créditos ya estaban acreditados.',

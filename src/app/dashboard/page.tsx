@@ -220,7 +220,12 @@ export default function DashboardPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
-      trackEvent('payment_recovery_completed')
+      trackEvent('payment_recovery_completed', {
+        pack: data.pack || 'unknown',
+        value: data.purchase_value,
+        currency: data.currency || 'USD',
+        transaction_id: data.transaction_id,
+      })
       if (data.auth_token) {
         setAuthToken(data.auth_token)
         window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
