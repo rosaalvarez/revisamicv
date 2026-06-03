@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 import { creditTokensForPaidCheckoutSession } from '@/lib/stripe-token-credit'
+import { sendPurchaseConfirmedEmail } from '@/lib/email-service'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,8 +35,11 @@ export async function POST(req: NextRequest) {
 
     try {
       const result = await creditTokensForPaidCheckoutSession(supabaseAdmin, session as any)
+      if (result.credited) {
+        await sendPurchaseConfirmedEmail(result.email, result.tokensToAdd, result.tokens)
+      }
       console.log(
-        `✓ Stripe checkout ${result.sessionId}: ${result.credited ? 'credited' : 'already credited'} ${result.tokensToAdd} tokens to ${result.email} (now: ${result.tokens})`
+        `✓ Stripe checkout ${result.sessionId}: ${result.credited ? 'credited' : 'already credited'} ${result.tokensToAdd} credits to ${result.email} (now: ${result.tokens})`
       )
     } catch (error: any) {
       console.error('Token credit failed:', error?.message || error)

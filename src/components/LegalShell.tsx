@@ -1,8 +1,7 @@
 import Link from 'next/link'
 import { ArrowRightIcon, CheckIcon, ShieldCheckIcon } from '@/components/icons'
-
-export const SUPPORT_EMAIL = 'soporte@revisamicv.lat'
-export const SUPPORT_EMAIL_URL = `mailto:${SUPPORT_EMAIL}?subject=Soporte%20RevisaMiCV&body=Hola%20RevisaMiCV%2C%0A%0ANecesito%20ayuda%20con%3A%0A-%20Email%20usado%20en%20RevisaMiCV%20o%20Stripe%3A%0A-%20Qu%C3%A9%20pas%C3%B3%3A%0A-%20Fecha%20aproximada%3A%0A`
+import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL } from '@/lib/support'
+export { SUPPORT_EMAIL, SUPPORT_EMAIL_URL }
 
 export function LegalShell({
   eyebrow,
@@ -58,8 +57,8 @@ export function LegalShell({
             <div className="mt-5 space-y-4 text-sm leading-6 text-[#c8c1d1]">
               <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>No vendemos tu CV ni tus datos personales.</span></div>
               <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>No inventamos experiencia, cargos, estudios ni métricas.</span></div>
-              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>Si un análisis falla por error técnico, no debería consumirse tu token.</span></div>
-              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>Tus tokens quedan asociados al email usado en Stripe.</span></div>
+              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>Si un análisis falla por error técnico, no debería consumirse tu crédito.</span></div>
+              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-emerald-300" /><span>Tus créditos quedan asociados al email usado en Stripe.</span></div>
             </div>
             <div className="mt-6 rounded-3xl border border-[#b24aed]/25 bg-[#b24aed]/10 p-4">
               <p className="font-semibold text-white">¿Necesitas ayuda?</p>

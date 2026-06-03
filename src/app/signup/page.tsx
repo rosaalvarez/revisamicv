@@ -710,6 +710,7 @@ export default function SignupPage() {
       })
       setResult(data)
       setEditableCv(data.optimizedCV || null)
+      setCopySuccess('Te enviamos un enlace por email para volver a descargar este CV desde tu dashboard si cierras la página.')
       setRevisionInstruction('')
       setRevisionNotes([])
       setBlockedChanges([])
@@ -877,7 +878,7 @@ export default function SignupPage() {
                 className="w-full border border-slate-300 rounded-xl bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 outline-none"
                 required
               />
-              <p className="text-xs text-slate-400 mt-1">Lo usamos para darte 1 prueba gratis y manejar tus tokens.</p>
+              <p className="text-xs text-slate-400 mt-1">Lo usamos para tu prueba gratis, guardar tus créditos y enviarte un enlace de recuperación del CV.</p>
             </div>
 
             <div>
@@ -1229,13 +1230,13 @@ export default function SignupPage() {
                 href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`}
                 className="flex-1 flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-full font-semibold hover:bg-purple-700 transition"
               >
-                Ver mi dashboard <ArrowRightIcon className="w-4 h-4" />
+                Enviarme enlace al dashboard <ArrowRightIcon className="w-4 h-4" />
               </a>
               <a
                 href="/#pricing"
                 className="flex-1 flex items-center justify-center gap-2 border-2 border-purple-200 text-purple-700 py-3 rounded-full font-semibold hover:bg-purple-50 transition"
               >
-                Comprar más tokens
+                Comprar más créditos
               </a>
             </div>
           </div>

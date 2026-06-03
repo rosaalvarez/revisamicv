@@ -7,14 +7,14 @@ const FEATURES_BASIC = [
   'Brechas y fortalezas',
   'Keywords recomendadas',
   'CV adaptado en PDF/DOCX/TXT',
-  'Tokens sin vencimiento',
+  'Créditos sin vencimiento',
 ]
 
 const FEATURES_PRO_PREMIUM = [
   'Todo lo de Básico',
   'Ideal para comparar varias vacantes',
   'Historial en dashboard',
-  'Tokens sin vencimiento',
+  'Créditos sin vencimiento',
 ]
 
 export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }) {
@@ -66,7 +66,7 @@ export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }
       >
         Elegir {p.name} →
       </Link>
-      <p className="mt-3 text-center text-xs text-[#64748d]">Te pediremos tu email para acreditar los tokens.</p>
+      <p className="mt-3 text-center text-xs text-[#64748d]">Te pediremos tu email para acreditar los créditos.</p>
     </div>
   )
 }

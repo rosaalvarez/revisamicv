@@ -7,6 +7,7 @@ import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { parseJsonCompletion } from '@/lib/json-completion'
+import { sendAnalysisReadyEmail } from '@/lib/email-service'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: 'db_error',
-          message: 'No pude validar tus tokens en este momento. Intenta de nuevo en unos minutos.',
+          message: 'No pude validar tus créditos en este momento. Intenta de nuevo en unos minutos.',
           tokens_remaining: 0,
         },
         { status: 503 }
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: tokenCheck.reason,
-          message: 'No tienes CVs disponibles. Compra más tokens para continuar.',
+          message: 'No tienes créditos disponibles. Compra más análisis para continuar.',
           tokens_remaining: 0,
         },
         { status: 402 }
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: 'db_error',
-          message: 'Tu CV fue generado, pero no pude actualizar tus tokens. Intenta de nuevo o contáctanos.',
+          message: 'Tu CV fue generado, pero no pude actualizar tus créditos. Intenta de nuevo o contáctanos.',
           ...parsed,
           compatibilityScore,
           compatibilityBand: band,
@@ -142,12 +143,19 @@ export async function POST(req: NextRequest) {
       console.error('History save error:', err?.message || err)
     }
 
+    try {
+      await sendAnalysisReadyEmail(email.trim().toLowerCase(), compatibilityScore)
+    } catch (err: any) {
+      console.error('Analysis email error:', err?.message || err)
+    }
+
     return NextResponse.json({
       ...parsed,
       compatibilityScore,
       compatibilityBand: band,
       outputLanguage,
       tokens_remaining: finalTokenState.tokens_remaining,
+      email_sent: true,
     })
   } catch (error: any) {
     console.error('CV processing error:', error)

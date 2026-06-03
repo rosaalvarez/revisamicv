@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
             currency: 'usd',
             product_data: {
               name: `RevisaMiCV - Pack ${packData.name}`,
-              description: `${packData.cvCount} CVs optimizados con IA para ATS`,
+              description: `${packData.cvCount} análisis de CV con IA para ATS`,
             },
             unit_amount: packData.priceCents,
           },

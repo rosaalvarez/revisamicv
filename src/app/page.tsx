@@ -57,7 +57,7 @@ const plans = [
     price: '$5',
     unit: '5 análisis · $1 por CV',
     popular: false,
-    features: ['Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado en PDF / DOCX / TXT', 'Tokens sin vencimiento'],
+    features: ['Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado en PDF / DOCX / TXT', 'Créditos sin vencimiento'],
   },
   {
     key: 'pro',
@@ -66,7 +66,7 @@ const plans = [
     price: '$12',
     unit: '15 análisis · $0.80 por CV',
     popular: true,
-    features: ['Todo lo del plan Básico', 'Ideal para comparar oportunidades', 'Historial de análisis en tu panel', 'Prioriza a cuál aplicar primero', 'Tokens sin vencimiento'],
+    features: ['Todo lo del plan Básico', 'Ideal para comparar oportunidades', 'Historial de análisis en tu panel', 'Prioriza a cuál aplicar primero', 'Créditos sin vencimiento'],
   },
   {
     key: 'premium',
@@ -75,7 +75,7 @@ const plans = [
     price: '$19',
     unit: '30 análisis · $0.63 por CV',
     popular: false,
-    features: ['Todo lo del plan Pro', 'El mejor costo por análisis', 'Historial completo en tu panel', 'Para quien aplica a diario', 'Tokens sin vencimiento'],
+    features: ['Todo lo del plan Pro', 'El mejor costo por análisis', 'Historial completo en tu panel', 'Para quien aplica a diario', 'Créditos sin vencimiento'],
   },
 ]
 
@@ -84,7 +84,7 @@ const faqs = [
   ['¿Va a inventar experiencia que no tengo?', 'Nunca. Es la regla central del producto: no inventa empleadores, cargos, títulos, certificaciones, años ni métricas. Toma tu experiencia real y la reescribe en el lenguaje que la vacante busca. La credibilidad en la entrevista es tuya y la protegemos.'],
   ['¿Por qué no lo hago gratis con ChatGPT o Claude?', 'Puedes. Si tienes el prompt perfecto, lees el PDF a mano, iteras, formateas, traduces al idioma correcto y exportas. Cada vez. Aquí pegas tu CV y la vacante, y en ~3 minutos tienes score, brechas, keywords y un CV adaptado —en español o en inglés— listo para descargar. Pagas por no perder esos 30 minutos, multiplicados por cada vacante.'],
   ['¿El score es real o es decorativo?', 'Es real: mide qué tan alineado está tu CV con el texto de esa vacante específica — keywords, experiencia relevante y brechas. No predice el algoritmo interno de cada empresa, y no promete entrevistas. Sirve para algo concreto: priorizar a cuál aplicar fuerte y qué arreglar antes de enviar.'],
-  ['¿Tengo que suscribirme?', 'No. Compras tokens una sola vez y no vencen. Sin cobros mensuales, sin tarjeta para el primer análisis, sin la trampa de la suscripción que se te olvidó cancelar.'],
+  ['¿Tengo que suscribirme?', 'No. Compras créditos una sola vez y no vencen. Sin cobros mensuales, sin tarjeta para el primer análisis, sin la trampa de la suscripción que se te olvidó cancelar.'],
   ['¿Qué pasa con mi CV y mis datos?', 'Tu CV se procesa para generar el diagnóstico y el documento adaptado. No vendemos tus datos ni los usamos para inventar experiencia. Puedes revisar la política de privacidad y pedir eliminación de datos desde soporte.'],
 ]
 
@@ -388,7 +388,7 @@ export default function Home() {
       <section className="final band">
         <div className="wrap">
           <div className="big reveal">Antes de mandar otro CV genérico, <span className="mark dark"><span>revisa si encaja.</span></span></div>
-          <p className="reveal d1">El primer análisis es gratis. Si te sirve, compras tokens. Sin suscripción.</p>
+          <p className="reveal d1">El primer análisis es gratis. Si te sirve, compras créditos. Sin suscripción.</p>
           <div className="reveal d2 final-button"><Link href="/signup" onClick={() => trackEvent('landing_cta_click', { location: 'final' })} className="btn btn-primary big-btn">Analiza tu primer CV gratis <span className="arr">→</span></Link></div>
           <div className="hero-meta reveal d3 final-meta">
             <span><span className="ck">✓</span> Sin tarjeta</span>

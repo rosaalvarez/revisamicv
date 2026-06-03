@@ -70,6 +70,8 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedPack, setSelectedPack] = useState<string>('')
+  const [authToken, setAuthToken] = useState('')
+  const [linkSent, setLinkSent] = useState(false)
 
   const usedAnalyses = history.length
   const accountStatus = useMemo(() => {
@@ -82,8 +84,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const queryEmail = params.get('email') || ''
+    const queryAuth = params.get('auth') || ''
     const savedEmail = window.localStorage.getItem('revisamicv_email') || ''
+    const savedAuth = window.localStorage.getItem('revisamicv_auth_token') || ''
     const initialEmail = queryEmail || savedEmail
+    const initialAuth = queryAuth || savedAuth
     const payment = params.get('payment')
     const pack = params.get('pack') || ''
     trackEvent('dashboard_view', { payment: payment || 'none', pack: pack || 'none' })
@@ -91,29 +96,66 @@ export default function DashboardPage() {
     if (pack && PACKS[pack]) {
       setSelectedPack(pack)
       trackEvent('dashboard_pack_prefilled', { pack })
-      setNotice(`Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus tokens.`)
+      setNotice(`Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus créditos.`)
     }
 
     const sessionId = params.get('session_id') || ''
-    if (payment === 'success') setNotice(sessionId ? 'Confirmando pago con Stripe y acreditando tokens...' : 'Pago recibido. Tus tokens pueden tardar unos segundos en aparecer.')
+    if (payment === 'success') setNotice(sessionId ? 'Confirmando pago con Stripe y acreditando créditos...' : 'Pago recibido. Tus créditos pueden tardar unos segundos en aparecer.')
     if (payment === 'cancelled') setNotice('Pago cancelado. No se hizo ningún cargo.')
 
     if (initialEmail) {
       setEmail(initialEmail)
+      if (initialAuth) {
+        setAuthToken(initialAuth)
+        window.localStorage.setItem('revisamicv_auth_token', initialAuth)
+      }
       if (payment === 'success' && sessionId) {
         recoverPayment(sessionId, initialEmail)
-      } else {
-        checkAccount(initialEmail)
+      } else if (initialAuth) {
+        checkAccount(initialEmail, initialAuth)
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const checkAccount = async (emailToCheck = email) => {
+  const requestMagicLink = async (emailToSend = email) => {
+    const emailError = validateEmail(emailToSend)
+    if (emailError) return setError(emailError)
+
+    setLoading(true)
+    setError('')
+    setNotice('Enviando enlace seguro a tu email...')
+    try {
+      const normalizedEmail = emailToSend.trim().toLowerCase()
+      const res = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'No pude enviar el enlace')
+      window.localStorage.setItem('revisamicv_email', normalizedEmail)
+      setLinkSent(true)
+      setNotice('Listo. Te enviamos un enlace seguro para entrar al dashboard. Revisa tu correo y spam/promociones.')
+      trackEvent('magic_link_requested')
+    } catch (err: any) {
+      trackEvent('magic_link_failed', { message: String(err.message || '').slice(0, 80) })
+      setError(getFriendlyApiError(err.message, 'No pude enviar el enlace de acceso'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const checkAccount = async (emailToCheck = email, tokenToUse = authToken) => {
     const emailError = validateEmail(emailToCheck)
     if (emailError) {
       trackEvent('dashboard_email_validation_error')
       setError(emailError)
+      return
+    }
+
+    if (!tokenToUse) {
+      await requestMagicLink(emailToCheck)
       return
     }
 
@@ -126,12 +168,12 @@ export default function DashboardPage() {
         fetch('/api/user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail }),
+          body: JSON.stringify({ email: normalizedEmail, auth_token: tokenToUse }),
         }),
         fetch('/api/history', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: normalizedEmail }),
+          body: JSON.stringify({ email: normalizedEmail, auth_token: tokenToUse }),
         }),
       ])
 
@@ -141,6 +183,8 @@ export default function DashboardPage() {
       if (!historyRes.ok) throw new Error(historyData.message || historyData.error)
 
       window.localStorage.setItem('revisamicv_email', normalizedEmail)
+      window.localStorage.setItem('revisamicv_auth_token', tokenToUse)
+      setAuthToken(tokenToUse)
       trackEvent('dashboard_account_loaded', {
         tokens: typeof userData.tokens === 'number' ? userData.tokens : -1,
         has_free_cv: Boolean(userData.has_free_cv),
@@ -177,8 +221,12 @@ export default function DashboardPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
       trackEvent('payment_recovery_completed')
-      setNotice(data.message || 'Pago confirmado. Tokens acreditados.')
-      await checkAccount(data.email || normalizedEmail)
+      if (data.auth_token) {
+        setAuthToken(data.auth_token)
+        window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
+      }
+      setNotice(data.message || 'Pago confirmado. Créditos acreditados.')
+      await checkAccount(data.email || normalizedEmail, data.auth_token || authToken)
     } catch (err: any) {
       trackEvent('payment_recovery_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude confirmar el pago'))
@@ -273,7 +321,7 @@ export default function DashboardPage() {
           <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
             <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
             <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
-            <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar tokens</a>
+            <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar créditos</a>
             <a href={SUPPORT_EMAIL_URL} className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
           </nav>
         </header>
@@ -285,14 +333,14 @@ export default function DashboardPage() {
               <div className="relative z-10">
                 <StatusPill tone={user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{accountStatus}</StatusPill>
                 <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                  Consulta tus créditos, CVs e historial por email.
+                  Consulta tus créditos, CVs e historial con enlace seguro.
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                  Ingresa el email que usaste en tu análisis gratis o en Stripe. Con ese email recuperas tus créditos, tus CVs generados y tu historial. No necesitas contraseña.
+                  Ingresa el email que usaste en tu análisis gratis o en Stripe. Te enviaremos un enlace mágico para entrar sin contraseña y recuperar tus créditos, CVs generados e historial.
                 </p>
 
                 <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">Usa el mismo email con el que analizaste gratis o compraste tokens en Stripe. Ahí quedan guardados tus créditos e historial.</p>
+                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">Usa el mismo email con el que analizaste gratis o compraste créditos en Stripe. Ahí quedan guardados tus créditos e historial.</p>
                   <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row">
                   <input
                     type="email"
@@ -312,7 +360,7 @@ export default function DashboardPage() {
                     disabled={loading}
                     className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-50 disabled:opacity-60"
                   >
-                    {loading ? 'Cargando...' : 'Ver cuenta'}
+                    {loading ? 'Cargando...' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
                   </button>
                   <a
                     href="/signup"
@@ -324,6 +372,7 @@ export default function DashboardPage() {
                 </div>
 
                 {notice && <p className="mt-4 rounded-2xl border border-violet-300/30 bg-violet-400/10 p-3 text-sm text-violet-100">{notice}</p>}
+                {linkSent && <p className="mt-2 text-xs leading-5 text-violet-100/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
                 {error && <p className="mt-4 rounded-2xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
               </div>
             </div>
@@ -338,13 +387,13 @@ export default function DashboardPage() {
               <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700"><UserIcon className="h-5 w-5" /></div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-slate-600">
-              <TrustNote>Tu cuenta se crea y se recupera con tu email. No necesitas contraseña.</TrustNote>
+              <TrustNote>Tu cuenta se recupera con un enlace seguro enviado a tu email. No necesitas contraseña.</TrustNote>
               <TrustNote>Stripe confirma pagos y la app recupera tus créditos al volver del checkout.</TrustNote>
               <TrustNote>No vendemos tu CV ni inventamos experiencia: optimizamos lo que sí existe.</TrustNote>
               <TrustNote>Tus CVs quedan en historial para descargarlos otra vez sin gastar otro análisis.</TrustNote>
             </div>
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves tokens?</p>
+              <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
               <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
             </div>
@@ -371,7 +420,7 @@ export default function DashboardPage() {
         {user && (
           <div className="space-y-8">
             <section className="grid gap-4 md:grid-cols-3">
-              <MiniMetric label="Tokens disponibles" value={user.tokens} icon={<SparklesIcon className="h-5 w-5" />} dark />
+              <MiniMetric label="Créditos disponibles" value={user.tokens} icon={<SparklesIcon className="h-5 w-5" />} dark />
               <MiniMetric label="Análisis realizados" value={usedAnalyses} icon={<ChartBarIcon className="h-5 w-5" />} />
               <MiniMetric label="CV gratis" value={user.has_free_cv ? 'Activo' : 'Usado'} icon={<ShieldCheckIcon className="h-5 w-5" />} />
             </section>
@@ -380,7 +429,7 @@ export default function DashboardPage() {
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Siguiente paso</p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Analiza otra vacante real antes de aplicar</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Cada token compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-600">Cada crédito compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
                 <a href="/signup" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 md:w-auto">
                   Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
                 </a>
@@ -395,7 +444,7 @@ export default function DashboardPage() {
                 <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Historial de análisis</h2>
-                    <p className="mt-1 text-sm text-slate-500">Recupera resultados anteriores sin volver a gastar tokens.</p>
+                    <p className="mt-1 text-sm text-slate-500">Recupera resultados anteriores sin volver a gastar créditos.</p>
                   </div>
                   <StatusPill tone="purple">{history.length} guardado{history.length === 1 ? '' : 's'}</StatusPill>
                 </div>
@@ -444,7 +493,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Compra más análisis cuando compares más vacantes</h2>
-                  <p className="mt-2 text-sm text-slate-500">Un token = un CV comparado contra una vacante. Los tokens quedan guardados en tu email.</p>
+                  <p className="mt-2 text-sm text-slate-500">Un crédito = un CV comparado contra una vacante. Los créditos quedan guardados en tu email.</p>
                 </div>
                 <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
               </div>
