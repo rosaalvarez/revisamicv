@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
   const usedAnalyses = history.length
   const accountStatus = useMemo(() => {
-    if (!user) return 'Sin cuenta cargada'
+    if (!user) return 'Ingresa tu email para ver tu cuenta'
     if (user.tokens > 0) return 'Lista para analizar vacantes'
     if (user.has_free_cv) return 'Tienes un análisis gratis disponible'
     return 'Sin créditos disponibles'
@@ -262,10 +262,10 @@ export default function DashboardPage() {
               <div className="relative z-10">
                 <StatusPill tone={user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{accountStatus}</StatusPill>
                 <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                  Tus créditos, CVs y próximas aplicaciones en un solo lugar.
+                  Consulta tus créditos, CVs e historial por email.
                 </h1>
                 <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                  Usa RevisaMiCV como una mesa de control: compara una vacante, descarga tu CV adaptado y vuelve a recuperar tus resultados cuando los necesites. Tu cuenta se identifica por email, sin contraseña.
+                  Ingresa el email que usaste en tu análisis gratis o en Stripe. Con ese email recuperas tus créditos, tus CVs generados y tu historial. No necesitas contraseña.
                 </p>
 
                 <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
@@ -316,13 +316,13 @@ export default function DashboardPage() {
             </div>
             <div className="mt-6 space-y-3 text-sm text-slate-600">
               <TrustNote>Tu cuenta se crea y se recupera con tu email. No necesitas contraseña.</TrustNote>
-              <TrustNote>Stripe confirma pagos antes de acreditar tokens; la app intenta recuperarlos al volver del checkout.</TrustNote>
+              <TrustNote>Stripe confirma pagos y la app recupera tus créditos al volver del checkout.</TrustNote>
               <TrustNote>No vendemos tu CV ni inventamos experiencia: optimizamos lo que sí existe.</TrustNote>
-              <TrustNote>Los CVs generados quedan en historial para volver a descargarlos sin gastar otro token.</TrustNote>
+              <TrustNote>Tus CVs quedan en historial para descargarlos otra vez sin gastar otro análisis.</TrustNote>
             </div>
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves tokens?</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos por soporte con el email de pago y lo conciliamos manualmente.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos por soporte con el email de pago.</p>
               <a href={SUPPORT_WHATSAPP_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Contactar soporte</a>
             </div>
           </aside>
@@ -331,7 +331,7 @@ export default function DashboardPage() {
         {!user && (
           <section className="mb-6 grid gap-4 md:grid-cols-3">
             <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-950">1 token = 1 vacante</p>
+              <p className="text-sm font-semibold text-slate-950">1 análisis = 1 vacante</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">Cada análisis compara tu CV contra una vacante concreta y genera descargas PDF, DOCX y TXT.</p>
             </div>
             <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
