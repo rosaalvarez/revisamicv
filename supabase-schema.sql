@@ -80,29 +80,21 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cv_history ENABLE ROW LEVEL SECURITY;
 
 -- Critical for Next.js backend using SUPABASE_SERVICE_ROLE_KEY.
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE ON public.users TO anon, authenticated, service_role;
-GRANT SELECT, INSERT, UPDATE ON public.cv_history TO anon, authenticated, service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-
--- MVP policies. The app backend uses service_role. Public policies are intentionally
--- permissive for launch speed, but all browser operations still go through our APIs.
+-- Browser clients must not access sensitive tables directly with the anon key.
+-- All user/history operations go through Next.js API routes that use service_role.
 DROP POLICY IF EXISTS "Allow all on users" ON public.users;
 DROP POLICY IF EXISTS "Allow all on cv_history" ON public.cv_history;
 DROP POLICY IF EXISTS "MVP users access" ON public.users;
 DROP POLICY IF EXISTS "MVP cv_history access" ON public.cv_history;
 
-CREATE POLICY "MVP users access"
-ON public.users
-FOR ALL
-USING (true)
-WITH CHECK (true);
+REVOKE ALL ON public.users FROM anon, authenticated;
+REVOKE ALL ON public.cv_history FROM anon, authenticated;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 
-CREATE POLICY "MVP cv_history access"
-ON public.cv_history
-FOR ALL
-USING (true)
-WITH CHECK (true);
+GRANT USAGE ON SCHEMA public TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.cv_history TO service_role;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- SMOKE TESTS TO RUN AFTER MIGRATION
