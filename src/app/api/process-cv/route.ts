@@ -8,6 +8,7 @@ import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { parseJsonCompletion } from '@/lib/json-completion'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
+import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,6 +63,18 @@ export async function POST(req: NextRequest) {
     const jobError = validateJobDescription(jobDescription)
     if (jobError) {
       return NextResponse.json({ error: 'invalid_job_description', message: jobError }, { status: 400 })
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const limitCheck = await enforceRateLimits(supabaseAdmin, [
+      { scope: 'process_cv_email', identifier: normalizedEmail, limit: 10, windowSeconds: 3600 },
+      { scope: 'process_cv_ip', identifier: getClientIp(req), limit: 30, windowSeconds: 3600 },
+    ])
+    if (!limitCheck.allowed) {
+      const limited = rateLimitResponse('Demasiados análisis en poco tiempo. Intenta de nuevo más tarde o escribe a soporte@revisamicv.lat.', {
+        resetSeconds: limitCheck.result?.resetSeconds,
+      })
+      return NextResponse.json(limited.body, { status: limited.status })
     }
 
     // Token pre-check. We only consume after OpenAI succeeds, so failed generations do not burn credits.

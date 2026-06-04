@@ -5,6 +5,7 @@ import { validateEmail } from '@/lib/input-validation'
 import { getUserTokenState } from '@/lib/token-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { parseJsonCompletion } from '@/lib/json-completion'
+import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -32,6 +33,17 @@ export async function POST(req: NextRequest) {
     const emailError = validateEmail(email)
     if (emailError) {
       return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
+    }
+
+    const limitCheck = await enforceRateLimits(supabaseAdmin, [
+      { scope: 'revise_cv_email', identifier: email, limit: 20, windowSeconds: 3600 },
+      { scope: 'revise_cv_ip', identifier: getClientIp(req), limit: 40, windowSeconds: 3600 },
+    ])
+    if (!limitCheck.allowed) {
+      const limited = rateLimitResponse('Demasiados ajustes en poco tiempo. Intenta de nuevo más tarde.', {
+        resetSeconds: limitCheck.result?.resetSeconds,
+      })
+      return NextResponse.json(limited.body, { status: limited.status })
     }
 
     let userState

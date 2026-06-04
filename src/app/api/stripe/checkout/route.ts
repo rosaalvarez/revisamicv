@@ -1,15 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { stripe, TOKEN_PACKS } from '@/lib/stripe'
+import { validateEmail } from '@/lib/input-validation'
+import { normalizeEmail } from '@/lib/token-rules'
+import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
   try {
     const { pack, email } = await req.json()
+    const normalizedEmail = normalizeEmail(email || '')
+    const emailError = validateEmail(normalizedEmail)
+    if (emailError) return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
+
+    const limitCheck = await enforceRateLimits(supabaseAdmin, [
+      { scope: 'stripe_checkout_email', identifier: normalizedEmail, limit: 10, windowSeconds: 3600 },
+      { scope: 'stripe_checkout_ip', identifier: getClientIp(req), limit: 30, windowSeconds: 3600 },
+    ])
+    if (!limitCheck.allowed) {
+      const limited = rateLimitResponse('Demasiados intentos de compra en poco tiempo. Intenta de nuevo más tarde.', {
+        resetSeconds: limitCheck.result?.resetSeconds,
+      })
+      return NextResponse.json(limited.body, { status: limited.status })
+    }
+
     const packData = TOKEN_PACKS[pack as keyof typeof TOKEN_PACKS]
     if (!packData) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim()
-    const success_url = `${appUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email || '')}`
-    const cancel_url = `${appUrl}/dashboard?payment=cancelled&email=${encodeURIComponent(email || '')}`
+    const success_url = `${appUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(normalizedEmail)}`
+    const cancel_url = `${appUrl}/dashboard?payment=cancelled&email=${encodeURIComponent(normalizedEmail)}`
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -27,12 +51,12 @@ export async function POST(req: NextRequest) {
         },
       ],
       mode: 'payment',
-      customer_email: email,
+      customer_email: normalizedEmail,
       invoice_creation: { enabled: true },
-      payment_intent_data: email ? { receipt_email: email } : undefined,
+      payment_intent_data: { receipt_email: normalizedEmail },
       success_url,
       cancel_url,
-      metadata: { pack, email, cvCount: packData.cvCount.toString() },
+      metadata: { pack, email: normalizedEmail, cvCount: packData.cvCount.toString() },
     })
 
     return NextResponse.json({ url: session.url })
