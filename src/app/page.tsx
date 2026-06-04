@@ -402,6 +402,11 @@ export default function Home() {
                 <div className="out">{text}</div>
               </Link>
             ))}
+            <Link href="/blog" className="uc reveal d4">
+              <div className="label">Blog</div>
+              <h3>Más guías de CV, ATS y búsqueda laboral</h3>
+              <div className="out">Artículos indexables para búsquedas orgánicas y usuarios que quieren aplicar mejor.</div>
+            </Link>
           </div>
         </div>
       </section>
@@ -430,6 +435,7 @@ export default function Home() {
             <Link href="/terminos">Términos</Link>
             <Link href="/soporte">Soporte</Link>
             <Link href="/dashboard">Dashboard</Link>
+            <Link href="/blog">Blog</Link>
             <Link href="/recursos/adaptar-cv-a-vacante">Guía CV</Link>
           </div>
         </div>
