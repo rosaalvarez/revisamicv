@@ -1269,7 +1269,7 @@ export default function SignupPage() {
               )}
             </section>
 
-            <ResultAccordion title="CV adaptado completo" summary="Lo dejamos cerrado para que no tengas que atravesar una chorrera de texto. Ábrelo solo para revisar el documento final." defaultOpen={false}>
+            <ResultAccordion title="Tu CV adaptado está listo" summary="Este es el documento final que puedes revisar antes de descargar. PDF es el formato recomendado para enviar." defaultOpen>
               {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
             </ResultAccordion>
 
