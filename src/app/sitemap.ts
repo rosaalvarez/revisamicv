@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next'
 
 const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim().replace(/\/+$/, '')
 
+const resourceSlugs = ['adaptar-cv-a-vacante', 'optimizar-cv-ats', 'cv-en-ingles-para-remoto']
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
   return [
@@ -11,5 +13,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${appUrl}/privacidad`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${appUrl}/terminos`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
     { url: `${appUrl}/soporte`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
+    ...resourceSlugs.map((slug) => ({
+      url: `${appUrl}/recursos/${slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
   ]
 }

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import GoogleAdsTag from '@/components/GoogleAdsTag'
+import GoogleAnalyticsTag from '@/components/GoogleAnalyticsTag'
+import MicrosoftClarityTag from '@/components/MicrosoftClarityTag'
 import './globals.css'
 
 const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim().replace(/\/+$/, '')
@@ -65,7 +67,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         {children}
         <Analytics />
+        <GoogleAnalyticsTag />
         <GoogleAdsTag />
+        <MicrosoftClarityTag />
       </body>
     </html>
   )

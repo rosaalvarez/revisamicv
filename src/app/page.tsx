@@ -79,6 +79,12 @@ const plans = [
   },
 ]
 
+const seoResources = [
+  ['adaptar-cv-a-vacante', 'Cómo adaptar tu CV a una vacante', 'Ordena tu experiencia real para que una vacante específica entienda por qué encajas.'],
+  ['optimizar-cv-ats', 'Cómo optimizar tu CV para ATS', 'Keywords, formato y claridad para filtros automáticos sin llenar tu CV de humo.'],
+  ['cv-en-ingles-para-remoto', 'CV en inglés para vacantes remotas', 'Adapta tu CV al lenguaje profesional global sin traducciones literales.'],
+]
+
 const faqs = [
   ['¿Esto me garantiza que voy a conseguir trabajo?', 'No, y desconfía de quien te lo prometa. Hay muchas variables fuera de cualquier herramienta: el mercado, la cantidad de aplicantes, el momento. Lo que sí hacemos: subir la probabilidad de que tu CV llame la atención y encaje con esa vacante, y bajar la fricción entre lo que tú vales y lo que el empleador alcanza a ver. El resto, lo pones tú.'],
   ['¿Va a inventar experiencia que no tengo?', 'Nunca. Es la regla central del producto: no inventa empleadores, cargos, títulos, certificaciones, años ni métricas. Toma tu experiencia real y la reescribe en el lenguaje que la vacante busca. La credibilidad en la entrevista es tuya y la protegemos.'],
@@ -385,6 +391,21 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="sec band">
+        <div className="wrap">
+          <SectionHeading centered label="Recursos" title="Guías rápidas para aplicar mejor." intro="Contenido SEO útil para personas que buscan adaptar su CV, entender ATS y aplicar a vacantes remotas." />
+          <div className="uc-grid">
+            {seoResources.map(([slug, title, text], index) => (
+              <Link key={slug} href={`/recursos/${slug}`} className={`uc reveal d${index + 1}`}>
+                <div className="label">Guía</div>
+                <h3>{title}</h3>
+                <div className="out">{text}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="final band">
         <div className="wrap">
           <div className="big reveal">Antes de mandar otro CV genérico, <span className="mark dark"><span>revisa si encaja.</span></span></div>
@@ -409,6 +430,7 @@ export default function Home() {
             <Link href="/terminos">Términos</Link>
             <Link href="/soporte">Soporte</Link>
             <Link href="/dashboard">Dashboard</Link>
+            <Link href="/recursos/adaptar-cv-a-vacante">Guía CV</Link>
           </div>
         </div>
       </footer>

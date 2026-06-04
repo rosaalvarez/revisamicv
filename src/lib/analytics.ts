@@ -8,10 +8,12 @@ type GoogleAdsConversionKey = 'analysis_completed' | 'checkout_started' | 'purch
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
+    clarity?: (...args: unknown[]) => void
   }
 }
 
 const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim()
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim()
 
 const googleAdsLabels: Record<GoogleAdsConversionKey, string | undefined> = {
   analysis_completed: process.env.NEXT_PUBLIC_GOOGLE_ADS_ANALYSIS_LABEL?.trim(),
@@ -68,6 +70,24 @@ function trackGoogleAdsConversion(eventName: string, properties: AnalyticsProper
   }
 }
 
+function trackGoogleAnalyticsEvent(eventName: string, properties: Record<string, string | number | boolean>) {
+  try {
+    if (!gaMeasurementId || typeof window === 'undefined' || typeof window.gtag !== 'function') return
+    window.gtag('event', eventName, properties)
+  } catch {
+    // Analytics must never break the product flow.
+  }
+}
+
+function trackClarityEvent(eventName: string) {
+  try {
+    if (typeof window === 'undefined' || typeof window.clarity !== 'function') return
+    window.clarity('event', eventName)
+  } catch {
+    // Heatmaps/session recording must never break the product flow.
+  }
+}
+
 export function trackEvent(name: string, properties: AnalyticsProperties = {}) {
   try {
     const safeProperties = Object.fromEntries(
@@ -75,7 +95,9 @@ export function trackEvent(name: string, properties: AnalyticsProperties = {}) {
     ) as Record<string, string | number | boolean>
 
     track(name, safeProperties)
+    trackGoogleAnalyticsEvent(name, safeProperties)
     trackGoogleAdsConversion(name, safeProperties)
+    trackClarityEvent(name)
   } catch {
     // Analytics must never break the product flow.
   }
