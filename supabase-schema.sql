@@ -26,6 +26,19 @@ CREATE TABLE IF NOT EXISTS public.cv_history (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.payment_transactions (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  stripe_session_id TEXT UNIQUE NOT NULL,
+  user_id BIGINT REFERENCES public.users(id) ON DELETE SET NULL,
+  email TEXT NOT NULL,
+  pack TEXT NOT NULL,
+  tokens_added INTEGER NOT NULL CHECK (tokens_added > 0),
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'failed', 'refunded')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Safe migrations for older schemas
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS tokens INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS free_used BOOLEAN NOT NULL DEFAULT FALSE;
@@ -53,6 +66,9 @@ ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS output_language TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON public.users (lower(email));
 CREATE INDEX IF NOT EXISTS idx_cv_history_user ON public.cv_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_cv_history_created_at ON public.cv_history(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_session ON public.payment_transactions(stripe_session_id);
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_user ON public.payment_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_payment_transactions_email ON public.payment_transactions(email);
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- UPDATED_AT TRIGGER
@@ -78,6 +94,7 @@ EXECUTE FUNCTION public.set_updated_at();
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cv_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_transactions ENABLE ROW LEVEL SECURITY;
 
 -- Critical for Next.js backend using SUPABASE_SERVICE_ROLE_KEY.
 -- Browser clients must not access sensitive tables directly with the anon key.
@@ -86,15 +103,25 @@ DROP POLICY IF EXISTS "Allow all on users" ON public.users;
 DROP POLICY IF EXISTS "Allow all on cv_history" ON public.cv_history;
 DROP POLICY IF EXISTS "MVP users access" ON public.users;
 DROP POLICY IF EXISTS "MVP cv_history access" ON public.cv_history;
+DROP POLICY IF EXISTS "payment_transactions service role access" ON public.payment_transactions;
 
 REVOKE ALL ON public.users FROM anon, authenticated;
 REVOKE ALL ON public.cv_history FROM anon, authenticated;
+REVOKE ALL ON public.payment_transactions FROM anon, authenticated;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 
 GRANT USAGE ON SCHEMA public TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.cv_history TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.payment_transactions TO service_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+CREATE POLICY "payment_transactions service role access"
+ON public.payment_transactions
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- SMOKE TESTS TO RUN AFTER MIGRATION
