@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
-import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription } from '@/lib/input-validation'
+import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
@@ -70,7 +70,7 @@ const analysisProgressSteps = [
   { pct: 52, label: 'Comparando tu CV base contra la vacante...' },
   { pct: 68, label: 'Detectando brechas y oportunidades transferibles...' },
   { pct: 82, label: 'Redactando propuesta optimizada sin inventar experiencia...' },
-  { pct: 94, label: 'Preparando diagnóstico, editor y descargas...' },
+  { pct: 94, label: 'Última parte: armando diagnóstico y descargas. Puede tardar hasta 1 minuto...' },
 ]
 
 const revisionProgressSteps = [
@@ -1007,7 +1007,9 @@ export default function SignupPage() {
                 className="w-full border border-slate-300 rounded-xl bg-white p-4 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 required
               />
-              <p className="text-xs text-slate-400 mt-1">El score se calcula cruzando tu CV real contra esta vacante específica.</p>
+              <p className={`text-xs mt-1 ${jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
+                {jobDescription.trim().length}/{MIN_JOB_DESCRIPTION_CHARS} caracteres mínimos. Pega título + responsabilidades + requisitos + skills; no basta con “Product designer”.
+              </p>
             </div>
 
             {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
@@ -1025,7 +1027,7 @@ export default function SignupPage() {
                   <div className="h-full rounded-full bg-purple-600 transition-all duration-700" style={{ width: `${analysisProgress}%` }} />
                 </div>
                 <p className="mt-3 text-xs leading-5 text-slate-500">
-                  No cierres ni recargues esta página. Guardamos el email y la vacante, pero por seguridad del navegador tendrías que volver a subir el archivo si recargas.
+                  Si llega a 94%, no está trabado: la IA sigue terminando el CV final. No cierres ni recargues esta página. Guardamos el email y la vacante, pero por seguridad del navegador tendrías que volver a subir el archivo si recargas.
                 </p>
               </section>
             )}
@@ -1164,7 +1166,7 @@ export default function SignupPage() {
 
             {renderDecisionGate(result, () => setClarificationModalOpen(true))}
 
-            <ResultAccordion title="Diagnóstico completo por categorías" summary="Ábrelo si quieres entender de dónde sale el score." defaultOpen={false}>
+            <ResultAccordion title="Ver desglose del score por categorías" summary="Opcional: muestra qué subió o bajó tu compatibilidad, por ejemplo skills, keywords, experiencia y riesgos." defaultOpen={false}>
               {renderMatchBreakdown(result.matchBreakdown)}
             </ResultAccordion>
 
@@ -1293,20 +1295,26 @@ export default function SignupPage() {
             {copySuccess && <p className="text-green-700 bg-green-50 border border-green-100 rounded-xl p-3 text-sm">{copySuccess}</p>}
             {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
 
-            <div className="grid md:grid-cols-3 gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="rounded-2xl border border-purple-200 bg-white p-4">
+              <div className="mb-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Último paso recomendado</p>
+                <h3 className="text-xl font-bold text-slate-950">Descarga tu CV adaptado</h3>
+                <p className="mt-1 text-sm text-slate-500">Elige un formato. Recomendado: PDF para enviar, Word si quieres editar y TXT para formularios ATS.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
               <button
                 onClick={() => downloadFile('pdf')}
                 disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold bg-slate-900 text-white hover:bg-slate-800 transition disabled:opacity-50"
+                className="py-3 rounded-full font-semibold bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50"
               >
-                {downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}
+                {downloadLoading === 'pdf' ? 'Generando PDF...' : 'Recomendado: descargar PDF'}
               </button>
               <button
                 onClick={() => downloadFile('docx')}
                 disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50"
+                className="py-3 rounded-full font-semibold border-2 border-purple-200 text-purple-700 hover:bg-purple-50 transition disabled:opacity-50"
               >
-                {downloadLoading === 'docx' ? 'Generando Word...' : 'Descargar Word DOCX'}
+                {downloadLoading === 'docx' ? 'Generando Word...' : 'Editar luego: Word DOCX'}
               </button>
               <button
                 onClick={() => downloadFile('txt')}
@@ -1321,6 +1329,7 @@ export default function SignupPage() {
               >
                 Copiar CV al portapapeles
               </button>
+            </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4">

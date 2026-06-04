@@ -55,7 +55,7 @@ const plans = [
     name: 'Básico',
     description: 'Para enfocar tus mejores oportunidades.',
     price: '$5',
-    unit: '5 análisis · $1 por CV',
+    unit: 'Pago único · 5 análisis · $1 por CV',
     popular: false,
     features: ['Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado en PDF / DOCX / TXT', 'Créditos sin vencimiento'],
   },
@@ -64,7 +64,7 @@ const plans = [
     name: 'Pro',
     description: 'Para comparar varias vacantes en serio.',
     price: '$12',
-    unit: '15 análisis · $0.80 por CV',
+    unit: 'Pago único · 15 análisis · $0.80 por CV',
     popular: true,
     features: ['Todo lo del plan Básico', 'Ideal para comparar oportunidades', 'Historial de análisis en tu panel', 'Prioriza a cuál aplicar primero', 'Créditos sin vencimiento'],
   },
@@ -73,7 +73,7 @@ const plans = [
     name: 'Premium',
     description: 'Para una búsqueda intensiva y constante.',
     price: '$19',
-    unit: '30 análisis · $0.63 por CV',
+    unit: 'Pago único · 30 análisis · $0.63 por CV',
     popular: false,
     features: ['Todo lo del plan Pro', 'El mejor costo por análisis', 'Historial completo en tu panel', 'Para quien aplica a diario', 'Créditos sin vencimiento'],
   },
@@ -374,6 +374,7 @@ export default function Home() {
               <div className="pd">{plan.description}</div>
               <div className="pp"><b>{plan.price}</b><span>USD</span></div>
               <div className="punit">{plan.unit}</div>
+              <div className="punit" style={{ color: 'var(--green)', fontWeight: 900 }}>No es mensual · no hay suscripción</div>
               <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
               <Link href={`/dashboard?intent=checkout&pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing', intent: 'checkout' })} className={`btn ${plan.popular ? 'btn-primary' : 'btn-ghost'} pcta`}>Comprar {plan.name}</Link>
             </div>)}

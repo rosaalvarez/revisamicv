@@ -29,7 +29,7 @@ function Field({ label, value, onChange, placeholder, highlight }: { label: stri
     <label className="block">
       <span className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-600">
         {label}
-        {highlight && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">Revisar</span>}
+        {highlight && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">Revisar dato</span>}
       </span>
       <input
         value={value || ''}
@@ -170,7 +170,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
               <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Datos básicos</p>
               <h4 className="font-bold text-slate-950">Confirma que la identidad y cargo objetivo estén correctos</h4>
             </div>
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Alta prioridad</span>
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Alta prioridad: revisa y edita si no es correcto</span>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Nombre" value={cv.candidateName || cv.name || ''} onChange={(value) => update(['candidateName'], value)} />

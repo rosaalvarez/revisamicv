@@ -56,7 +56,7 @@ export function validateJobDescription(jobDescription) {
   const text = String(jobDescription || '').trim()
   if (!text) return 'Pega la vacante completa para poder calcular compatibilidad.'
   if (text.length < MIN_JOB_DESCRIPTION_CHARS) {
-    return 'La vacante está muy corta. Pega responsabilidades, requisitos y skills para que el score sea útil.'
+    return `La vacante está muy corta (${text.length}/${MIN_JOB_DESCRIPTION_CHARS} caracteres). Pega al menos ${MIN_JOB_DESCRIPTION_CHARS} caracteres: responsabilidades, requisitos, skills y contexto del cargo.`
   }
   if (text.length > MAX_JOB_DESCRIPTION_CHARS) {
     return `La vacante es demasiado larga. Deja máximo ${MAX_JOB_DESCRIPTION_CHARS.toLocaleString()} caracteres.`

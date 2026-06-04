@@ -44,7 +44,7 @@ export default function PricingCard({ pack }: { pack: keyof typeof TOKEN_PACKS }
         <span className="mb-2 text-sm font-semibold text-[#64748d]">USD</span>
       </div>
       <p className="mb-7 rounded-md bg-white/70 px-3 py-2 text-sm font-semibold text-[#533afd]">
-        {p.cvCount} análisis incluidos
+        Pago único · {p.cvCount} análisis incluidos · sin suscripción
       </p>
 
       <ul className="mb-8 space-y-3">

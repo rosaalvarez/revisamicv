@@ -34,7 +34,7 @@ test('validates extracted CV text length', () => {
 
 test('validates job description length', () => {
   assert.equal(validateJobDescription(''), 'Pega la vacante completa para poder calcular compatibilidad.')
-  assert.equal(validateJobDescription('too short'), 'La vacante está muy corta. Pega responsabilidades, requisitos y skills para que el score sea útil.')
+  assert.match(validateJobDescription('too short'), /La vacante está muy corta \(9\/120 caracteres\).*Pega al menos 120 caracteres/)
   assert.equal(validateJobDescription('Product Manager '.repeat(20)), '')
 })
 
