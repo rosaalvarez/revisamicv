@@ -5,6 +5,7 @@ import { creditTokensForPaidCheckoutSession } from '@/lib/stripe-token-credit'
 import { normalizeEmail } from '@/lib/token-rules'
 import { createAuthToken } from '@/lib/auth-token'
 import { sendPurchaseConfirmedEmail } from '@/lib/email-service'
+import { isStripeSessionExpired, isValidStripeCheckoutSessionId } from '@/lib/stripe-session-validation'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,11 +18,18 @@ export async function POST(req: NextRequest) {
     const sessionId = String(session_id || '').trim()
     const expectedEmail = normalizeEmail(email || '')
 
-    if (!sessionId || !sessionId.startsWith('cs_')) {
+    if (!isValidStripeCheckoutSessionId(sessionId)) {
       return NextResponse.json({ error: 'invalid_session', message: 'No recibí una sesión de pago válida.' }, { status: 400 })
     }
 
     const session = await stripe.checkout.sessions.retrieve(sessionId)
+    if (isStripeSessionExpired(session, { maxAgeDays: 30 })) {
+      return NextResponse.json(
+        { error: 'session_expired', message: 'Esta sesión de pago ya expiró. Si pagaste y no recibiste créditos, escribe a soporte@revisamicv.lat.' },
+        { status: 410 }
+      )
+    }
+
     const sessionEmail = normalizeEmail(session.customer_email || session.customer_details?.email || session.metadata?.email || '')
 
     if (expectedEmail && sessionEmail && expectedEmail !== sessionEmail) {
