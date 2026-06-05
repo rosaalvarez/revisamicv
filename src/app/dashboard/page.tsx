@@ -102,7 +102,7 @@ export default function DashboardPage() {
       setSelectedPack(pack)
       trackEvent('dashboard_pack_prefilled', { pack, intent: intent || 'none' })
       setNotice(wantsCheckout
-        ? `Estás comprando el Pack ${PACKS[pack].name}. Escribe tu email y toca “Ir a pagar ahora”.`
+        ? `Estás comprando el Pack ${PACKS[pack].name}. Escribe tu email y toca “Ir a Stripe ahora”.`
         : `Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus créditos.`)
     }
 
