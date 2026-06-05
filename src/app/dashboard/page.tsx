@@ -1,9 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
-import { ArrowRightIcon, ChartBarIcon, CheckIcon, ClockIcon, DocumentIcon, DownloadIcon, ShieldCheckIcon, SparklesIcon, UserIcon } from '@/components/icons'
-import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL } from '@/components/LegalShell'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 import { trackEvent } from '@/lib/analytics'
 
@@ -31,34 +29,23 @@ const PACKS = TOKEN_PACKS as Record<string, {
   popular: boolean
 }>
 
-function StatusPill({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'purple' | 'slate' }) {
-  const styles = {
-    green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    purple: 'border-[rgba(245,128,10,.28)] bg-orange-50 text-[var(--color-primary-deep)]',
-    slate: 'border-slate-200 bg-white text-slate-600',
-  }
-  return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>{children}</span>
+function firstPackKey() {
+  return Object.keys(PACKS)[0] || ''
 }
 
-function TrustNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3">
-      <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-      <span>{children}</span>
-    </div>
-  )
+function preferredPackKey() {
+  return PACKS.pro ? 'pro' : firstPackKey()
 }
 
-function MiniMetric({ label, value, icon, dark = false }: { label: string; value: string | number; icon: React.ReactNode; dark?: boolean }) {
-  return (
-    <div className={`rounded-3xl border p-5 shadow-sm ${dark ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-950'}`}>
-      <div className="flex items-center justify-between gap-4">
-        <p className={`text-sm ${dark ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
-        <div className={`grid h-10 w-10 place-items-center rounded-2xl ${dark ? 'bg-white/10 text-[var(--color-primary)]' : 'bg-orange-50 text-[var(--color-primary-deep)]'}`}>{icon}</div>
-      </div>
-      <p className={`mt-3 text-4xl font-semibold tracking-tight ${dark ? 'text-[var(--color-primary)]' : 'text-slate-950'}`}>{value}</p>
-    </div>
-  )
+function scoreChipClass(score: number) {
+  if (score >= 85) return 'bg-[rgba(47,125,82,.14)] text-[var(--color-seen)]'
+  if (score >= 70) return 'bg-[rgba(245,128,10,.16)] text-[var(--color-primary-deep)]'
+  return 'bg-[rgba(140,134,122,.18)] text-[var(--color-silence)]'
+}
+
+function pricePerCv(price: number, count: number) {
+  if (!count) return ''
+  return `$${(price / count).toFixed(2).replace('.00', '')} por CV`
 }
 
 export default function DashboardPage() {
@@ -70,18 +57,12 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedPack, setSelectedPack] = useState<string>('')
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [checkoutIntent, setCheckoutIntent] = useState(false)
   const [authToken, setAuthToken] = useState('')
   const [linkSent, setLinkSent] = useState(false)
 
-  const usedAnalyses = history.length
   const selectedPackDetails = selectedPack ? PACKS[selectedPack] : null
-  const accountStatus = useMemo(() => {
-    if (!user) return 'Ingresa tu email para ver tu cuenta'
-    if (user.tokens > 0) return 'Lista para analizar vacantes'
-    if (user.has_free_cv) return 'Tienes un análisis gratis disponible'
-    return 'Sin créditos disponibles'
-  }, [user])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -95,14 +76,15 @@ export default function DashboardPage() {
     const pack = params.get('pack') || ''
     const intent = params.get('intent')
     const wantsCheckout = intent === 'checkout' && Boolean(pack && PACKS[pack])
+
     setCheckoutIntent(wantsCheckout)
     trackEvent('dashboard_view', { payment: payment || 'none', pack: pack || 'none', intent: intent || 'none' })
 
     if (pack && PACKS[pack]) {
       setSelectedPack(pack)
-      trackEvent('dashboard_pack_prefilled', { pack, intent: intent || 'none' })
+      if (wantsCheckout) setCheckoutOpen(true)
       setNotice(wantsCheckout
-        ? `Estás comprando el Pack ${PACKS[pack].name}. Escribe tu email y toca “Ir a Stripe ahora”.`
+        ? `Estás comprando el Pack ${PACKS[pack].name}. Escribe tu email y confirma el pago.`
         : `Pack ${PACKS[pack].name} seleccionado. Usa el email donde quieres recibir y guardar tus créditos.`)
     }
 
@@ -192,13 +174,13 @@ export default function DashboardPage() {
       window.localStorage.setItem('revisamicv_email', normalizedEmail)
       window.localStorage.setItem('revisamicv_auth_token', tokenToUse)
       setAuthToken(tokenToUse)
+      setUser(userData)
+      setHistory(historyData.history || [])
       trackEvent('dashboard_account_loaded', {
         tokens: typeof userData.tokens === 'number' ? userData.tokens : -1,
         has_free_cv: Boolean(userData.has_free_cv),
         history_count: Array.isArray(historyData.history) ? historyData.history.length : 0,
       })
-      setUser(userData)
-      setHistory(historyData.history || [])
     } catch (err: any) {
       trackEvent('dashboard_account_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude cargar tu cuenta'))
@@ -227,18 +209,18 @@ export default function DashboardPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
-      trackEvent('payment_recovery_completed', {
-        pack: data.pack || 'unknown',
-        value: data.purchase_value,
-        currency: data.currency || 'USD',
-        transaction_id: data.transaction_id,
-      })
       if (data.auth_token) {
         setAuthToken(data.auth_token)
         window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
       }
       setNotice(data.message || 'Pago confirmado. Créditos acreditados.')
       await checkAccount(data.email || normalizedEmail, data.auth_token || authToken)
+      trackEvent('payment_recovery_completed', {
+        pack: data.pack || 'unknown',
+        value: data.purchase_value,
+        currency: data.currency || 'USD',
+        transaction_id: data.transaction_id,
+      })
     } catch (err: any) {
       trackEvent('payment_recovery_failed', { message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude confirmar el pago'))
@@ -251,7 +233,7 @@ export default function DashboardPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (checkoutIntent && selectedPack) {
-      await handleBuy(selectedPack)
+      setCheckoutOpen(true)
       return
     }
     await checkAccount(email)
@@ -266,6 +248,7 @@ export default function DashboardPage() {
     trackEvent('checkout_started', { pack })
     setError('')
     setNotice('Abriendo checkout seguro de Stripe...')
+    setLoading(true)
 
     try {
       const normalizedEmail = email.trim().toLowerCase()
@@ -281,6 +264,8 @@ export default function DashboardPage() {
     } catch (err: any) {
       trackEvent('checkout_failed', { pack, message: String(err.message || '').slice(0, 80) })
       setError(getFriendlyApiError(err.message, 'No pude iniciar el pago'))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -322,273 +307,165 @@ export default function DashboardPage() {
     }
   }
 
-  const purchaseSection = (
-    <section id="comprar" className={`rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm ${checkoutIntent ? 'mb-6 ring-2 ring-emerald-300' : ''}`}>
-      <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Créditos</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-            {checkoutIntent ? 'Elige el pack y paga directo con Stripe' : 'Compra más análisis cuando compares más vacantes'}
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">Un crédito = un CV comparado contra una vacante. Los créditos quedan guardados en tu email.</p>
-          {!email.trim() && <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">Primero escribe tu email arriba para asociar la compra a tu cuenta.</p>}
-        </div>
-        <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
-      </div>
+  const openCheckout = (pack: string) => {
+    setSelectedPack(pack)
+    setCheckoutOpen(true)
+    trackEvent('dashboard_checkout_modal_opened', { pack })
+  }
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {Object.entries(PACKS).map(([pack, p]) => (
-          <button
-            key={pack}
-            onClick={() => {
-              setSelectedPack(pack)
-              handleBuy(pack)
-            }}
-            className={`group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${
-              selectedPack === pack
-                ? 'border-emerald-400 bg-emerald-50'
-                : p.popular ? 'border-[var(--color-primary)] bg-orange-50' : 'border-slate-200 bg-white'
-            }`}
-          >
-            {p.popular && <span className="mb-4 inline-flex rounded-full bg-[var(--color-primary)] px-3 py-1 text-xs font-bold text-[var(--color-ink)]">MEJOR VALOR</span>}
-            <p className="text-lg font-semibold text-slate-950">{p.name}</p>
-            <div className="my-3 flex items-end gap-2">
-              <p className="text-4xl font-semibold tracking-tight text-slate-950">${p.priceUSD}</p>
-              <p className="pb-1 text-sm text-slate-500">USD</p>
-            </div>
-            <p className="font-semibold text-[var(--color-primary-deep)]">{p.cvCount} análisis</p>
-            <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
-            <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm">
-              Comprar ahora <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
-            </div>
-          </button>
-        ))}
-      </div>
-    </section>
-  )
+  const packEntries = Object.entries(PACKS)
 
   return (
     <main className="dashboard-redesign min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)]">
-      <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,#ede9fe,transparent_32%),radial-gradient(circle_at_top_right,#dbeafe,transparent_28%)]" />
-      <div className="relative mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-        <header className="mb-8 flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
-          <a href="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-[11px] bg-[var(--color-primary)] text-lg font-bold text-white shadow-[var(--shadow-cta)]">R</div>
-            <div>
-              <p className="font-semibold tracking-tight text-slate-950">RevisaMiCV</p>
-              <p className="text-xs text-slate-500">Centro de aplicaciones</p>
-            </div>
+      <nav className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[rgba(251,248,242,.9)] backdrop-blur-xl">
+        <div className="mx-auto flex h-[62px] max-w-[1000px] items-center justify-between px-5">
+          <a href="/" className="flex items-center gap-2 font-display text-lg font-semibold text-[var(--color-ink)]">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">R</span>
+            RevisaMiCV
           </a>
-          <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
-            <a href="/analizar" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
-            <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
-            <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar créditos</a>
-            <a href="/soporte" className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
-          </nav>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)]">
+              Créditos: <b className="text-[var(--color-secondary-deep)]">{user ? `${user.tokens} análisis` : '—'}</b>
+            </span>
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-block)] text-xs font-bold text-white">
+              {(user?.email || email || 'A').trim().charAt(0).toUpperCase() || 'A'}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="mx-auto max-w-[1000px] px-5">
+        <header className="flex flex-col gap-5 py-10 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-secondary-deep)]">Mi panel</p>
+            <h1 className="mt-2 font-display text-4xl font-semibold text-[var(--color-ink)] md:text-[2.3rem]">Hola de nuevo{user?.email ? `, ${user.email.split('@')[0]}` : ''}.</h1>
+          </div>
+          <a href="/analizar" className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-[var(--color-ink)] shadow-[0_14px_38px_-12px_rgba(245,128,10,.55)] transition hover:-translate-y-0.5">
+            Analizar nueva vacante →
+          </a>
         </header>
 
-        <section className={`mb-6 grid gap-6 ${checkoutIntent ? 'lg:grid-cols-1' : 'lg:grid-cols-[1.25fr_0.75fr]'}`}>
-          <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-xl shadow-slate-200">
-            <div className="relative p-6 md:p-8">
-              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-[rgba(245,128,10,.30)] blur-3xl" />
-              <div className="relative z-10">
-                <StatusPill tone={checkoutIntent ? 'purple' : user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{checkoutIntent && selectedPackDetails ? `Comprar Pack ${selectedPackDetails.name}` : accountStatus}</StatusPill>
-                <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                  {checkoutIntent && selectedPackDetails
-                    ? `Estás comprando ${selectedPackDetails.cvCount} análisis por $${selectedPackDetails.priceUSD} USD.`
-                    : 'Consulta tus créditos, CVs e historial con enlace seguro.'}
-                </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-                  {checkoutIntent && selectedPackDetails
-                    ? 'Solo necesitamos el email donde quieres guardar tus créditos. Después te llevamos directo a Stripe para pagar.'
-                    : 'Ingresa el email que usaste en tu análisis gratis o en Stripe. Te enviaremos un enlace mágico para entrar sin contraseña y recuperar tus créditos, CVs generados e historial.'}
-                </p>
-
-                <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                  <p className="px-2 pb-3 text-sm leading-6 text-[#CFE3DE]">
-                    {checkoutIntent && selectedPackDetails
-                      ? `Pack ${selectedPackDetails.name}: ${selectedPackDetails.cvCount} análisis. Usa el email donde quieres recibir y guardar tus créditos.`
-                      : 'Usa el mismo email con el que analizaste gratis o compraste créditos en Stripe. Ahí quedan guardados tus créditos e historial.'}
-                  </p>
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:flex-row">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      const nextEmail = e.target.value
-                      setEmail(nextEmail)
-                      if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
-                    }}
-                    placeholder="tu@email.com"
-                    className="min-h-12 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-orange-200"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => checkoutIntent && selectedPack ? handleBuy(selectedPack) : checkAccount(email)}
-                    disabled={loading}
-                    className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50 disabled:opacity-60"
-                  >
-                    {loading ? 'Cargando...' : checkoutIntent ? 'Ir a Stripe ahora' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
-                  </button>
-                  {!checkoutIntent && (
-                    <a
-                      href="/analizar"
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--color-primary)] px-5 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white"
-                    >
-                      Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
-                    </a>
-                  )}
-                  </form>
-                </div>
-
-                {notice && <p className="mt-4 rounded-2xl border border-orange-200/30 bg-orange-400/10 p-3 text-sm text-[#CFE3DE]">{notice}</p>}
-                {linkSent && <p className="mt-2 text-xs leading-5 text-[#CFE3DE]/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
-                {error && <p className="mt-4 rounded-2xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
-              </div>
+        <section className="rounded-[18px] bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[0_24px_60px_-30px_rgba(14,63,58,.6)]">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-baseline gap-4">
+              <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user ? user.tokens : '—'}</div>
+              <div className="text-sm text-[#CFE3DE]">análisis<b className="block font-display text-lg font-semibold text-white">disponibles</b></div>
             </div>
+            <p className="max-w-xs text-sm text-[#8FA9A4]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
+            <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-white">Comprar más créditos</button>
           </div>
 
-          {!checkoutIntent && <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Estado de cuenta</p>
-                <p className="mt-1 break-all text-lg font-semibold text-slate-950">{user?.email || 'Ingresa tu email'}</p>
-              </div>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-[var(--color-primary-deep)]"><UserIcon className="h-5 w-5" /></div>
-            </div>
-            <div className="mt-6 space-y-3 text-sm text-slate-600">
-              <TrustNote>Tu cuenta se recupera con un enlace seguro enviado a tu email. No necesitas contraseña.</TrustNote>
-              <TrustNote>Stripe confirma pagos y la app recupera tus créditos al volver del checkout.</TrustNote>
-              <TrustNote>No vendemos tu CV ni inventamos experiencia: optimizamos lo que sí existe.</TrustNote>
-              <TrustNote>Tus CVs quedan en historial para descargarlos otra vez sin gastar otro análisis.</TrustNote>
-            </div>
-            <div className="mt-6 rounded-3xl bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
-              <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-deep)] hover:text-white">Enviar email a soporte</a>
-            </div>
-          </aside>}
+          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-[1fr_auto_auto]">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                const nextEmail = e.target.value
+                setEmail(nextEmail)
+                if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
+              }}
+              placeholder="tu@email.com"
+              className="min-h-12 rounded-xl border border-white/10 bg-white px-4 text-sm text-[var(--color-ink)] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-orange-200"
+              required
+            />
+            <button type="submit" disabled={loading} className="min-h-12 rounded-xl border border-white/10 bg-white px-5 text-sm font-bold text-[var(--color-ink)] transition hover:bg-orange-50 disabled:opacity-60">
+              {loading ? 'Cargando...' : authToken ? 'Actualizar panel' : 'Enviar enlace seguro'}
+            </button>
+            {checkoutIntent && selectedPack && (
+              <button type="button" onClick={() => openCheckout(selectedPack)} className="min-h-12 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-ink)]">Confirmar compra</button>
+            )}
+          </form>
+          {notice && <p className="mt-4 rounded-xl border border-white/10 bg-white/10 p-3 text-sm text-[#CFE3DE]">{notice}</p>}
+          {linkSent && <p className="mt-2 text-xs leading-5 text-[#CFE3DE]/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
+          {error && <p className="mt-4 rounded-xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
         </section>
 
-        {checkoutIntent && purchaseSection}
-
-        {checkoutIntent && (
-          <section className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
-            <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-deep)] hover:text-white">Enviar email a soporte</a>
-          </section>
-        )}
-
-        {!checkoutIntent && !user && (
-          <section className="mb-6 grid gap-4 md:grid-cols-3">
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-950">1 análisis = 1 vacante</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Cada análisis compara tu CV contra una vacante concreta y genera descargas PDF, DOCX y TXT.</p>
-            </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-950">Pago seguro con Stripe</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">No guardamos tu tarjeta. Los créditos se asocian al email de compra.</p>
-            </div>
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-semibold text-slate-950">Privacidad primero</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Puedes revisar privacidad, términos y solicitar eliminación de datos desde soporte.</p>
-            </div>
-          </section>
-        )}
-
-        <div className="space-y-8">
-            {user && (
-              <section className="grid gap-4 md:grid-cols-3">
-              <MiniMetric label="Créditos disponibles" value={user.tokens} icon={<SparklesIcon className="h-5 w-5" />} dark />
-              <MiniMetric label="Análisis realizados" value={usedAnalyses} icon={<ChartBarIcon className="h-5 w-5" />} />
-              <MiniMetric label="CV gratis" value={user.has_free_cv ? 'Activo' : 'Usado'} icon={<ShieldCheckIcon className="h-5 w-5" />} />
-            </section>
-            )}
-
-            <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Siguiente paso</p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Analiza otra vacante real antes de aplicar</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">Cada crédito compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
-                <a href="/analizar" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-deep)] hover:text-white md:w-auto">
-                  Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
-                </a>
-                <div className="mt-6 grid gap-3 text-sm text-slate-600">
-                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">1.</span> Sube CV PDF/DOCX/TXT</div>
-                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">2.</span> Pega la vacante completa</div>
-                  <div className="rounded-2xl border border-slate-200 p-4"><span className="font-semibold text-slate-900">3.</span> Recibe score, brechas y CV adaptado</div>
-                </div>
+        <section id="historial" className="pt-10">
+          <div className="mb-5 flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Tus análisis</h2>
+            <a href="#historial" className="text-sm font-semibold text-[var(--color-primary-deep)]">Ver todos</a>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-[var(--color-line)] bg-white">
+            {!user ? (
+              <div className="p-8 text-center">
+                <p className="font-semibold text-[var(--color-ink)]">Para ver tus análisis necesitas entrar con enlace seguro.</p>
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Escribe tu email arriba. Así protegemos tus CVs y créditos.</p>
               </div>
-
-              <section id="historial" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Historial de análisis</h2>
-                    <p className="mt-1 text-sm text-slate-500">Recupera resultados anteriores sin volver a gastar créditos.</p>
+            ) : history.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="font-semibold text-[var(--color-ink)]">Todavía no tienes CVs generados.</p>
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Cuando hagas tu primer análisis, aparecerá aquí para descargarlo otra vez.</p>
+              </div>
+            ) : (
+              history.map((item) => {
+                const score = item.compatibility_score ?? 0
+                return (
+                  <div key={item.id} className="grid gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-b-0 md:grid-cols-[1fr_auto_auto] md:items-center">
+                    <div className="font-semibold text-[var(--color-ink)]">
+                      {item.job_preview?.split('\n')[0]?.slice(0, 90) || 'Vacante analizada'}
+                      <span className="mt-1 block text-xs font-normal text-[var(--color-ink-soft)]">{item.output_language === 'english' ? 'English' : 'Español'} · {new Date(item.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className={`w-fit rounded-full px-3 py-1 font-display text-base font-bold ${scoreChipClass(score)}`}>{item.compatibility_score ?? '—'}</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => handleDownloadPdf(item)} disabled={pdfLoadingId === item.id} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] disabled:opacity-50">{pdfLoadingId === item.id ? 'Generando...' : 'Descargar'}</button>
+                      <a href="/analizar" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)]">Reusar</a>
+                    </div>
                   </div>
-                  <StatusPill tone="purple">{history.length} guardado{history.length === 1 ? '' : 's'}</StatusPill>
-                </div>
-
-                {!user ? (
-                  <div className="rounded-3xl border border-dashed border-orange-200 bg-orange-50 p-8 text-center">
-                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-[var(--color-primary)]" />
-                    <p className="font-semibold text-slate-950">Para ver historial necesitas entrar con enlace seguro</p>
-                    <p className="mt-1 text-sm text-slate-500">Escribe tu email arriba y toca “Enviar enlace”. Así protegemos tus CVs y créditos.</p>
-                  </div>
-                ) : history.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-slate-400" />
-                    <p className="font-semibold text-slate-950">Todavía no tienes CVs generados</p>
-                    <p className="mt-1 text-sm text-slate-500">Cuando hagas tu primer análisis, aparecerá aquí para descargarlo otra vez.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {history.map((item) => (
-                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-[var(--color-primary-deep)]">
-                            <DocumentIcon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="mb-1 flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-slate-950">Score: {item.compatibility_score ?? '—'}/100</span>
-                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                                {item.output_language === 'english' ? 'English' : 'Español'}
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-xs text-slate-400"><ClockIcon className="h-3 w-3" />{new Date(item.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <p className="line-clamp-2 text-sm text-slate-600">{item.job_preview || 'Vacante sin preview'}</p>
-                          </div>
-                          <button
-                            onClick={() => handleDownloadPdf(item)}
-                            disabled={pdfLoadingId === item.id}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
-                          >
-                            <DownloadIcon className="h-4 w-4" /> {pdfLoadingId === item.id ? 'Generando...' : 'Descargar'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </section>
-
-            {!checkoutIntent && purchaseSection}
+                )
+              })
+            )}
           </div>
-        <footer className="mt-10 rounded-[2rem] border border-slate-200 bg-white/80 p-5 text-sm text-slate-600 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p>RevisaMiCV — CVs adaptados a vacantes reales, sin inventar experiencia.</p>
-            <div className="flex flex-wrap gap-3 font-medium">
-              <a href="/privacidad" className="hover:text-[var(--color-primary-deep)]">Privacidad</a>
-              <a href="/terminos" className="hover:text-[var(--color-primary-deep)]">Términos</a>
-              <a href="/soporte" className="hover:text-[var(--color-primary-deep)]">Soporte</a>
+        </section>
+
+        <section id="comprar" className="pt-10">
+          <div className="mb-5 flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Comprar créditos</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {packEntries.map(([pack, p]) => (
+              <div key={pack} className={`relative flex flex-col rounded-2xl border bg-white p-6 ${p.popular ? 'border-[var(--color-primary)] shadow-[0_22px_56px_-28px_rgba(245,128,10,.5)]' : 'border-[var(--color-line)]'}`}>
+                {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink)]">Más elegido</span>}
+                <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{p.name}</h3>
+                <p className="mt-2 font-display text-4xl font-bold text-[var(--color-ink)]">${p.priceUSD}<small className="ml-1 text-sm font-medium text-[var(--color-ink-soft)]">USD</small></p>
+                <p className="mb-5 mt-1 text-sm text-[var(--color-ink-soft)]">{p.cvCount} análisis · {pricePerCv(p.priceUSD, p.cvCount)}</p>
+                <button type="button" onClick={() => openCheckout(pack)} className={`mt-auto rounded-xl px-4 py-3 text-sm font-bold ${p.popular ? 'bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border border-[var(--color-ink)] text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]'}`}>
+                  Comprar {p.name}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <p className="py-8 text-center text-sm text-[var(--color-ink-soft)]">Pago único, sin suscripción. Tus créditos no vencen.</p>
+      </div>
+
+      {checkoutOpen && selectedPackDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(15,20,15,.62)] px-5 py-8 backdrop-blur-sm" onClick={() => setCheckoutOpen(false)}>
+          <div className="my-auto w-full max-w-[460px] overflow-hidden rounded-[18px] bg-white shadow-[0_40px_90px_-30px_rgba(0,0,0,.55)]" onClick={(e) => e.stopPropagation()}>
+            <div className="relative px-6 pt-6">
+              <button type="button" onClick={() => setCheckoutOpen(false)} className="absolute right-5 top-5 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink-soft)]">Cerrar</button>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-secondary-deep)]">Confirmar compra</p>
+              <h3 className="mt-2 font-display text-2xl font-semibold text-[var(--color-ink)]">Plan {selectedPackDetails.name}</h3>
+            </div>
+            <div className="m-6 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-5">
+              <div className="flex justify-between py-1 text-sm"><span>{selectedPackDetails.cvCount} análisis</span><span>{pricePerCv(selectedPackDetails.priceUSD, selectedPackDetails.cvCount)}</span></div>
+              <div className="flex justify-between py-1 text-sm"><span>Vigencia</span><span>Sin vencimiento</span></div>
+              <div className="mt-2 flex justify-between border-t border-[var(--color-line)] pt-3 text-base font-bold"><span>Total hoy</span><b className="font-display text-xl">${selectedPackDetails.priceUSD} USD</b></div>
+            </div>
+            <ul className="mx-6 mb-5 space-y-2 text-sm text-[var(--color-ink-soft)]">
+              <li>✓ Pago único, sin suscripción ni cobros mensuales.</li>
+              <li>✓ Los créditos quedan en tu cuenta y no vencen.</li>
+              <li>✓ Stripe procesa el pago de forma segura. No guardamos tu tarjeta.</li>
+            </ul>
+            <div className="px-6 pb-6">
+              <button type="button" onClick={() => handleBuy(selectedPack)} disabled={loading} className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-4 text-base font-bold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(245,128,10,.5)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-60">
+                {loading ? 'Abriendo Stripe...' : `Pagar $${selectedPackDetails.priceUSD} USD con Stripe →`}
+              </button>
+              <p className="mt-3 text-center text-xs text-[var(--color-ink-soft)]">Te llevamos a Stripe para completar el pago de forma segura.</p>
             </div>
           </div>
-        </footer>
-      </div>
+        </div>
+      )}
     </main>
   )
 }
