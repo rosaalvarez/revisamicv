@@ -1,6 +1,6 @@
 import Script from 'next/script'
 
-const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim()
+const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || '1725686211947690'
 
 export default function MetaPixelTag() {
   if (!metaPixelId) return null
