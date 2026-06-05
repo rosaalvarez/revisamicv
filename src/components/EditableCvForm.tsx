@@ -35,7 +35,7 @@ function Field({ label, value, onChange, placeholder, highlight }: { label: stri
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full rounded-xl border bg-white p-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 ${highlight ? 'border-amber-300 focus:ring-amber-400' : 'border-slate-300 focus:ring-purple-500'}`}
+        className={`w-full rounded-xl border bg-white p-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 ${highlight ? 'border-amber-300 focus:ring-amber-400' : 'border-slate-300 focus:ring-[var(--color-primary)]'}`}
       />
     </label>
   )
@@ -46,13 +46,13 @@ function TextArea({ label, value, onChange, rows = 4, helper, highlight }: { lab
     <label className="block">
       <span className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-600">
         {label}
-        {highlight && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] text-purple-700">Optimizado</span>}
+        {highlight && <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] text-[var(--color-primary-deep)]">Optimizado</span>}
       </span>
       <textarea
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
-        className={`w-full rounded-xl border bg-white p-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 ${highlight ? 'border-purple-300 focus:ring-purple-500' : 'border-slate-300 focus:ring-purple-500'}`}
+        className={`w-full rounded-xl border bg-white p-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 ${highlight ? 'border-[var(--color-primary)] focus:ring-[var(--color-primary)]' : 'border-slate-300 focus:ring-[var(--color-primary)]'}`}
       />
       {helper && <span className="mt-1 block text-xs text-slate-400">{helper}</span>}
     </label>
@@ -61,7 +61,7 @@ function TextArea({ label, value, onChange, rows = 4, helper, highlight }: { lab
 
 function SuggestionCard({ title, body, tone = 'purple' }: { title: string; body: string; tone?: 'purple' | 'amber' | 'green' }) {
   const style = {
-    purple: 'border-purple-200 bg-purple-50 text-purple-900',
+    purple: 'border-orange-200 bg-orange-50 text-[var(--color-primary-deep)]',
     amber: 'border-amber-200 bg-amber-50 text-amber-900',
     green: 'border-emerald-200 bg-emerald-50 text-emerald-900',
   }[tone]
@@ -101,9 +101,9 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
   const topHonestyWarnings = honestyWarnings.slice(0, 2)
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-purple-200 bg-white shadow-sm">
-      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-purple-950 p-6 text-white">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-purple-200">Propuesta optimizada</p>
+    <section className="overflow-hidden rounded-3xl border border-[var(--color-line)] bg-white shadow-sm">
+      <div className="bg-[var(--color-block)] p-6 text-white">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">Propuesta optimizada</p>
         <div className="mt-3 grid gap-5 md:grid-cols-[1.3fr_0.7fr] md:items-end">
           <div>
             <h3 className="text-2xl font-bold tracking-tight">Esta es la versión que RevisaMiCV propone para aplicar.</h3>
@@ -119,7 +119,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
               </div>
               <div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-slate-400" style={{ width: `${baseScore}%` }} /></div>
               <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-                <span className="text-purple-100">Con RevisaMiCV</span>
+                <span className="text-[#CFE3DE]">Con RevisaMiCV</span>
                 <span className="font-bold text-emerald-300">{optimizedScore}/100</span>
               </div>
               <div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${optimizedScore}%` }} /></div>
@@ -128,7 +128,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
         </div>
       </div>
 
-      <div className="space-y-6 bg-purple-50/50 p-5">
+      <div className="space-y-6 bg-[var(--color-paper-2)] p-5">
         <div className="grid gap-3 md:grid-cols-3">
           <SuggestionCard title="1. Acepta la propuesta" body="Si todo se ve correcto, baja el PDF/DOCX. No tienes que editar todo." tone="green" />
           <SuggestionCard title="2. Corrige datos reales" body="Revisa teléfono, ciudad, fechas, certificaciones y enlaces antes de enviar." tone="amber" />
@@ -136,7 +136,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
         </div>
 
         {(topGaps.length > 0 || topKeywords.length > 0 || topHonestyWarnings.length > 0) && (
-          <div className="grid gap-4 rounded-3xl border border-purple-100 bg-white p-4 md:grid-cols-3">
+          <div className="grid gap-4 rounded-3xl border border-[var(--color-line)] bg-white p-4 md:grid-cols-3">
             {topGaps.length > 0 && (
               <div>
                 <p className="text-sm font-bold text-slate-950">Revisa antes de aplicar</p>
@@ -149,7 +149,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
               <div>
                 <p className="text-sm font-bold text-slate-950">Keywords recomendadas</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {topKeywords.map((item, index) => <span key={index} className="rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700">{item}</span>)}
+                  {topKeywords.map((item, index) => <span key={index} className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-[var(--color-primary-deep)]">{item}</span>)}
                 </div>
               </div>
             )}
@@ -164,10 +164,10 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
           </div>
         )}
 
-        <div className="rounded-3xl border border-purple-100 bg-white p-4">
+        <div className="rounded-3xl border border-[var(--color-line)] bg-white p-4">
           <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Datos básicos</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Datos básicos</p>
               <h4 className="font-bold text-slate-950">Confirma que la identidad y cargo objetivo estén correctos</h4>
             </div>
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Alta prioridad: revisa y edita si no es correcto</span>
@@ -208,7 +208,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
         {Array.isArray(cv.experience) && cv.experience.length > 0 && (
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-purple-700">Experiencia adaptada</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Experiencia adaptada</p>
               <h4 className="font-bold text-slate-900">Revisa fechas, stack y logros antes de enviar</h4>
               <p className="mt-1 text-sm text-slate-500">Los logros ya están reescritos para esta vacante. Cambia solo lo que no sea cierto o esté incompleto.</p>
             </div>
@@ -216,7 +216,7 @@ export default function EditableCvForm({ cv, onChange, score, gaps = [], keyword
               <div key={index} className="rounded-3xl bg-white border border-slate-200 p-4 space-y-3">
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <p className="font-bold text-slate-950">{role.title || `Experiencia ${index + 1}`}</p>
-                  <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">Optimizada</span>
+                  <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-[var(--color-primary-deep)]">Optimizada</span>
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                   <Field label="Cargo" value={role.title || ''} onChange={(value) => updateExperience(index, 'title', value)} />

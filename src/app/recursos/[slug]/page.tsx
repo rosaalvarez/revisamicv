@@ -110,35 +110,46 @@ export default async function ResourcePage({ params }: { params: Promise<{ slug:
   }
 
   return (
-    <main className="resource-page">
+    <main className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)]">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }} />
-      <div className="shell">
-        <Link href="/" className="brand"><span>R</span> RevisaMiCV</Link>
-        <article>
-          <p className="eyebrow">{resource.eyebrow}</p>
-          <h1>{resource.title}</h1>
-          <p className="intro">{resource.intro}</p>
-          <Link href="/analizar" className="cta">Analizar mi CV gratis →</Link>
-          {resource.sections.map((section) => (
-            <section key={section.heading}>
-              <h2>{section.heading}</h2>
-              {section.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            </section>
-          ))}
-          <section className="checklist">
-            <h2>Checklist rápido antes de aplicar</h2>
-            <ul>{resource.checklist.map((item) => <li key={item}>{item}</li>)}</ul>
+      <div className="mx-auto max-w-4xl px-5 py-10 md:py-12">
+        <nav className="mb-10 flex items-center justify-between border-b border-[var(--color-line)] pb-6">
+          <Link href="/" className="flex items-center gap-3 font-display text-lg font-semibold">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--color-primary)] text-sm font-bold text-white">R</span>
+            RevisaMiCV
+          </Link>
+          <Link href="/analizar" className="rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white">Analizar gratis</Link>
+        </nav>
+
+        <article className="rounded-3xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-secondary-deep)]">{resource.eyebrow}</p>
+          <h1 className="mt-4 font-display text-4xl font-semibold leading-tight tracking-tight md:text-6xl">{resource.title}</h1>
+          <p className="mt-6 text-xl leading-8 text-[var(--color-ink-soft)]">{resource.intro}</p>
+          <Link href="/analizar" className="mt-8 inline-flex rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-[var(--color-ink)] shadow-[var(--shadow-cta)] transition hover:bg-[var(--color-primary-deep)] hover:text-white">Analizar mi CV gratis →</Link>
+
+          <div className="mt-10 space-y-10">
+            {resource.sections.map((section) => (
+              <section key={section.heading} className="border-t border-[var(--color-line)] pt-8">
+                <h2 className="font-display text-3xl font-semibold">{section.heading}</h2>
+                {section.body.map((paragraph) => <p key={paragraph} className="mt-3 text-lg leading-8 text-[var(--color-ink-soft)]">{paragraph}</p>)}
+              </section>
+            ))}
+          </div>
+
+          <section className="mt-10 rounded-3xl border border-[rgba(15,181,160,.28)] bg-[rgba(15,181,160,.10)] p-6">
+            <h2 className="font-display text-3xl font-semibold">Checklist rápido antes de aplicar</h2>
+            <ul className="mt-4 space-y-3 text-lg text-[var(--color-ink-soft)]">
+              {resource.checklist.map((item) => <li key={item} className="flex gap-3"><span className="font-bold text-[var(--color-seen)]">✓</span>{item}</li>)}
+            </ul>
           </section>
-          <div className="final-card">
-            <h2>¿Quieres hacerlo con una vacante real?</h2>
-            <p>Sube tu CV, pega la vacante y recibe score, brechas, keywords y una versión adaptada descargable.</p>
-            <Link href="/analizar" className="cta">Probar primer análisis gratis</Link>
+
+          <div className="mt-10 rounded-3xl bg-[var(--color-block)] p-7 text-[var(--color-paper)] md:p-8">
+            <h2 className="font-display text-3xl font-semibold text-white">¿Quieres hacerlo con una vacante real?</h2>
+            <p className="mt-3 text-lg leading-8 text-[#CFE3DE]">Sube tu CV, pega la vacante y recibe score, brechas, keywords y una versión adaptada descargable.</p>
+            <Link href="/analizar" className="mt-5 inline-flex rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white">Probar primer análisis gratis</Link>
           </div>
         </article>
       </div>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .resource-page{min-height:100vh;background:#0e0a14;color:#f3f0f7;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:860px;margin:0 auto;padding:38px 22px 70px}.brand{display:inline-flex;align-items:center;gap:10px;color:#f3f0f7;text-decoration:none;font-weight:800;margin-bottom:52px}.brand span{width:34px;height:34px;border-radius:11px;background:#b24aed;display:grid;place-items:center}article{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.10);border-radius:28px;padding:38px;box-shadow:0 30px 100px rgba(0,0,0,.35)}.eyebrow{color:#cf9bff;text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:800}h1{font-size:clamp(34px,6vw,58px);line-height:1.02;margin:12px 0 18px}h2{font-size:28px;margin:42px 0 12px}.intro,p,li{color:#c9c2d6;font-size:18px;line-height:1.7}.intro{font-size:21px}.cta{display:inline-flex;margin:18px 0 12px;background:#b24aed;color:white;text-decoration:none;font-weight:800;border-radius:999px;padding:14px 20px}.checklist{background:rgba(178,74,237,.10);border:1px solid rgba(178,74,237,.28);border-radius:22px;padding:24px;margin-top:36px}.checklist h2{margin-top:0}.checklist li{margin:10px 0}.final-card{margin-top:36px;background:#f3f0f7;color:#160f20;border-radius:24px;padding:28px}.final-card p{color:#4b4258}.final-card .cta{color:#fff}@media(max-width:640px){article{padding:26px}.shell{padding-inline:16px}}
-      ` }} />
     </main>
   )
 }

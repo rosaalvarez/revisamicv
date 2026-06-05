@@ -315,8 +315,8 @@ function renderActionPlan(result: ProcessResult) {
       <h3 className="text-xl font-bold text-slate-950 mt-1">Qué hacer antes de aplicar</h3>
       <div className="mt-4 grid gap-3">
         {actions.map((action, index) => (
-          <div key={action} className="flex gap-3 rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm text-slate-700">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">{index + 1}</span>
+          <div key={action} className="flex gap-3 rounded-xl bg-[var(--color-paper-2)] border border-slate-100 p-3 text-sm text-slate-700">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-[var(--color-ink)]">{index + 1}</span>
             <p className="leading-relaxed">{action}</p>
           </div>
         ))}
@@ -447,9 +447,9 @@ function renderOptimizationSummary(result: ProcessResult, cv: any) {
 
       <div className="grid gap-4 p-5">
         {changes.map((change, index) => (
-          <div key={change.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div key={change.title} className="rounded-2xl border border-slate-200 bg-[var(--color-paper-2)] p-4">
             <div className="flex items-start gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white">{index + 1}</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-xs font-bold text-[var(--color-ink)]">{index + 1}</span>
               <div className="flex-1">
                 <h4 className="font-bold text-slate-950">{change.title}</h4>
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -602,7 +602,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [jobDescription, setJobDescription] = useState('')
-  const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('english')
+  const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('spanish')
   const [loading, setLoading] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState(0)
   const [analysisStepIndex, setAnalysisStepIndex] = useState(0)
@@ -909,42 +909,127 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4">
-      <div className="max-w-4xl mx-auto py-10">
-        <nav className="mb-6 flex flex-wrap items-center justify-center gap-3 text-sm">
-          <a href="/" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Inicio</a>
-          <a href="/#precios" className="rounded-full border border-[var(--color-primary)] bg-white px-4 py-2 font-semibold text-[var(--color-primary-deep)] hover:bg-orange-50">Ver planes</a>
-          <a href="/dashboard" className="rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">Dashboard</a>
-        </nav>
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            {result ? '✅ Resultado de compatibilidad' : 'Adapta tu CV a una vacante real'}
+    <main className="min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)]">
+      <nav className="sticky top-0 z-30 border-b border-[var(--color-line)] bg-[rgba(251,248,242,.92)] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
+          <a href="/" className="flex items-center gap-2 font-display text-lg font-semibold">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">R</span>
+            RevisaMiCV
+          </a>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="hidden rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex">● 1 análisis gratis</span>
+            <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Entrar</a>
+          </div>
+        </div>
+      </nav>
+
+      <div className="mx-auto max-w-5xl px-5 pb-12">
+        <div className="py-10 text-center md:py-12">
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-secondary-deep)]">{result ? 'Resultado de tu análisis' : 'Paso 1 de 2 · Tu análisis'}</p>
+          <h1 className="mx-auto mt-3 max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
+            {result ? 'Tu CV ya está cruzado contra esta vacante.' : 'Analiza tu CV contra esta vacante.'}
           </h1>
-          <p className="text-slate-600 max-w-2xl mx-auto">
+          <p className="mx-auto mt-3 max-w-2xl text-lg text-[var(--color-ink-soft)]">
             {result
-              ? 'Analizamos tu CV real contra la vacante y generamos una versión adaptada sin inventar experiencia.'
-              : 'Sube tu CV, pega la vacante, elige idioma y recibe score + CV adaptado. Primer intento gratis.'}
+              ? 'Revisa compatibilidad, brechas, keywords y descarga una versión adaptada sin inventar experiencia.'
+              : 'Sube tu CV, pega la vacante y en minutos sabes qué tan compatible eres. Si encaja, recibes una versión adaptada lista para descargar.'}
           </p>
         </div>
 
         {!result ? (
-          <form onSubmit={handleSubmit} className="rounded-2xl border border-[var(--color-line)] bg-white p-8 shadow-sm space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Tu email</label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="mx-auto mb-8 grid max-w-xl grid-cols-3 text-center">
+              {[['1','Tu CV'], ['2','La vacante'], ['3','Resultado']].map(([num, label], index) => (
+                <div key={label} className="relative flex flex-col items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  {index < 2 && <span className="absolute left-1/2 top-4 h-0.5 w-full bg-[var(--color-line)]" />}
+                  <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border-2 ${index < 2 ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-[var(--color-line)] bg-[var(--color-paper)] text-[var(--color-silence)]'}`}>{num}</span>
+                  <span className={index < 2 ? 'text-[var(--color-ink)]' : ''}>{label}</span>
+                </div>
+              ))}
+            </div>
+
+            <section className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] md:p-6">
+              <label className="text-sm font-bold text-[var(--color-ink)]">Tu email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setAndRememberEmail(e.target.value)}
                 placeholder="tu@email.com"
-                className="w-full border border-slate-300 rounded-xl bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                className="mt-2 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-orange-100"
                 required
               />
-              <p className="text-xs text-slate-400 mt-1">Lo usamos para tu prueba gratis, guardar tus créditos y enviarte un enlace de recuperación del CV.</p>
+              <p className="mt-2 text-xs text-[var(--color-ink-soft)]">Lo usamos para tu prueba gratis, guardar créditos y recuperar tus resultados.</p>
+            </section>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              <section className="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-ink)] text-xs font-bold text-[var(--color-primary)]">1</span>
+                  <h2 className="font-display text-2xl font-semibold">Tu CV</h2>
+                </div>
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  className="cursor-pointer rounded-xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 py-10 text-center transition hover:border-[var(--color-primary)] hover:bg-orange-50"
+                >
+                  <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-orange-100 text-[var(--color-primary-deep)]">
+                    <UploadIcon className="h-6 w-6" />
+                  </div>
+                  {file ? (
+                    <p className="font-bold text-[var(--color-primary-deep)]">{file.name}</p>
+                  ) : (
+                    <>
+                      <p className="font-bold">Arrastra tu CV o haz clic para subirlo</p>
+                      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Tal como lo tienes hoy. En español o en inglés.</p>
+                    </>
+                  )}
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    onChange={(e) => {
+                      const selected = e.target.files?.[0] || null
+                      setFile(selected)
+                      if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                    }}
+                    className="hidden"
+                  />
+                </div>
+                <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">PDF</span>
+                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">Word .docx</span>
+                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">TXT</span>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-ink)] text-xs font-bold text-[var(--color-primary)]">2</span>
+                  <h2 className="font-display text-2xl font-semibold">La vacante</h2>
+                </div>
+                <textarea
+                  value={jobDescription}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setJobDescription(value)
+                    window.localStorage.setItem('revisamicv_job_description', value)
+                  }}
+                  rows={9}
+                  placeholder="Pega aquí la vacante completa: responsabilidades, requisitos y contexto del cargo. Mientras más completa, mejor el análisis."
+                  className="w-full resize-y rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#A8A294] focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-orange-100"
+                  required
+                />
+                <p className={`mt-2 text-xs ${jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-amber-700' : 'text-[var(--color-ink-soft)]'}`}>
+                  {jobDescription.trim().length}/{MIN_JOB_DESCRIPTION_CHARS} caracteres mínimos. Copia y pega todo el texto de la oferta. No la resumas.
+                </p>
+              </section>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-3">¿En qué idioma quieres el CV final?</label>
-              <div className="grid md:grid-cols-2 gap-3">
+            <section className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-white p-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-bold">Idioma del CV adaptado</p>
+                <p className="text-sm text-[var(--color-ink-soft)]">El diagnóstico y la versión descargable salen en este idioma.</p>
+              </div>
+              <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] p-1">
                 {languageOptions.map((option) => (
                   <button
                     key={option.value}
@@ -954,94 +1039,41 @@ export default function SignupPage() {
                       trackEvent('language_selected', { language: option.value })
                       window.localStorage.setItem('revisamicv_output_language', option.value)
                     }}
-                    className={`rounded-2xl border-2 p-4 text-left transition ${
-                      outputLanguage === option.value ? 'border-[var(--color-primary)] bg-orange-50' : 'border-slate-200 hover:border-[var(--color-primary)]'
-                    }`}
+                    className={`rounded-full px-5 py-2 text-sm font-bold transition ${outputLanguage === option.value ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
                   >
-                    <p className="font-bold text-slate-900">{option.label}</p>
-                    <p className="text-xs text-slate-500 mt-1">{option.helper}</p>
+                    {option.label}
                   </button>
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Tu CV actual</label>
-              <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:border-[var(--color-primary)] transition"
-              >
-                <UploadIcon className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                {file ? (
-                  <p className="text-[var(--color-primary-deep)] font-semibold">{file.name}</p>
-                ) : (
-                  <>
-                    <p className="text-slate-600 font-medium">Haz clic para subir</p>
-                    <p className="text-sm text-slate-400 mt-1">PDF, Word (.docx) o TXT. Máximo 8 MB.</p>
-                  </>
-                )}
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  onChange={(e) => {
-                    const selected = e.target.files?.[0] || null
-                    setFile(selected)
-                    if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
-                  }}
-                  className="hidden"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Vacante objetivo</label>
-              <textarea
-                value={jobDescription}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setJobDescription(value)
-                  window.localStorage.setItem('revisamicv_job_description', value)
-                }}
-                rows={8}
-                placeholder="Pega la descripción completa del trabajo al que quieres aplicar..."
-                className="w-full border border-slate-300 rounded-xl bg-white p-4 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent outline-none"
-                required
-              />
-              <p className={`text-xs mt-1 ${jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'text-amber-600 font-semibold' : 'text-slate-400'}`}>
-                {jobDescription.trim().length}/{MIN_JOB_DESCRIPTION_CHARS} caracteres mínimos. Pega título + responsabilidades + requisitos + skills; no basta con “Product designer”.
-              </p>
-            </div>
-
-            {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
+            {error && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
             {loading && (
-              <section className="rounded-2xl border border-[var(--color-primary)] bg-orange-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-[var(--color-ink)]">Analizando tu CV</p>
-                    <p className="mt-1 text-xs text-[var(--color-primary-deep)]">{analysisProgressSteps[analysisStepIndex]?.label || 'Procesando...'}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-[var(--color-primary-deep)]">{analysisProgress}%</span>
+              <section className="mx-auto max-w-2xl rounded-3xl bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[var(--shadow-screen)]">
+                <h3 className="text-center font-display text-2xl font-semibold text-white">Cruzando tu CV con la vacante…</h3>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[var(--color-primary-deep)] to-[var(--color-primary)] transition-all duration-700" style={{ width: `${analysisProgress}%` }} />
                 </div>
-                <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
-                  <div className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700" style={{ width: `${analysisProgress}%` }} />
-                </div>
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  Si llega a 94%, no está trabado: la IA sigue terminando el CV final. No cierres ni recargues esta página. Guardamos el email y la vacante, pero por seguridad del navegador tendrías que volver a subir el archivo si recargas.
-                </p>
+                <p className="mt-4 text-center text-sm text-[#CFE3DE]">{analysisProgressSteps[analysisStepIndex]?.label || 'Procesando...'}</p>
+                <p className="mt-3 text-center text-xs leading-5 text-[#8FA9A4]">Si llega a 94%, no está trabado: la IA sigue terminando el CV final. No cierres esta pestaña.</p>
               </section>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-[var(--color-primary)] text-[var(--color-ink)] py-4 rounded-full font-semibold text-lg hover:bg-[var(--color-primary-deep)] transition disabled:opacity-50"
-            >
-              {loading ? <span>{analysisProgressSteps[analysisStepIndex]?.label || 'Analizando compatibilidad...'}</span> : <><SparklesIcon className="w-5 h-5" /> Analizar y adaptar mi CV</>}
-            </button>
-          </form>
-        ) : (
+            <div className="py-4 text-center">
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-10 text-lg font-bold text-[var(--color-ink)] shadow-[var(--shadow-cta)] transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
+              >
+                {loading ? <span>{analysisProgressSteps[analysisStepIndex]?.label || 'Analizando compatibilidad...'}</span> : <><SparklesIcon className="h-5 w-5" /> Analizar compatibilidad →</>}
+              </button>
+              <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-[var(--color-ink-soft)]">
+                <span>✓ Gratis</span><span>✓ Sin tarjeta</span><span>✓ ~3 minutos</span>
+              </div>
+              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">No inventamos experiencia. Tú editas todo antes de descargar.</p>
+            </div>
+          </form>        ) : (
           <div className="space-y-5">
             {clarificationModalOpen && (manualClarificationPrompts.length || result.clarificationQuestions?.length) ? (
               <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm md:items-center">
@@ -1052,14 +1084,14 @@ export default function SignupPage() {
                       <h2 className="mt-1 text-2xl font-bold text-slate-950">Aclaremos esto antes de ajustar tu CV</h2>
                       <p className="mt-2 text-sm leading-6 text-slate-600">Responde rápido. La IA usará estas respuestas solo si son experiencia real; si no hay evidencia suficiente, no inventará.</p>
                     </div>
-                    <button onClick={() => { setClarificationModalOpen(false); setManualClarificationPrompts([]) }} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-slate-50">Cerrar</button>
+                    <button onClick={() => { setClarificationModalOpen(false); setManualClarificationPrompts([]) }} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-[var(--color-paper-2)]">Cerrar</button>
                   </div>
                   <div className="mt-5 space-y-4">
                     {(manualClarificationPrompts.length ? manualClarificationPrompts : normalizeClarificationPrompts(result.clarificationQuestions)).map((prompt, index) => {
                       const answer = clarificationAnswers[index] || { option: '', detail: '' }
                       const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
                       return (
-                        <div key={prompt.question} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div key={prompt.question} className="rounded-2xl border border-slate-200 bg-[var(--color-paper-2)] p-4">
                           <p className="font-bold text-slate-950">{index + 1}. {prompt.question}</p>
                           <div className="mt-3 grid gap-2">
                             {options.map((option, optionIndex) => (
@@ -1067,7 +1099,7 @@ export default function SignupPage() {
                                 key={`${prompt.question}-${optionIndex}`}
                                 type="button"
                                 onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
-                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-purple-600 bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-slate-200 bg-white text-slate-700 hover:border-[var(--color-primary)]'}`}
+                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-slate-200 bg-white text-slate-700 hover:border-[var(--color-primary)]'}`}
                               >
                                 <span className="mr-2 text-xs opacity-70">Opción {optionIndex + 1}</span>{option}
                               </button>
@@ -1102,7 +1134,7 @@ export default function SignupPage() {
                     <button
                       onClick={submitClarificationAnswers}
                       disabled={revisionLoading}
-                      className="rounded-full bg-purple-600 px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)] disabled:opacity-50"
+                      className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] disabled:opacity-50"
                     >
                       {revisionLoading ? 'Aplicando respuestas...' : 'Usar respuestas para ajustar mi CV'}
                     </button>
@@ -1320,7 +1352,7 @@ export default function SignupPage() {
               <button
                 onClick={() => downloadFile('txt')}
                 disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition disabled:opacity-50"
+                className="py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition disabled:opacity-50"
               >
                 {downloadLoading === 'txt' ? 'Generando TXT...' : 'Descargar TXT ATS'}
               </button>
@@ -1336,7 +1368,7 @@ export default function SignupPage() {
             <div className="flex flex-col md:flex-row gap-4">
               <button
                 onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
-                className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-slate-50 transition"
+                className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
               >
                 Analizar otra vacante
               </button>

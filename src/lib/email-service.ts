@@ -39,11 +39,11 @@ export async function sendEmail({ to, subject, html, text }: SendEmailInput) {
 
 function layout(title: string, body: string) {
   return `
-    <div style="font-family:Inter,Arial,sans-serif;background:#f8fafc;padding:28px;color:#0f172a">
-      <div style="max-width:620px;margin:0 auto;background:white;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden">
-        <div style="background:#120d18;color:white;padding:24px">
+    <div style="font-family:Inter,Arial,sans-serif;background:#FBF8F2;padding:28px;color:#1A1813">
+      <div style="max-width:620px;margin:0 auto;background:white;border:1px solid #E4DCCD;border-radius:24px;overflow:hidden">
+        <div style="background:#0E3F3A;color:white;padding:24px">
           <div style="font-weight:800;font-size:18px">RevisaMiCV</div>
-          <div style="color:#d8b4fe;font-size:13px;margin-top:4px">CVs adaptados a vacantes reales, sin inventar experiencia</div>
+          <div style="color:#F5800A;font-size:13px;margin-top:4px">CVs adaptados a vacantes reales, sin inventar experiencia</div>
         </div>
         <div style="padding:28px">
           <h1 style="font-size:24px;line-height:1.2;margin:0 0 16px">${title}</h1>
@@ -55,7 +55,7 @@ function layout(title: string, body: string) {
 }
 
 function button(label: string, href: string) {
-  return `<p style="margin:24px 0"><a href="${href}" style="display:inline-block;background:#b24aed;color:white;text-decoration:none;font-weight:700;padding:14px 20px;border-radius:999px">${label}</a></p>`
+  return `<p style="margin:24px 0"><a href="${href}" style="display:inline-block;background:#F5800A;color:#1A1813;text-decoration:none;font-weight:700;padding:14px 20px;border-radius:999px">${label}</a></p>`
 }
 
 export async function sendMagicLinkEmail(email: string) {

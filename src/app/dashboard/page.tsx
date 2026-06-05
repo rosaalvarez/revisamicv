@@ -34,7 +34,7 @@ const PACKS = TOKEN_PACKS as Record<string, {
 function StatusPill({ children, tone = 'slate' }: { children: React.ReactNode; tone?: 'green' | 'purple' | 'slate' }) {
   const styles = {
     green: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    purple: 'border-violet-200 bg-violet-50 text-violet-700',
+    purple: 'border-[rgba(245,128,10,.28)] bg-orange-50 text-[var(--color-primary-deep)]',
     slate: 'border-slate-200 bg-white text-slate-600',
   }
   return <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${styles[tone]}`}>{children}</span>
@@ -54,9 +54,9 @@ function MiniMetric({ label, value, icon, dark = false }: { label: string; value
     <div className={`rounded-3xl border p-5 shadow-sm ${dark ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-950'}`}>
       <div className="flex items-center justify-between gap-4">
         <p className={`text-sm ${dark ? 'text-slate-300' : 'text-slate-500'}`}>{label}</p>
-        <div className={`grid h-10 w-10 place-items-center rounded-2xl ${dark ? 'bg-white/10 text-violet-200' : 'bg-violet-50 text-violet-700'}`}>{icon}</div>
+        <div className={`grid h-10 w-10 place-items-center rounded-2xl ${dark ? 'bg-white/10 text-[var(--color-primary)]' : 'bg-orange-50 text-[var(--color-primary-deep)]'}`}>{icon}</div>
       </div>
-      <p className={`mt-3 text-4xl font-semibold tracking-tight ${dark ? 'text-violet-200' : 'text-slate-950'}`}>{value}</p>
+      <p className={`mt-3 text-4xl font-semibold tracking-tight ${dark ? 'text-[var(--color-primary)]' : 'text-slate-950'}`}>{value}</p>
     </div>
   )
 }
@@ -326,7 +326,7 @@ export default function DashboardPage() {
     <section id="comprar" className={`rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm ${checkoutIntent ? 'mb-6 ring-2 ring-emerald-300' : ''}`}>
       <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Créditos</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
             {checkoutIntent ? 'Elige el pack y paga directo con Stripe' : 'Compra más análisis cuando compares más vacantes'}
           </h2>
@@ -347,16 +347,16 @@ export default function DashboardPage() {
             className={`group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${
               selectedPack === pack
                 ? 'border-emerald-400 bg-emerald-50'
-                : p.popular ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white'
+                : p.popular ? 'border-[var(--color-primary)] bg-orange-50' : 'border-slate-200 bg-white'
             }`}
           >
-            {p.popular && <span className="mb-4 inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">MEJOR VALOR</span>}
+            {p.popular && <span className="mb-4 inline-flex rounded-full bg-[var(--color-primary)] px-3 py-1 text-xs font-bold text-[var(--color-ink)]">MEJOR VALOR</span>}
             <p className="text-lg font-semibold text-slate-950">{p.name}</p>
             <div className="my-3 flex items-end gap-2">
               <p className="text-4xl font-semibold tracking-tight text-slate-950">${p.priceUSD}</p>
               <p className="pb-1 text-sm text-slate-500">USD</p>
             </div>
-            <p className="font-semibold text-violet-700">{p.cvCount} análisis</p>
+            <p className="font-semibold text-[var(--color-primary-deep)]">{p.cvCount} análisis</p>
             <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
             <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm">
               Comprar ahora <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -390,7 +390,7 @@ export default function DashboardPage() {
         <section className={`mb-6 grid gap-6 ${checkoutIntent ? 'lg:grid-cols-1' : 'lg:grid-cols-[1.25fr_0.75fr]'}`}>
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-xl shadow-slate-200">
             <div className="relative p-6 md:p-8">
-              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-violet-500/30 blur-3xl" />
+              <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-[rgba(245,128,10,.30)] blur-3xl" />
               <div className="relative z-10">
                 <StatusPill tone={checkoutIntent ? 'purple' : user?.tokens ? 'green' : user?.has_free_cv ? 'purple' : 'slate'}>{checkoutIntent && selectedPackDetails ? `Comprar Pack ${selectedPackDetails.name}` : accountStatus}</StatusPill>
                 <h1 className="mt-5 max-w-2xl text-3xl font-semibold tracking-tight text-white md:text-5xl">
@@ -405,7 +405,7 @@ export default function DashboardPage() {
                 </p>
 
                 <div className="mt-6 rounded-3xl border border-white/10 bg-white/10 p-3 backdrop-blur">
-                  <p className="px-2 pb-3 text-sm leading-6 text-violet-100">
+                  <p className="px-2 pb-3 text-sm leading-6 text-[#CFE3DE]">
                     {checkoutIntent && selectedPackDetails
                       ? `Pack ${selectedPackDetails.name}: ${selectedPackDetails.cvCount} análisis. Usa el email donde quieres recibir y guardar tus créditos.`
                       : 'Usa el mismo email con el que analizaste gratis o compraste créditos en Stripe. Ahí quedan guardados tus créditos e historial.'}
@@ -420,21 +420,21 @@ export default function DashboardPage() {
                       if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
                     }}
                     placeholder="tu@email.com"
-                    className="min-h-12 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-violet-300"
+                    className="min-h-12 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-orange-200"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => checkoutIntent && selectedPack ? handleBuy(selectedPack) : checkAccount(email)}
                     disabled={loading}
-                    className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-50 disabled:opacity-60"
+                    className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-orange-50 disabled:opacity-60"
                   >
                     {loading ? 'Cargando...' : checkoutIntent ? 'Ir a Stripe ahora' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
                   </button>
                   {!checkoutIntent && (
                     <a
                       href="/analizar"
-                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-semibold text-white transition hover:bg-violet-400"
+                      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--color-primary)] px-5 text-sm font-semibold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white"
                     >
                       Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
                     </a>
@@ -442,8 +442,8 @@ export default function DashboardPage() {
                   </form>
                 </div>
 
-                {notice && <p className="mt-4 rounded-2xl border border-violet-300/30 bg-violet-400/10 p-3 text-sm text-violet-100">{notice}</p>}
-                {linkSent && <p className="mt-2 text-xs leading-5 text-violet-100/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
+                {notice && <p className="mt-4 rounded-2xl border border-orange-200/30 bg-orange-400/10 p-3 text-sm text-[#CFE3DE]">{notice}</p>}
+                {linkSent && <p className="mt-2 text-xs leading-5 text-[#CFE3DE]/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
                 {error && <p className="mt-4 rounded-2xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
               </div>
             </div>
@@ -455,7 +455,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-slate-500">Estado de cuenta</p>
                 <p className="mt-1 break-all text-lg font-semibold text-slate-950">{user?.email || 'Ingresa tu email'}</p>
               </div>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700"><UserIcon className="h-5 w-5" /></div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-[var(--color-primary-deep)]"><UserIcon className="h-5 w-5" /></div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-slate-600">
               <TrustNote>Tu cuenta se recupera con un enlace seguro enviado a tu email. No necesitas contraseña.</TrustNote>
@@ -466,7 +466,7 @@ export default function DashboardPage() {
             <div className="mt-6 rounded-3xl bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
-              <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
+              <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-deep)] hover:text-white">Enviar email a soporte</a>
             </div>
           </aside>}
         </section>
@@ -477,7 +477,7 @@ export default function DashboardPage() {
           <section className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
             <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
-            <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
+            <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-primary-deep)] hover:text-white">Enviar email a soporte</a>
           </section>
         )}
 
@@ -509,10 +509,10 @@ export default function DashboardPage() {
 
             <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
               <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Siguiente paso</p>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Siguiente paso</p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Analiza otra vacante real antes de aplicar</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-600">Cada crédito compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
-                <a href="/analizar" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 md:w-auto">
+                <a href="/analizar" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-deep)] hover:text-white md:w-auto">
                   Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
                 </a>
                 <div className="mt-6 grid gap-3 text-sm text-slate-600">
@@ -532,8 +532,8 @@ export default function DashboardPage() {
                 </div>
 
                 {!user ? (
-                  <div className="rounded-3xl border border-dashed border-violet-200 bg-violet-50 p-8 text-center">
-                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-violet-400" />
+                  <div className="rounded-3xl border border-dashed border-orange-200 bg-orange-50 p-8 text-center">
+                    <DocumentIcon className="mx-auto mb-3 h-10 w-10 text-[var(--color-primary)]" />
                     <p className="font-semibold text-slate-950">Para ver historial necesitas entrar con enlace seguro</p>
                     <p className="mt-1 text-sm text-slate-500">Escribe tu email arriba y toca “Enviar enlace”. Así protegemos tus CVs y créditos.</p>
                   </div>
@@ -546,9 +546,9 @@ export default function DashboardPage() {
                 ) : (
                   <div className="space-y-3">
                     {history.map((item) => (
-                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-violet-200 hover:shadow-md">
+                      <div key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
                         <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-violet-50 text-violet-700">
+                          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-[var(--color-primary-deep)]">
                             <DocumentIcon className="h-5 w-5" />
                           </div>
                           <div className="flex-1">
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                           <button
                             onClick={() => handleDownloadPdf(item)}
                             disabled={pdfLoadingId === item.id}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
                           >
                             <DownloadIcon className="h-4 w-4" /> {pdfLoadingId === item.id ? 'Generando...' : 'Descargar'}
                           </button>
@@ -582,9 +582,9 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <p>RevisaMiCV — CVs adaptados a vacantes reales, sin inventar experiencia.</p>
             <div className="flex flex-wrap gap-3 font-medium">
-              <a href="/privacidad" className="hover:text-violet-700">Privacidad</a>
-              <a href="/terminos" className="hover:text-violet-700">Términos</a>
-              <a href="/soporte" className="hover:text-violet-700">Soporte</a>
+              <a href="/privacidad" className="hover:text-[var(--color-primary-deep)]">Privacidad</a>
+              <a href="/terminos" className="hover:text-[var(--color-primary-deep)]">Términos</a>
+              <a href="/soporte" className="hover:text-[var(--color-primary-deep)]">Soporte</a>
             </div>
           </div>
         </footer>

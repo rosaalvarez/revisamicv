@@ -337,28 +337,14 @@ footer .copy{width:100%;border-top:1px solid rgba(255,255,255,.1);margin-top:14p
 .dashboard-redesign .bg-slate-950{
   background:var(--color-block)!important;
 }
-.dashboard-redesign .text-violet-600,
-.dashboard-redesign .text-violet-700,
-.dashboard-redesign .text-violet-400{
-  color:var(--color-secondary-deep)!important;
+.dashboard-redesign .bg-slate-950.text-white{
+  color:var(--color-paper)!important;
 }
-.dashboard-redesign .bg-violet-50,
-.dashboard-redesign .bg-purple-50,
-.dashboard-redesign .bg-violet-100{
-  background:rgba(15,181,160,.10)!important;
-}
-.dashboard-redesign .bg-violet-500,
-.dashboard-redesign .bg-violet-600,
-.dashboard-redesign .bg-purple-600,
 .dashboard-redesign .bg-emerald-400{
-  background:var(--color-primary)!important;
-  color:var(--color-ink)!important;
+  background:var(--color-secondary)!important;
 }
-.dashboard-redesign .border-violet-200,
-.dashboard-redesign .border-violet-500,
-.dashboard-redesign .border-purple-200,
 .dashboard-redesign .border-emerald-400{
-  border-color:var(--color-primary)!important;
+  border-color:var(--color-secondary)!important;
 }
 .dashboard-redesign button:hover,
 .dashboard-redesign a:hover{transition:.2s}
