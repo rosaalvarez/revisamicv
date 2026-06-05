@@ -8,6 +8,7 @@ import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { parseJsonCompletion } from '@/lib/json-completion'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
+import { createAuthToken, createMagicDashboardLink } from '@/lib/auth-token'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
@@ -175,6 +176,9 @@ export async function POST(req: NextRequest) {
       console.error('Analysis email error:', err?.message || err)
     }
 
+    const dashboardAuthToken = createAuthToken(normalizedEmail)
+    const dashboardUrl = createMagicDashboardLink(normalizedEmail)
+
     return NextResponse.json({
       ...parsed,
       compatibilityScore,
@@ -182,6 +186,8 @@ export async function POST(req: NextRequest) {
       outputLanguage,
       tokens_remaining: finalTokenState.tokens_remaining,
       email_sent: true,
+      auth_token: dashboardAuthToken,
+      dashboard_url: dashboardUrl,
     })
   } catch (error: any) {
     console.error('CV processing error:', error)

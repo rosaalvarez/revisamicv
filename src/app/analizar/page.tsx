@@ -34,6 +34,8 @@ type ProcessResult = {
   coverLetter?: string
   rawText?: string
   tokens_remaining?: number
+  auth_token?: string
+  dashboard_url?: string
 }
 
 const languageOptions = [
@@ -747,6 +749,8 @@ export default function SignupPage() {
   const jobFileRef = useRef<HTMLInputElement>(null)
   const [cvPreviewOpen, setCvPreviewOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
+  const normalizedEmailForLinks = email.trim().toLowerCase()
+  const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
@@ -852,6 +856,7 @@ export default function SignupPage() {
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
       setAnalysisProgress(100)
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
+      if (data.auth_token) window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
       window.localStorage.setItem('revisamicv_output_language', outputLanguage)
       trackEvent('analysis_completed', {
         language: outputLanguage,
@@ -1326,6 +1331,17 @@ export default function SignupPage() {
             ) : null}
             <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
 
+            <section className="rounded-[18px] border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.07)] p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Tu panel ya quedó listo</p>
+                <h2 className="mt-2 font-display text-2xl font-semibold text-[var(--color-ink)]">Guarda este análisis en tu dashboard.</h2>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Ahí recuperas este CV, ves tus créditos y analizas otra vacante sin repetir todo desde cero.</p>
+              </div>
+              <a href={dashboardHref} className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-ink)] shadow-[var(--shadow-cta)] transition hover:bg-[var(--color-primary-deep)] hover:text-white md:mt-0">
+                Ir a mi dashboard <ArrowRightIcon className="ml-2 h-4 w-4" />
+              </a>
+            </section>
+
             <FindingsSection result={result} />
 
             {renderDecisionGate(result, () => setClarificationModalOpen(true))}
@@ -1434,13 +1450,13 @@ export default function SignupPage() {
                 Analizar otra vacante
               </button>
               <a
-                href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}`}
+                href={dashboardHref}
                 className="flex-1 flex items-center justify-center gap-2 bg-[var(--color-primary)] text-[var(--color-ink)] py-3 rounded-full font-semibold hover:bg-[var(--color-primary-deep)] transition"
               >
-                Enviarme enlace al dashboard <ArrowRightIcon className="w-4 h-4" />
+                Ir a mi dashboard <ArrowRightIcon className="w-4 h-4" />
               </a>
               <a
-                href={`/dashboard?email=${encodeURIComponent(email.trim().toLowerCase())}#comprar`}
+                href={`/dashboard?intent=checkout&pack=pro&email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`}
                 className="flex-1 flex items-center justify-center gap-2 border-2 border-[var(--color-primary)] text-[var(--color-primary-deep)] py-3 rounded-full font-semibold hover:bg-orange-50 transition"
               >
                 Comprar más créditos
