@@ -1068,7 +1068,7 @@ export default function SignupPage() {
           </a>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex">● 1 análisis gratis</span>
-            <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Entrar</a>
+            <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Dashboard</a>
           </div>
         </div>
       </nav>

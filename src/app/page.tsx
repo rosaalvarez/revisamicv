@@ -53,6 +53,7 @@ export default function HomePage() {
             <a href="#ia">vs. IA genérica</a>
             <a href="#precios">Precios</a>
             <Link href="/blog">Blog</Link>
+            <Link href="/dashboard">Dashboard</Link>
           </div>
           <LandingCta location="nav" className="nav-cta">Analiza tu CV gratis</LandingCta>
         </div>
