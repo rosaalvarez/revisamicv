@@ -9,6 +9,7 @@ declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void
     clarity?: (...args: unknown[]) => void
+    fbq?: (...args: unknown[]) => void
   }
 }
 
@@ -88,6 +89,39 @@ function trackClarityEvent(eventName: string) {
   }
 }
 
+function trackMetaPixelEvent(eventName: string, properties: Record<string, string | number | boolean>) {
+  try {
+    if (typeof window === 'undefined' || typeof window.fbq !== 'function') return
+
+    const value = typeof properties.value === 'number' ? properties.value : undefined
+    const currency = typeof properties.currency === 'string' ? properties.currency.toUpperCase() : 'USD'
+
+    if (eventName === 'landing_cta_click' || eventName === 'signup_view') {
+      window.fbq('track', 'ViewContent', properties)
+      return
+    }
+
+    if (eventName === 'analysis_started') {
+      window.fbq('track', 'Lead', properties)
+      return
+    }
+
+    if (eventName === 'checkout_started') {
+      window.fbq('track', 'InitiateCheckout', { ...properties, ...(value ? { value, currency } : {}) })
+      return
+    }
+
+    if (eventName === 'payment_recovery_completed') {
+      window.fbq('track', 'Purchase', { ...properties, ...(value ? { value, currency } : {}) })
+      return
+    }
+
+    window.fbq('trackCustom', eventName, properties)
+  } catch {
+    // Meta Pixel must never break the product flow.
+  }
+}
+
 export function trackEvent(name: string, properties: AnalyticsProperties = {}) {
   try {
     const safeProperties = Object.fromEntries(
@@ -97,6 +131,7 @@ export function trackEvent(name: string, properties: AnalyticsProperties = {}) {
     track(name, safeProperties)
     trackGoogleAnalyticsEvent(name, safeProperties)
     trackGoogleAdsConversion(name, safeProperties)
+    trackMetaPixelEvent(name, safeProperties)
     trackClarityEvent(name)
   } catch {
     // Analytics must never break the product flow.

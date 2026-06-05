@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import GoogleAdsTag from '@/components/GoogleAdsTag'
 import GoogleAnalyticsTag from '@/components/GoogleAnalyticsTag'
+import MetaPixelTag from '@/components/MetaPixelTag'
 import MicrosoftClarityTag from '@/components/MicrosoftClarityTag'
 import './globals.css'
 
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Analytics />
         <GoogleAnalyticsTag />
         <GoogleAdsTag />
+        <MetaPixelTag />
         <MicrosoftClarityTag />
       </body>
     </html>
