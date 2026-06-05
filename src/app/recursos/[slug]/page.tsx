@@ -118,7 +118,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ slug:
           <p className="eyebrow">{resource.eyebrow}</p>
           <h1>{resource.title}</h1>
           <p className="intro">{resource.intro}</p>
-          <Link href="/signup" className="cta">Analizar mi CV gratis →</Link>
+          <Link href="/analizar" className="cta">Analizar mi CV gratis →</Link>
           {resource.sections.map((section) => (
             <section key={section.heading}>
               <h2>{section.heading}</h2>
@@ -132,7 +132,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ slug:
           <div className="final-card">
             <h2>¿Quieres hacerlo con una vacante real?</h2>
             <p>Sube tu CV, pega la vacante y recibe score, brechas, keywords y una versión adaptada descargable.</p>
-            <Link href="/signup" className="cta">Probar primer análisis gratis</Link>
+            <Link href="/analizar" className="cta">Probar primer análisis gratis</Link>
           </div>
         </article>
       </div>

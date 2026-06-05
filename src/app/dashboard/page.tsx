@@ -368,19 +368,19 @@ export default function DashboardPage() {
   )
 
   return (
-    <main className="min-h-screen bg-[#f7f8ff] text-slate-950">
+    <main className="dashboard-redesign min-h-screen bg-[var(--color-paper)] text-[var(--color-ink)]">
       <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,#ede9fe,transparent_32%),radial-gradient(circle_at_top_right,#dbeafe,transparent_28%)]" />
       <div className="relative mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         <header className="mb-8 flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
           <a href="/" className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#533AFD] text-lg font-bold text-white shadow-lg shadow-violet-200">R</div>
+            <div className="grid h-11 w-11 place-items-center rounded-[11px] bg-[var(--color-primary)] text-lg font-bold text-white shadow-[var(--shadow-cta)]">R</div>
             <div>
               <p className="font-semibold tracking-tight text-slate-950">RevisaMiCV</p>
               <p className="text-xs text-slate-500">Centro de aplicaciones</p>
             </div>
           </a>
           <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
-            <a href="/signup" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
+            <a href="/analizar" className="rounded-full px-4 py-2 hover:bg-slate-100">Analizar otra vacante</a>
             <a href="#historial" className="rounded-full px-4 py-2 hover:bg-slate-100">Historial</a>
             <a href="#comprar" className="rounded-full px-4 py-2 hover:bg-slate-100">Comprar créditos</a>
             <a href="/soporte" className="rounded-full px-4 py-2 hover:bg-slate-100">Soporte</a>
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                   </button>
                   {!checkoutIntent && (
                     <a
-                      href="/signup"
+                      href="/analizar"
                       className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-5 text-sm font-semibold text-white transition hover:bg-violet-400"
                     >
                       Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
@@ -512,7 +512,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Siguiente paso</p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">Analiza otra vacante real antes de aplicar</h2>
                 <p className="mt-3 text-sm leading-6 text-slate-600">Cada crédito compara tu CV contra una vacante específica y genera un CV adaptado descargable.</p>
-                <a href="/signup" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 md:w-auto">
+                <a href="/analizar" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-violet-700 md:w-auto">
                   Analizar otra vacante <ArrowRightIcon className="h-4 w-4" />
                 </a>
                 <div className="mt-6 grid gap-3 text-sm text-slate-600">
