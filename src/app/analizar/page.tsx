@@ -745,6 +745,8 @@ export default function SignupPage() {
   const [clarificationError, setClarificationError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const jobFileRef = useRef<HTMLInputElement>(null)
+  const [cvPreviewOpen, setCvPreviewOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
@@ -877,6 +879,12 @@ export default function SignupPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const openEditor = () => {
+    setCvPreviewOpen(false)
+    setEditorOpen(true)
+    setTimeout(() => document.getElementById('cv-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
 
   const downloadFile = async (format: 'pdf' | 'docx' | 'txt') => {
@@ -1329,43 +1337,70 @@ export default function SignupPage() {
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
                 <h2 className="font-display text-3xl font-semibold text-[var(--color-ink)]">Listo para enviar. Y para editar antes.</h2>
               </div>
-              <div className="rounded-3xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
-                <div className="grid gap-6 md:grid-cols-[1fr_220px] md:items-center">
-                  <div className="flex gap-5">
-                    <div className="grid h-24 w-20 shrink-0 place-items-center rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] text-3xl">▤</div>
+              <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 shadow-sm">
+                <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+                  <div className="flex gap-4">
+                    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] before:absolute before:left-3 before:right-3 before:top-3 before:h-[3px] before:rounded before:bg-[var(--color-ink)] after:absolute after:bottom-3 after:left-3 after:right-5 after:top-6 after:bg-[repeating-linear-gradient(var(--color-line)_0_3px,transparent_3px_9px)]" />
                     <div>
-                      <h3 className="font-display text-2xl font-semibold text-[var(--color-ink)]">{getCvTitle(editableCv || result.optimizedCV || result.rawText)}</h3>
-                      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Versión adaptada a esta vacante, en {outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.</p>
-                      <button type="button" onClick={() => document.getElementById('cv-completo')?.scrollIntoView({ behavior: 'smooth' })} className="mt-3 text-sm font-bold text-[var(--color-primary-deep)] underline">✎ Editar antes de descargar</button>
+                      <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{getCvTitle(editableCv || result.optimizedCV || result.rawText)}</h3>
+                      <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Versión adaptada a esta vacante, en {outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.</p>
+                      <button type="button" onClick={openEditor} className="mt-2 inline-block text-sm font-bold text-[var(--color-primary-deep)] underline">✎ Editar antes de descargar</button>
                     </div>
                   </div>
-                  <div className="grid gap-3">
-                    <details className="rounded-xl border-2 border-[var(--color-secondary)] bg-[rgba(15,181,160,.06)]">
-                      <summary className="cursor-pointer list-none px-4 py-3 text-center text-sm font-bold text-[var(--color-secondary-deep)]">👁 Ver CV completo</summary>
-                      <div id="cv-completo" className="max-h-[520px] overflow-y-auto border-t border-[var(--color-line)] bg-white p-4 text-left">
-                        {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
-                      </div>
-                    </details>
-                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl bg-[var(--color-primary)] px-4 py-4 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
+                  <div className="grid min-w-[180px] gap-3">
+                    <button type="button" onClick={() => setCvPreviewOpen(true)} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">👁 Ver CV completo</button>
+                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border-2 border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">DOCX</button>
-                      <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border-2 border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">TXT</button>
+                      <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">DOCX</button>
+                      <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">TXT</button>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <ResultAccordion title="Editor avanzado del CV adaptado" summary="Opcional: abre esto si quieres cambiar campos específicos antes de descargar." defaultOpen={false}>
-              <EditableCvForm
-                cv={editableCv}
-                onChange={setEditableCv}
-                score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
-                gaps={result.gaps}
-                keywords={result.keywordsToInclude}
-                honestyWarnings={result.honestyWarnings}
-              />
-            </ResultAccordion>
+            {cvPreviewOpen && (
+              <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(15,20,15,.62)] px-4 py-8 backdrop-blur-sm" onClick={() => setCvPreviewOpen(false)}>
+                <div className="my-auto w-full max-w-3xl overflow-hidden rounded-[18px] bg-white shadow-[0_40px_90px_-30px_rgba(0,0,0,.55)]" onClick={(e) => e.stopPropagation()}>
+                  <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-[var(--color-line)] bg-white px-5 py-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">Tu CV adaptado</h3>
+                      <p className="text-xs font-semibold text-[var(--color-secondary-deep)]">Vista previa completa antes de descargar</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={openEditor} className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]">✎ Editar</button>
+                      <button type="button" onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-ink)] disabled:opacity-50">PDF</button>
+                      <button type="button" onClick={() => setCvPreviewOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Cerrar</button>
+                    </div>
+                  </div>
+                  <div className="max-h-[76vh] overflow-y-auto px-5 py-6 md:px-10">
+                    {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
+                  </div>
+                  <div className="border-t border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 py-3 text-center text-xs text-[var(--color-ink-soft)]">Esta es una vista previa. Puedes editar antes de descargar. Nada de lo que ves fue inventado.</div>
+                </div>
+              </div>
+            )}
+
+            {editorOpen && (
+              <section id="cv-editor" className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-sm">
+                <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Editor</p>
+                    <h3 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Edita tu CV antes de descargar</h3>
+                    <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Cambia campos, bullets o skills y luego descarga PDF, DOCX o TXT.</p>
+                  </div>
+                  <button type="button" onClick={() => setEditorOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Ocultar editor</button>
+                </div>
+                <EditableCvForm
+                  cv={editableCv}
+                  onChange={setEditableCv}
+                  score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
+                  gaps={result.gaps}
+                  keywords={result.keywordsToInclude}
+                  honestyWarnings={result.honestyWarnings}
+                />
+              </section>
+            )}
 
             <section className="rounded-[32px] bg-[#F4EFE7] p-7 text-center shadow-sm md:p-10">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Para tu próxima vacante</p>
@@ -1389,94 +1424,11 @@ export default function SignupPage() {
               <p className="mt-6 text-xs text-[var(--color-ink-soft)]">Tu primer análisis ya es tuyo. Pagas solo si quieres seguir.</p>
             </section>
 
-            <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Ajuste con IA</p>
-                <h3 className="text-xl font-bold text-slate-950">Pídele un cambio específico antes de descargar</h3>
-                <p className="text-sm text-slate-600 mt-1">
-                  Úsalo para cambios puntuales: actualizar ciudad/email, ajustar formato de fechas, quitar algo, reescribir el perfil o desglosar responsabilidades reales en skills más claras. La idea es hacerlo robusto sin inventar experiencia.
-                </p>
-              </div>
-              <textarea
-                value={revisionInstruction}
-                onChange={(e) => setRevisionInstruction(e.target.value)}
-                rows={4}
-                maxLength={1200}
-                placeholder="Ej: cambia mi ciudad a Bogotá, normaliza mis fechas, marca si alguna fecha no coincide, reescribe el perfil más orientado a ventas SaaS..."
-                className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 outline-none"
-              />
-              {revisionLoading && <p className="rounded-xl bg-white p-3 text-sm font-bold text-amber-700">{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando ajuste...'} · {revisionProgress}%</p>}
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">{revisionInstruction.length}/1200 caracteres</p>
-                <button onClick={() => applyRevisionInstruction()} disabled={revisionLoading || !revisionInstruction.trim()} className="w-full md:w-auto px-5 py-3 rounded-full font-semibold bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50">{revisionLoading ? 'Aplicando ajuste...' : 'Aplicar cambio con IA'}</button>
-              </div>
-            </section>
-
-            {copySuccess && <p className="text-green-700 bg-green-50 border border-green-100 rounded-xl p-3 text-sm">{copySuccess}</p>}
-            {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
-
-            {result.coverLetter && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Mensaje para aplicar</p>
-                    <h3 className="font-bold text-slate-900">Mini cover letter</h3>
-                    <p className="mt-1 text-sm text-slate-500">Esta parte no se descarga con el CV. Cópiala y pégala en el email, LinkedIn o el portal donde vas a aplicar.</p>
-                  </div>
-                  <button
-                    onClick={copyCoverLetter}
-                    className="rounded-full border-2 border-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-primary-deep)] hover:bg-orange-50"
-                  >
-                    Copiar cover letter
-                  </button>
-                </div>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{result.coverLetter}</p>
-              </section>
-            )}
-
-            {copySuccess && <p className="text-green-700 bg-green-50 border border-green-100 rounded-xl p-3 text-sm">{copySuccess}</p>}
-            {error && <p className="text-red-700 bg-red-50 border border-red-100 rounded-xl p-3 text-sm">{error}</p>}
-
-            <div className="rounded-2xl border border-[var(--color-primary)] bg-white p-4">
-              <div className="mb-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Último paso recomendado</p>
-                <h3 className="text-xl font-bold text-slate-950">Descarga tu CV adaptado</h3>
-                <p className="mt-1 text-sm text-slate-500">Elige un formato. Recomendado: PDF para enviar, Word si quieres editar y TXT para formularios ATS.</p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-              <button
-                onClick={() => downloadFile('pdf')}
-                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold bg-[var(--color-primary)] text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] hover:text-white transition disabled:opacity-50"
-              >
-                {downloadLoading === 'pdf' ? 'Generando PDF...' : 'Recomendado: descargar PDF'}
-              </button>
-              <button
-                onClick={() => downloadFile('docx')}
-                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold border-2 border-[var(--color-primary)] text-[var(--color-primary-deep)] hover:bg-orange-50 transition disabled:opacity-50"
-              >
-                {downloadLoading === 'docx' ? 'Generando Word...' : 'Editar luego: Word DOCX'}
-              </button>
-              <button
-                onClick={() => downloadFile('txt')}
-                disabled={!!downloadLoading || !(editableCv || result.optimizedCV)}
-                className="py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition disabled:opacity-50"
-              >
-                {downloadLoading === 'txt' ? 'Generando TXT...' : 'Descargar TXT ATS'}
-              </button>
-              <button
-                onClick={copyCvText}
-                className="md:col-span-3 py-3 rounded-full font-semibold border-2 border-[var(--color-primary)] text-[var(--color-primary-deep)] hover:bg-orange-50 transition"
-              >
-                Copiar CV al portapapeles
-              </button>
-            </div>
-            </div>
+            <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos empleadores, cargos, títulos ni métricas. Solo reescribimos lo que ya es tuyo. <strong className="text-[var(--color-ink)]">La credibilidad en la entrevista la pones tú; nosotros la protegemos.</strong></p>
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
               >
                 Analizar otra vacante
