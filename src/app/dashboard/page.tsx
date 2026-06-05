@@ -48,6 +48,51 @@ function pricePerCv(price: number, count: number) {
   return `$${(price / count).toFixed(2).replace('.00', '')} por CV`
 }
 
+
+function stripJobMarkdown(value: string) {
+  return String(value || '')
+    .replace(/\*\*/g, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/[`_>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractLabel(text: string, label: string) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = text.match(new RegExp(`${escaped}:\\s*([^|•\\n-]+)`, 'i'))
+  return match?.[1]?.trim().replace(/[.,;:]+$/, '') || ''
+}
+
+function getAnalysisTitle(jobPreview: string) {
+  const clean = stripJobMarkdown(jobPreview)
+  if (!clean) return 'Vacante analizada'
+
+  const firstPart = clean.split(/\s{2,}|\s[-–—]\s|\s\|\s/)[0]?.trim() || clean
+  const companyRole = firstPart.match(/^([^:]{2,60}):\s*(.{2,80})$/)
+  if (companyRole) {
+    return `${companyRole[2].trim()} · ${companyRole[1].trim()}`.slice(0, 92)
+  }
+
+  return clean
+    .replace(/\b(Location|Ubicación|Commitment|Tipo|Full-time|Part-time|Remote|Remoto):?.*$/i, '')
+    .trim()
+    .slice(0, 92) || 'Vacante analizada'
+}
+
+function getAnalysisMeta(item: HistoryItem) {
+  const clean = stripJobMarkdown(item.job_preview)
+  const location = extractLabel(clean, 'Location') || extractLabel(clean, 'Ubicación')
+  const commitment = extractLabel(clean, 'Commitment') || extractLabel(clean, 'Tipo')
+  const meta = [
+    location,
+    commitment,
+    item.output_language === 'english' ? 'English' : 'Español',
+    new Date(item.created_at).toLocaleDateString(),
+  ].filter(Boolean)
+  return meta.join(' · ')
+}
+
 export default function DashboardPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -402,8 +447,8 @@ export default function DashboardPage() {
                 return (
                   <div key={item.id} className="grid gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-b-0 md:grid-cols-[1fr_auto_auto] md:items-center">
                     <div className="font-semibold text-[var(--color-ink)]">
-                      {item.job_preview?.split('\n')[0]?.slice(0, 90) || 'Vacante analizada'}
-                      <span className="mt-1 block text-xs font-normal text-[var(--color-ink-soft)]">{item.output_language === 'english' ? 'English' : 'Español'} · {new Date(item.created_at).toLocaleDateString()}</span>
+                      {getAnalysisTitle(item.job_preview)}
+                      <span className="mt-1 block text-xs font-normal text-[var(--color-ink-soft)]">{getAnalysisMeta(item)}</span>
                     </div>
                     <div className={`w-fit rounded-full px-3 py-1 font-display text-base font-bold ${scoreChipClass(score)}`}>{item.compatibility_score ?? '—'}</div>
                     <div className="flex flex-wrap gap-2">
