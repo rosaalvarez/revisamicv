@@ -601,6 +601,7 @@ function renderOptimizedCV(cv: any) {
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [jobFile, setJobFile] = useState<File | null>(null)
   const [jobDescription, setJobDescription] = useState('')
   const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('spanish')
   const [loading, setLoading] = useState(false)
@@ -622,7 +623,9 @@ export default function SignupPage() {
   const [manualClarificationPrompts, setManualClarificationPrompts] = useState<ClarificationPrompt[]>([])
   const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string }>>({})
   const [copySuccess, setCopySuccess] = useState('')
+  const [clarificationError, setClarificationError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const jobFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
@@ -675,8 +678,9 @@ export default function SignupPage() {
   }, [revisionLoading])
 
   const setAndRememberEmail = (value: string) => {
-    setEmail(value)
-    if (value.trim()) window.localStorage.setItem('revisamicv_email', value.trim().toLowerCase())
+    const cleaned = value.replace(/\s+/g, '').slice(0, 254)
+    setEmail(cleaned)
+    if (cleaned.trim()) window.localStorage.setItem('revisamicv_email', cleaned.trim().toLowerCase())
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -694,7 +698,7 @@ export default function SignupPage() {
     }
     const selectedFile = file as File
 
-    const jobError = validateJobDescription(jobDescription)
+    const jobError = jobFile ? '' : validateJobDescription(jobDescription)
     if (jobError) {
       trackEvent('analysis_validation_error', { field: 'job_description', chars: jobDescription.trim().length })
       return setError(jobError)
@@ -705,6 +709,7 @@ export default function SignupPage() {
       extension: getFileExtensionForAnalytics(selectedFile.name),
       size: getFileSizeBucket(selectedFile.size),
       job_chars_bucket: jobDescription.length < 1000 ? '<1k' : jobDescription.length < 4000 ? '1-4k' : '4k+',
+      job_file: jobFile ? getFileExtensionForAnalytics(jobFile.name) : 'none',
     })
 
     setLoading(true)
@@ -717,6 +722,7 @@ export default function SignupPage() {
       formData.append('email', email.trim().toLowerCase())
       formData.append('cv', selectedFile)
       formData.append('jobDescription', jobDescription)
+      if (jobFile) formData.append('jobFile', jobFile)
       formData.append('outputLanguage', outputLanguage)
 
       const res = await fetch('/api/process-cv', { method: 'POST', body: formData })
@@ -827,6 +833,20 @@ export default function SignupPage() {
       ? manualClarificationPrompts
       : normalizeClarificationPrompts(result?.clarificationQuestions)
     if (!questions.length) return setClarificationModalOpen(false)
+
+    const missing = questions.findIndex((_, index) => {
+      const answer = clarificationAnswers[index]
+      if (!answer?.option) return true
+      const optionNeedsDetail = !/^no|no directamente|no tengo/i.test(answer.option)
+      return optionNeedsDetail && answer.detail.trim().length < 20
+    })
+
+    if (missing >= 0) {
+      setClarificationError(`En la pregunta ${missing + 1}, elige una opción y escribe una frase concreta con lo que sí sabes/hiciste. Así la IA no inventa.`)
+      return
+    }
+
+    setClarificationError('')
     await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
   }
 
@@ -937,7 +957,7 @@ export default function SignupPage() {
         </div>
 
         {!result ? (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <div className="mx-auto mb-8 grid max-w-xl grid-cols-3 text-center">
               {[['1','Tu CV'], ['2','La vacante'], ['3','Resultado']].map(([num, label], index) => (
                 <div key={label} className="relative flex flex-col items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
@@ -951,7 +971,10 @@ export default function SignupPage() {
             <section className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] md:p-6">
               <label className="text-sm font-bold text-[var(--color-ink)]">Tu email</label>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="email"
+                maxLength={254}
                 value={email}
                 onChange={(e) => setAndRememberEmail(e.target.value)}
                 placeholder="tu@email.com"
@@ -1014,15 +1037,37 @@ export default function SignupPage() {
                     window.localStorage.setItem('revisamicv_job_description', value)
                   }}
                   rows={9}
-                  placeholder="Pega aquí la vacante completa: responsabilidades, requisitos y contexto del cargo. Mientras más completa, mejor el análisis."
+                  placeholder="Pega aquí la vacante completa: responsabilidades, requisitos, salario si aparece, skills y contexto del cargo. No la resumas."
                   className="w-full resize-y rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#A8A294] focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-orange-100"
-                  required
+                  required={!jobFile}
                 />
-                <p className={`mt-2 text-xs ${jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-amber-700' : 'text-[var(--color-ink-soft)]'}`}>
-                  {jobDescription.trim().length}/{MIN_JOB_DESCRIPTION_CHARS} caracteres mínimos. Copia y pega todo el texto de la oferta. No la resumas.
+                <div className="mt-3 rounded-xl border border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] p-3">
+                  <input
+                    ref={jobFileRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    onChange={(e) => {
+                      const selected = e.target.files?.[0] || null
+                      setJobFile(selected)
+                      if (selected) trackEvent('job_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                    }}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => jobFileRef.current?.click()}
+                    className="w-full rounded-lg border border-[var(--color-line)] bg-white px-4 py-3 text-left text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]"
+                  >
+                    {jobFile ? `Vacante adjunta: ${jobFile.name}` : 'O también sube la vacante en PDF, Word o TXT'}
+                  </button>
+                  {jobFile && (
+                    <button type="button" onClick={() => setJobFile(null)} className="mt-2 text-xs font-bold text-[var(--color-primary-deep)]">Quitar archivo de vacante</button>
+                  )}
+                </div>
+                <p className={`mt-2 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-amber-700' : 'text-[var(--color-ink-soft)]'}`}>
+                  {jobDescription.trim().length} caracteres escritos. Necesitamos mínimo {MIN_JOB_DESCRIPTION_CHARS} si no adjuntas archivo; máximo 12.000. Puedes pegar mucho más de 120 caracteres.
                 </p>
-              </section>
-            </div>
+              </section>            </div>
 
             <section className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-white p-5 md:flex-row md:items-center md:justify-between">
               <div>
@@ -1105,17 +1150,24 @@ export default function SignupPage() {
                               </button>
                             ))}
                           </div>
+                          <label className="mt-4 block text-sm font-bold text-slate-950">
+                            Ahora escribe el contexto real: qué hiciste, cuánto tiempo, herramienta, proyecto, resultado o ejemplo.
+                          </label>
                           <textarea
                             value={answer.detail}
                             onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
                             rows={3}
-                            placeholder={prompt.freeTextLabel || 'Opción libre: escribe tu caso con tus palabras...'}
+                            placeholder={prompt.freeTextLabel || 'Ej: Sí usé esa herramienta en el proyecto X durante 6 meses; hice A, B y C. No tengo certificación, pero sí experiencia práctica...'}
                             className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                           />
+                          {answer.option && !/^no\b|no directamente|no tengo/i.test(answer.option) && answer.detail.trim().length < 20 && (
+                            <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para que la IA pueda ajustar sin inventar.</p>
+                          )}
                         </div>
                       )
                     })}
                   </div>
+                  {clarificationError && <p className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
                   <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <p className="text-xs leading-5 text-slate-500">No necesitas escribir perfecto. Responde como puedas; el sistema lo traduce a lenguaje profesional si es verdadero.</p>
@@ -1180,41 +1232,37 @@ export default function SignupPage() {
               })()}
             </section>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              {(result.gaps?.slice(0, 2) || []).map((gap, index) => (
-                <div key={index} className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
-                  <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Prioridad {index + 1}</p>
-                  <p className="mt-1">{gap}</p>
+            <section className="rounded-3xl border border-[var(--color-line)] bg-white p-6 shadow-sm">
+              <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-secondary-deep)]">Lo que encontramos</p>
+                  <h2 className="font-display text-3xl font-semibold text-[var(--color-ink)]">Tus fortalezas y brechas para esta vacante.</h2>
                 </div>
-              ))}
+                <p className="max-w-sm text-sm leading-6 text-[var(--color-ink-soft)]">Esto es el diagnóstico práctico: qué te ayuda, qué te frena y qué palabras necesita leer la vacante.</p>
+              </div>
+              <div className="grid gap-5 md:grid-cols-2">
+                {renderList('Ya tienes fuerte', result.strengths)}
+                {renderList('Brechas o datos para revisar', result.gaps)}
+              </div>
               {(result.keywordsToInclude?.length || 0) > 0 && (
-                <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-sm leading-6 text-[var(--color-ink)]">
-                  <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Keywords clave</p>
-                  <p className="mt-1">{result.keywordsToInclude?.slice(0, 5).join(', ')}</p>
+                <div className="mt-5 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-5">
+                  <p className="text-sm font-bold text-[var(--color-ink)]">Keywords de la vacante que deben aparecer con evidencia real:</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {result.keywordsToInclude?.slice(0, 12).map((keyword) => (
+                      <span key={keyword} className="rounded-full border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1 text-xs font-bold text-[var(--color-secondary-deep)]">{keyword}</span>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-
-            {renderActionPlan(result)}
+            </section>
 
             {renderDecisionGate(result, () => setClarificationModalOpen(true))}
 
-            <ResultAccordion title="Ver desglose del score por categorías" summary="Opcional: muestra qué subió o bajó tu compatibilidad, por ejemplo skills, keywords, experiencia y riesgos." defaultOpen={false}>
-              {renderMatchBreakdown(result.matchBreakdown)}
-            </ResultAccordion>
+            {renderOptimizationSummary(result, editableCv || result.optimizedCV || result.rawText)}
 
-            <ResultAccordion title="Qué cambió y por qué" summary="Resumen de cómo se orientó tu CV a esta vacante." defaultOpen>
-              {renderOptimizationSummary(result, editableCv || result.optimizedCV || result.rawText)}
-            </ResultAccordion>
+            {renderMatchBreakdown(result.matchBreakdown)}
 
-            <ResultAccordion title="Fortalezas, brechas y keywords" summary="Detalle útil para revisar sin leer todo el informe de una vez." defaultOpen={false}>
-              <div className="grid gap-5 md:grid-cols-2">
-                {renderList('Fortalezas para esta vacante', result.strengths)}
-                {renderList('Fechas, brechas o datos para revisar', result.gaps)}
-                {renderList('Keywords que debe incluir', result.keywordsToInclude)}
-                {renderList('Recomendaciones para cuidar tu credibilidad', result.honestyWarnings)}
-              </div>
-            </ResultAccordion>
+            {renderActionPlan(result)}
 
             <ResultAccordion title="Editor del CV adaptado" summary="Ábrelo si quieres revisar o editar campos antes de descargar." defaultOpen={false}>
               <EditableCvForm
@@ -1367,7 +1415,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
               >
                 Analizar otra vacante

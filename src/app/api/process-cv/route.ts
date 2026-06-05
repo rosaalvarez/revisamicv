@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
     } else {
       const formData = await req.formData()
       const file = formData.get('cv') as File
+      const jobFile = formData.get('jobFile') as File | null
       email = (formData.get('email') as string) || ''
       jobDescription = (formData.get('jobDescription') as string) || ''
       outputLanguage = normalizeOutputLanguage(formData.get('outputLanguage'))
@@ -49,6 +50,18 @@ export async function POST(req: NextRequest) {
           error: 'document_extraction_failed',
           message: err.message || 'No pude leer el CV. Prueba con PDF, Word (.docx), TXT o pega el texto manualmente.',
         }, { status: 400 })
+      }
+
+      if (jobFile && Number(jobFile.size || 0) > 0) {
+        try {
+          const extractedJob = await extractDocumentText(jobFile)
+          jobDescription = [jobDescription, extractedJob].map((part) => String(part || '').trim()).filter(Boolean).join('\n\n')
+        } catch (err: any) {
+          return NextResponse.json({
+            error: 'job_document_extraction_failed',
+            message: err.message || 'No pude leer el archivo de la vacante. Prueba con PDF de texto, Word (.docx), TXT o pega el texto manualmente.',
+          }, { status: 400 })
+        }
       }
     }
 

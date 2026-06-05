@@ -75,6 +75,7 @@ export function getFriendlyApiError(error, fallback = 'No pude completar la acci
     invalid_cv_text: 'El CV parece demasiado corto para generar una adaptación útil. Sube un CV más completo o pega más experiencia.',
     invalid_job_description: 'La vacante está incompleta. Pega responsabilidades, requisitos y skills para que el score sea útil.',
     document_extraction_failed: 'No pude leer el archivo. Prueba exportarlo como PDF de texto o Word .docx.',
+    job_document_extraction_failed: 'No pude leer el archivo de la vacante. Prueba con PDF de texto, Word .docx, TXT o pega la vacante completa.',
     db_error: 'No pude validar tu cuenta en este momento. Intenta de nuevo en unos minutos.',
   }
 
