@@ -322,6 +322,51 @@ export default function DashboardPage() {
     }
   }
 
+  const purchaseSection = (
+    <section id="comprar" className={`rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm ${checkoutIntent ? 'mb-6 ring-2 ring-emerald-300' : ''}`}>
+      <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            {checkoutIntent ? 'Elige el pack y paga directo con Stripe' : 'Compra más análisis cuando compares más vacantes'}
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">Un crédito = un CV comparado contra una vacante. Los créditos quedan guardados en tu email.</p>
+          {!email.trim() && <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">Primero escribe tu email arriba para asociar la compra a tu cuenta.</p>}
+        </div>
+        <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {Object.entries(PACKS).map(([pack, p]) => (
+          <button
+            key={pack}
+            onClick={() => {
+              setSelectedPack(pack)
+              handleBuy(pack)
+            }}
+            className={`group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${
+              selectedPack === pack
+                ? 'border-emerald-400 bg-emerald-50'
+                : p.popular ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white'
+            }`}
+          >
+            {p.popular && <span className="mb-4 inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">MEJOR VALOR</span>}
+            <p className="text-lg font-semibold text-slate-950">{p.name}</p>
+            <div className="my-3 flex items-end gap-2">
+              <p className="text-4xl font-semibold tracking-tight text-slate-950">${p.priceUSD}</p>
+              <p className="pb-1 text-sm text-slate-500">USD</p>
+            </div>
+            <p className="font-semibold text-violet-700">{p.cvCount} análisis</p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
+            <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm">
+              Comprar ahora <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
+
   return (
     <main className="min-h-screen bg-[#f7f8ff] text-slate-950">
       <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top_left,#ede9fe,transparent_32%),radial-gradient(circle_at_top_right,#dbeafe,transparent_28%)]" />
@@ -342,7 +387,7 @@ export default function DashboardPage() {
           </nav>
         </header>
 
-        <section className="mb-6 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <section className={`mb-6 grid gap-6 ${checkoutIntent ? 'lg:grid-cols-1' : 'lg:grid-cols-[1.25fr_0.75fr]'}`}>
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-xl shadow-slate-200">
             <div className="relative p-6 md:p-8">
               <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-violet-500/30 blur-3xl" />
@@ -380,11 +425,11 @@ export default function DashboardPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => checkAccount(email)}
+                    onClick={() => checkoutIntent && selectedPack ? handleBuy(selectedPack) : checkAccount(email)}
                     disabled={loading}
                     className="min-h-12 rounded-2xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-50 disabled:opacity-60"
                   >
-                    {loading ? 'Cargando...' : checkoutIntent ? 'Ir a pagar ahora' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
+                    {loading ? 'Cargando...' : checkoutIntent ? 'Ir a Stripe ahora' : authToken ? 'Ver cuenta' : 'Enviar enlace'}
                   </button>
                   {!checkoutIntent && (
                     <a
@@ -404,7 +449,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          {!checkoutIntent && <aside className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-slate-500">Estado de cuenta</p>
@@ -423,10 +468,20 @@ export default function DashboardPage() {
               <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
               <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
             </div>
-          </aside>
+          </aside>}
         </section>
 
-        {!user && (
+        {checkoutIntent && purchaseSection}
+
+        {checkoutIntent && (
+          <section className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">¿Pagaste y no ves créditos?</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">Usa el mismo email de Stripe y recarga esta pantalla. Si sigue igual, escríbenos a {SUPPORT_EMAIL} con el email de pago.</p>
+            <a href={SUPPORT_EMAIL_URL} className="mt-3 inline-flex rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">Enviar email a soporte</a>
+          </section>
+        )}
+
+        {!checkoutIntent && !user && (
           <section className="mb-6 grid gap-4 md:grid-cols-3">
             <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold text-slate-950">1 análisis = 1 vacante</p>
@@ -521,46 +576,7 @@ export default function DashboardPage() {
               </section>
             </section>
 
-            <section id="comprar" className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-600">Créditos</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Compra más análisis cuando compares más vacantes</h2>
-                  <p className="mt-2 text-sm text-slate-500">Un crédito = un CV comparado contra una vacante. Los créditos quedan guardados en tu email.</p>
-                  {!email.trim() && <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-800">Primero escribe tu email arriba para asociar la compra a tu cuenta.</p>}
-                </div>
-                <StatusPill tone="green">Pago seguro con Stripe</StatusPill>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                {Object.entries(PACKS).map(([pack, p]) => (
-                  <button
-                    key={pack}
-                    onClick={() => {
-                      setSelectedPack(pack)
-                      handleBuy(pack)
-                    }}
-                    className={`group relative overflow-hidden rounded-3xl border-2 p-5 text-left transition hover:-translate-y-0.5 hover:shadow-xl ${
-                      selectedPack === pack
-                        ? 'border-emerald-400 bg-emerald-50'
-                        : p.popular ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white'
-                    }`}
-                  >
-                    {p.popular && <span className="mb-4 inline-flex rounded-full bg-violet-600 px-3 py-1 text-xs font-bold text-white">MEJOR VALOR</span>}
-                    <p className="text-lg font-semibold text-slate-950">{p.name}</p>
-                    <div className="my-3 flex items-end gap-2">
-                      <p className="text-4xl font-semibold tracking-tight text-slate-950">${p.priceUSD}</p>
-                      <p className="pb-1 text-sm text-slate-500">USD</p>
-                    </div>
-                    <p className="font-semibold text-violet-700">{p.cvCount} análisis</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
-                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-sm">
-                      Comprar pack <ArrowRightIcon className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
+            {!checkoutIntent && purchaseSection}
           </div>
         <footer className="mt-10 rounded-[2rem] border border-slate-200 bg-white/80 p-5 text-sm text-slate-600 shadow-sm">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
