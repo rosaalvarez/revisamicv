@@ -9,7 +9,7 @@ import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescript
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
-import { createAnalysisDraftKey, getEvidenceStepState, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
+import { createAnalysisDraftKey, getEvidenceStepState, getEvidenceThermometer, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
   question: string
@@ -549,6 +549,7 @@ function ResultHero({ result, cv }: { result: ProcessResult; cv: any }) {
   const keywordScore = getBreakdownDisplayScore('keywords', normalizeScore((result.matchBreakdown?.keywords as any)?.score ?? result.matchBreakdown?.keywords), (result.matchBreakdown?.keywords as any)?.summary || '')
   const experienceScore = getBreakdownDisplayScore('experience', normalizeScore((result.matchBreakdown?.experience as any)?.score ?? result.matchBreakdown?.experience), (result.matchBreakdown?.experience as any)?.summary || '')
   const gapsClosed = Math.min(2, Math.max(0, result.gaps?.length || result.keywordsToInclude?.length ? 2 : 0))
+  const thermometer = getEvidenceThermometer(result)
 
   return (
     <section className="overflow-hidden rounded-[28px] bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[var(--shadow-screen)] md:p-9">
@@ -569,6 +570,30 @@ function ResultHero({ result, cv }: { result: ProcessResult; cv: any }) {
           {revisedScore !== undefined && originalScore !== undefined ? <p className="mt-4 text-sm text-[#B9CDC8]">Tu versión original marcaba {originalScore}/100 para esta vacante.</p> : <p className="mt-4 text-sm text-[#B9CDC8]">Compatibilidad estimada para esta vacante.</p>}
         </div>
       </div>
+      <div className="mt-8 rounded-3xl border border-white/15 bg-white/[.08] p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary)]">Termómetro de evidencia visible</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-white">{thermometer.title}</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#DDE8E5]">{thermometer.explainer}</p>
+          </div>
+          <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
+            <p className="font-display text-4xl font-bold text-[var(--color-primary)]">{thermometer.score}</p>
+            <p className="text-xs font-semibold text-[#AFC6C0]">/100 evidencia</p>
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-5 overflow-hidden rounded-2xl border border-white/10 bg-white/10">
+          {thermometer.bands.map((band: any) => (
+            <div key={band.level} className={`min-h-20 border-r border-white/10 p-2 last:border-r-0 ${band.active ? 'bg-white/[.16]' : ''}`}>
+              <div className={`h-2 rounded-full ${band.color} ${band.active ? 'opacity-100' : 'opacity-35'}`} />
+              <p className={`mt-2 text-[10px] font-bold uppercase leading-4 tracking-wide ${band.active ? 'text-white' : 'text-[#8FA9A4]'}`}>{band.shortLabel}</p>
+              <p className={`mt-1 hidden text-[11px] leading-4 md:block ${band.active ? 'text-[#DDE8E5]' : 'text-[#8FA9A4]'}`}>{band.min}-{band.max}%</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs leading-5 text-[#AFC6C0]">{thermometer.description} Si tienes experiencia que no aparece en tu CV, puedes agregarla sin inventar.</p>
+      </div>
+
       <div className="mt-8 grid gap-4 border-t border-white/15 pt-6 md:grid-cols-3">
         {[['Keywords de la vacante', keywordScore], ['Experiencia relevante', experienceScore], ['Brechas cerradas', gapsClosed ? `${gapsClosed} de ${Math.max(gapsClosed, Math.min(4, (result.gaps?.length || 2)))}` : '—']].map(([label, value]) => (
           <div key={label as string}>
