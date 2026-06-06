@@ -9,6 +9,7 @@ import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescript
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
+import { createAnalysisDraftKey, getEvidenceStepState, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
   question: string
@@ -60,8 +61,8 @@ const decisionCopy = {
     tone: 'border-[var(--color-primary)] bg-orange-50 text-[var(--color-ink)]',
   },
   not_recommended: {
-    label: 'No recomendado para este perfil',
-    title: 'La vacante exige evidencia que el CV no demuestra',
+    label: 'Evidencia insuficiente con lo visible',
+    title: 'La vacante pide evidencia que tu CV todavía no muestra',
     tone: 'border-red-200 bg-red-50 text-red-950',
   },
 } as const
@@ -763,7 +764,6 @@ export default function SignupPage() {
   const [revisionChanges, setRevisionChanges] = useState<Array<{ label: string; detail: string }>>([])
   const [revisionNotes, setRevisionNotes] = useState<string[]>([])
   const [blockedChanges, setBlockedChanges] = useState<string[]>([])
-  const [clarificationModalOpen, setClarificationModalOpen] = useState(false)
   const [manualClarificationPrompts, setManualClarificationPrompts] = useState<ClarificationPrompt[]>([])
   const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string }>>({})
   const [copySuccess, setCopySuccess] = useState('')
@@ -776,16 +776,53 @@ export default function SignupPage() {
   const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
   const cvForActions = editableCv || result?.optimizedCV
   const canDownloadCv = hasDownloadableCv(cvForActions)
+  const evidenceStep = result ? getEvidenceStepState(result) : null
+  const activeClarificationPrompts = manualClarificationPrompts.length
+    ? manualClarificationPrompts
+    : normalizeClarificationPrompts(result?.clarificationQuestions)
+  const shouldRenderEvidenceQuestions = !!result && activeClarificationPrompts.length > 0 && (manualClarificationPrompts.length > 0 || shouldShowEvidenceQuestions(result))
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
     const savedJob = window.localStorage.getItem('revisamicv_job_description')
     const savedLanguage = window.localStorage.getItem('revisamicv_output_language') as 'english' | 'spanish' | null
+    const lastDraftKey = window.localStorage.getItem('revisamicv:last-analysis-draft-key')
     if (savedEmail) setEmail(savedEmail)
     if (savedJob) setJobDescription(savedJob)
     if (savedLanguage === 'english' || savedLanguage === 'spanish') setOutputLanguage(savedLanguage)
+    if (lastDraftKey) {
+      try {
+        const draft = JSON.parse(window.localStorage.getItem(lastDraftKey) || 'null')
+        if (draft?.result) {
+          setResult(draft.result)
+          setEditableCv(draft.editableCv || draft.result.optimizedCV || null)
+          if (draft.email) setEmail(draft.email)
+          if (draft.jobDescription) setJobDescription(draft.jobDescription)
+          if (draft.outputLanguage === 'english' || draft.outputLanguage === 'spanish') setOutputLanguage(draft.outputLanguage)
+          if (draft.clarificationAnswers && typeof draft.clarificationAnswers === 'object') setClarificationAnswers(draft.clarificationAnswers)
+          setCopySuccess('Recuperé tu análisis anterior. Puedes continuar sin gastar otro crédito.')
+        }
+      } catch {}
+    }
     trackEvent('signup_view')
   }, [])
+
+  useEffect(() => {
+    if (!result) return
+    try {
+      const draftKey = createAnalysisDraftKey(email)
+      window.localStorage.setItem(draftKey, JSON.stringify({
+        result,
+        editableCv,
+        email: email.trim().toLowerCase(),
+        jobDescription,
+        outputLanguage,
+        clarificationAnswers,
+        savedAt: new Date().toISOString(),
+      }))
+      window.localStorage.setItem('revisamicv:last-analysis-draft-key', draftKey)
+    } catch {}
+  }, [result, editableCv, email, jobDescription, outputLanguage, clarificationAnswers])
 
   useEffect(() => {
     if (!loading) return
@@ -901,7 +938,6 @@ export default function SignupPage() {
       const lowScorePrompt = modelPrompts.length ? null : buildLowScoreCoachingPrompt(data.compatibilityScore)
       setManualClarificationPrompts(lowScorePrompt ? [lowScorePrompt] : [])
       setClarificationAnswers({})
-      setClarificationModalOpen(modelPrompts.length > 0 || Boolean(lowScorePrompt))
       if (lowScorePrompt) trackEvent('low_score_coaching_prompt_shown', { score: normalizeScore(data.compatibilityScore) ?? -1 })
     } catch (err: any) {
       trackEvent('analysis_failed', { message: String(err.message || '').slice(0, 80) })
@@ -989,7 +1025,7 @@ export default function SignupPage() {
     const questions = manualClarificationPrompts.length
       ? manualClarificationPrompts
       : normalizeClarificationPrompts(result?.clarificationQuestions)
-    if (!questions.length) return setClarificationModalOpen(false)
+    if (!questions.length) return
 
     const missing = questions.findIndex((_, index) => {
       const answer = clarificationAnswers[index]
@@ -1004,7 +1040,6 @@ export default function SignupPage() {
     }
 
     setClarificationError('')
-    setClarificationModalOpen(false)
     setManualClarificationPrompts([])
     setCopySuccess('Estoy aplicando tus respuestas. Te muestro el CV ajustado en unos segundos.')
     await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
@@ -1021,8 +1056,7 @@ export default function SignupPage() {
       if (prompt) {
         setManualClarificationPrompts([prompt])
         setClarificationAnswers({})
-        setClarificationModalOpen(true)
-        setCopySuccess('Te hago 3 preguntas rápidas para ajustar sin inventar y sin enredarte.')
+        setCopySuccess('Te hago preguntas rápidas aquí mismo para ajustar sin inventar y sin enredarte.')
         trackEvent('revision_clarification_prompted', { source: 'manual' })
         return
       }
@@ -1077,7 +1111,6 @@ export default function SignupPage() {
       setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges.map(coachBlockedChange) : [])
       setRevisionInstruction('')
       setManualClarificationPrompts([])
-      setClarificationModalOpen(false)
       trackEvent('revision_completed', { added_skills: addedSkills.length, blocked_changes: Array.isArray(data.blockedChanges) ? data.blockedChanges.length : 0 })
       setCopySuccess('Listo. Te muestro qué cambió y qué dejamos como recomendación para cuidar tu credibilidad.')
     } catch (err: any) {
@@ -1280,79 +1313,81 @@ export default function SignupPage() {
             </div>
           </form>        ) : (
           <div className="space-y-5">
-            {clarificationModalOpen && (manualClarificationPrompts.length || result.clarificationQuestions?.length) ? (
-              <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm md:items-center">
-                <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Filtro inteligente de evidencia</p>
-                      <h2 className="mt-1 text-2xl font-bold text-slate-950">Aclaremos esto antes de ajustar tu CV</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">Responde rápido. La IA usará estas respuestas solo si son experiencia real; si no hay evidencia suficiente, no inventará.</p>
-                    </div>
-                    <button onClick={() => { setClarificationModalOpen(false); setManualClarificationPrompts([]) }} className="rounded-full border border-slate-200 px-3 py-1 text-sm font-bold text-slate-500 hover:bg-[var(--color-paper-2)]">Cerrar</button>
+            {shouldRenderEvidenceQuestions ? (
+              <section className="rounded-[22px] border border-[rgba(242,156,56,.38)] bg-white p-5 shadow-sm">
+                <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary-deep)]">Paso de evidencia</p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[var(--color-ink)]">{evidenceStep?.title || 'Completemos tu evidencia.'}</h2>
+                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Este score no mide tu valor profesional. Mide qué tan bien tu CV actual demuestra evidencia para esta vacante específica.</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Ya hicimos el análisis inicial. No vas a gastar otro crédito por responder estas preguntas.</p>
                   </div>
-                  <div className="mt-5 space-y-4">
-                    {(manualClarificationPrompts.length ? manualClarificationPrompts : normalizeClarificationPrompts(result.clarificationQuestions)).map((prompt, index) => {
-                      const answer = clarificationAnswers[index] || { option: '', detail: '' }
-                      const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
-                      return (
-                        <div key={prompt.question} className="rounded-2xl border border-slate-200 bg-[var(--color-paper-2)] p-4">
-                          <p className="font-bold text-slate-950">{index + 1}. {prompt.question}</p>
-                          <div className="mt-3 grid gap-2">
-                            {options.map((option, optionIndex) => (
-                              <button
-                                key={`${prompt.question}-${optionIndex}`}
-                                type="button"
-                                onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
-                                className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-slate-200 bg-white text-slate-700 hover:border-[var(--color-primary)]'}`}
-                              >
-                                <span className="mr-2 text-xs opacity-70">Opción {optionIndex + 1}</span>{option}
-                              </button>
-                            ))}
-                          </div>
-                          <label className="mt-4 block text-sm font-bold text-slate-950">
-                            Ahora escribe el contexto real: qué hiciste, cuánto tiempo, herramienta, proyecto, resultado o ejemplo.
-                          </label>
-                          <textarea
-                            value={answer.detail}
-                            onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
-                            rows={3}
-                            placeholder={prompt.freeTextLabel || 'Ej: Sí usé esa herramienta en el proyecto X durante 6 meses; hice A, B y C. No tengo certificación, pero sí experiencia práctica...'}
-                            className="mt-3 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-950 placeholder:text-slate-400 focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
-                          />
-                          {answer.option && !/^no\b|no directamente|no tengo/i.test(answer.option) && answer.detail.trim().length < 20 && (
-                            <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para que la IA pueda ajustar sin inventar.</p>
-                          )}
+                  <span className="rounded-full border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.10)] px-4 py-2 text-sm font-bold text-[var(--color-secondary-deep)]">Recuperable si refrescas</span>
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {activeClarificationPrompts.map((prompt, index) => {
+                    const answer = clarificationAnswers[index] || { option: '', detail: '' }
+                    const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
+                    return (
+                      <div key={prompt.question} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">
+                        <p className="font-bold text-[var(--color-ink)]">{index + 1}. {prompt.question}</p>
+                        <div className="mt-3 grid gap-2">
+                          {options.map((option, optionIndex) => (
+                            <button
+                              key={`${prompt.question}-${optionIndex}`}
+                              type="button"
+                              onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
+                              className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-ink)]'}`}
+                            >
+                              <span className="mr-2 text-xs opacity-70">Opción {optionIndex + 1}</span>{option}
+                            </button>
+                          ))}
                         </div>
-                      )
-                    })}
-                  </div>
-                  {clarificationError && <p className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
-                  <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs leading-5 text-slate-500">No necesitas escribir perfecto. Responde como puedas; el sistema lo traduce a lenguaje profesional si es verdadero.</p>
-                      {revisionLoading && (
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-deep)]">
-                            <span>{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando respuestas...'}</span>
-                            <span>{revisionProgress}%</span>
-                          </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-50">
-                            <div className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700" style={{ width: `${revisionProgress}%` }} />
-                          </div>
+                        <label className="mt-4 block text-sm font-bold text-[var(--color-ink)]">
+                          Ahora escribe contexto real: qué hiciste, cuánto tiempo, herramienta, proyecto, resultado o ejemplo.
+                        </label>
+                        <textarea
+                          value={answer.detail}
+                          onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
+                          rows={3}
+                          placeholder={prompt.freeTextLabel || 'Ej: Sí usé esa herramienta en el proyecto X durante 6 meses; hice A, B y C. No tengo certificación, pero sí experiencia práctica...'}
+                          className="mt-3 w-full rounded-xl border border-[var(--color-line)] bg-white p-3 text-sm text-[var(--color-ink)] placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                        />
+                        {answer.option && !/^no\b|no directamente|no tengo/i.test(answer.option) && answer.detail.trim().length < 20 && (
+                          <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para que la IA pueda ajustar sin inventar.</p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {clarificationError && <p className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
+                <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs leading-5 text-[var(--color-ink-soft)]">No necesitas escribir perfecto. Responde como puedas; el sistema lo traduce a lenguaje profesional si es verdadero.</p>
+                    {revisionLoading && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-deep)]">
+                          <span>{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando respuestas...'}</span>
+                          <span>{revisionProgress}%</span>
                         </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={submitClarificationAnswers}
-                      disabled={revisionLoading}
-                      className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] disabled:opacity-50"
-                    >
-                      {revisionLoading ? 'Aplicando respuestas...' : 'Usar respuestas para ajustar mi CV'}
-                    </button>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-50">
+                          <div className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700" style={{ width: `${revisionProgress}%` }} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </section>
-              </div>
+                  <button
+                    type="button"
+                    onClick={submitClarificationAnswers}
+                    disabled={revisionLoading}
+                    className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
+                  >
+                    {revisionLoading ? 'Aplicando respuestas...' : 'Usar respuestas para ajustar mi CV'}
+                  </button>
+                </div>
+              </section>
             ) : null}
             <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
 
@@ -1369,7 +1404,7 @@ export default function SignupPage() {
 
             <FindingsSection result={result} />
 
-            {renderDecisionGate(result, () => setClarificationModalOpen(true))}
+            {!shouldRenderEvidenceQuestions ? renderDecisionGate(result) : null}
 
             <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
 
@@ -1469,7 +1504,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationModalOpen(false); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); window.localStorage.removeItem('revisamicv:last-analysis-draft-key'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
               >
                 Analizar otra vacante
