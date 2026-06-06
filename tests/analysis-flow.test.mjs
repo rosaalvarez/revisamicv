@@ -5,6 +5,7 @@ import {
   createAnalysisDraftKey,
   getEvidenceStepState,
   getEvidenceThermometer,
+  getResultWizardSteps,
   shouldShowEvidenceQuestions,
 } from '../src/lib/analysis-flow.js'
 
@@ -33,6 +34,20 @@ test('getEvidenceThermometer returns all non-judgmental visual bands with active
   ])
   assert.equal(thermometer.bands.find((band) => band.active)?.level, 'weak')
   assert.match(thermometer.explainer, /no mide tu valor profesional/i)
+})
+
+test('getResultWizardSteps routes low evidence through context before CV', () => {
+  const steps = getResultWizardSteps({ compatibilityScore: 42, applicationDecision: 'needs_clarification', clarificationQuestions: ['Pregunta'] }, { canDownloadCv: true })
+  assert.deepEqual(steps.map((step) => step.id), ['evidence', 'context', 'cv'])
+  assert.equal(steps.find((step) => step.id === 'context')?.status, 'current')
+  assert.equal(steps.find((step) => step.id === 'cv')?.disabled, true)
+})
+
+test('getResultWizardSteps sends strong evidence directly to CV step', () => {
+  const steps = getResultWizardSteps({ compatibilityScore: 88, applicationDecision: 'optimize' }, { canDownloadCv: true })
+  assert.deepEqual(steps.map((step) => step.id), ['evidence', 'cv'])
+  assert.equal(steps.find((step) => step.id === 'evidence')?.status, 'completed')
+  assert.equal(steps.find((step) => step.id === 'cv')?.status, 'current')
 })
 
 test('getEvidenceStepState uses hopeful non-judgmental states by score', () => {

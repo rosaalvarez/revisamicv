@@ -9,7 +9,7 @@ import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescript
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
-import { createAnalysisDraftKey, getEvidenceStepState, getEvidenceThermometer, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
+import { createAnalysisDraftKey, getEvidenceStepState, getEvidenceThermometer, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
   question: string
@@ -768,6 +768,36 @@ function renderOptimizedCV(cv: any) {
   )
 }
 
+function ResultWizardNav({ steps, activeStep, onStepChange }: { steps: any[]; activeStep: string; onStepChange: (step: string) => void }) {
+  return (
+    <section className="rounded-[22px] border border-[var(--color-line)] bg-white p-4 shadow-sm">
+      <div className="grid gap-3 md:grid-cols-3">
+        {steps.map((step) => {
+          const isActive = activeStep === step.id
+          const isDisabled = Boolean(step.disabled)
+          return (
+            <button
+              key={step.id}
+              type="button"
+              disabled={isDisabled}
+              onClick={() => !isDisabled && onStepChange(step.id)}
+              className={`rounded-2xl border p-4 text-left transition ${isActive ? 'border-[var(--color-primary)] bg-orange-50 shadow-sm' : step.status === 'completed' ? 'border-[rgba(15,181,160,.28)] bg-[rgba(15,181,160,.06)]' : 'border-[var(--color-line)] bg-[var(--color-paper-2)]'} ${isDisabled ? 'cursor-not-allowed opacity-55' : 'hover:border-[var(--color-primary)]'}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${isActive ? 'bg-[var(--color-primary)] text-[var(--color-ink)]' : step.status === 'completed' ? 'bg-[var(--color-secondary)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`}>{step.number}</span>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">{step.label}</p>
+                  <p className="font-bold text-[var(--color-ink)]">{step.title}</p>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -797,6 +827,7 @@ export default function SignupPage() {
   const jobFileRef = useRef<HTMLInputElement>(null)
   const [cvPreviewOpen, setCvPreviewOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [activeResultStep, setActiveResultStep] = useState<'evidence' | 'context' | 'cv'>('evidence')
   const normalizedEmailForLinks = email.trim().toLowerCase()
   const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
   const cvForActions = editableCv || result?.optimizedCV
@@ -806,6 +837,10 @@ export default function SignupPage() {
     ? manualClarificationPrompts
     : normalizeClarificationPrompts(result?.clarificationQuestions)
   const shouldRenderEvidenceQuestions = !!result && activeClarificationPrompts.length > 0 && (manualClarificationPrompts.length > 0 || shouldShowEvidenceQuestions(result))
+  const hasContextAnswers = Object.values(clarificationAnswers).some((answer) => Boolean(answer?.option || answer?.detail?.trim()))
+  const contextComplete = !shouldRenderEvidenceQuestions || revisionChanges.length > 0
+  const resultWizardSteps = result ? getResultWizardSteps(result, { canDownloadCv, contextComplete }) : []
+  const canOpenCvStep = contextComplete
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
@@ -825,6 +860,7 @@ export default function SignupPage() {
           if (draft.jobDescription) setJobDescription(draft.jobDescription)
           if (draft.outputLanguage === 'english' || draft.outputLanguage === 'spanish') setOutputLanguage(draft.outputLanguage)
           if (draft.clarificationAnswers && typeof draft.clarificationAnswers === 'object') setClarificationAnswers(draft.clarificationAnswers)
+          if (draft.activeResultStep === 'evidence' || draft.activeResultStep === 'context' || draft.activeResultStep === 'cv') setActiveResultStep(draft.activeResultStep)
           setCopySuccess('Recuperé tu análisis anterior. Puedes continuar sin gastar otro crédito.')
         }
       } catch {}
@@ -843,11 +879,12 @@ export default function SignupPage() {
         jobDescription,
         outputLanguage,
         clarificationAnswers,
+        activeResultStep,
         savedAt: new Date().toISOString(),
       }))
       window.localStorage.setItem('revisamicv:last-analysis-draft-key', draftKey)
     } catch {}
-  }, [result, editableCv, email, jobDescription, outputLanguage, clarificationAnswers])
+  }, [result, editableCv, email, jobDescription, outputLanguage, clarificationAnswers, activeResultStep])
 
   useEffect(() => {
     if (!loading) return
@@ -952,6 +989,7 @@ export default function SignupPage() {
         tokens_remaining: typeof data.tokens_remaining === 'number' ? data.tokens_remaining : -1,
       })
       setResult(data)
+      setActiveResultStep('evidence')
       setEditableCv(data.optimizedCV || null)
       setCopySuccess('Tu análisis está listo. Si el score es bajo, responde las preguntas para completar el CV antes de descargarlo.')
       setRevisionInstruction('')
@@ -1066,6 +1104,7 @@ export default function SignupPage() {
 
     setClarificationError('')
     setManualClarificationPrompts([])
+    setActiveResultStep('cv')
     setCopySuccess('Estoy aplicando tus respuestas. Te muestro el CV ajustado en unos segundos.')
     await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
   }
@@ -1080,6 +1119,7 @@ export default function SignupPage() {
       const prompt = buildRiskyRevisionPrompt(instruction)
       if (prompt) {
         setManualClarificationPrompts([prompt])
+        setActiveResultStep('context')
         setClarificationAnswers({})
         setCopySuccess('Te hago preguntas rápidas aquí mismo para ajustar sin inventar y sin enredarte.')
         trackEvent('revision_clarification_prompted', { source: 'manual' })
@@ -1136,6 +1176,7 @@ export default function SignupPage() {
       setBlockedChanges(Array.isArray(data.blockedChanges) ? data.blockedChanges.map(coachBlockedChange) : [])
       setRevisionInstruction('')
       setManualClarificationPrompts([])
+      setActiveResultStep('cv')
       trackEvent('revision_completed', { added_skills: addedSkills.length, blocked_changes: Array.isArray(data.blockedChanges) ? data.blockedChanges.length : 0 })
       setCopySuccess('Listo. Te muestro qué cambió y qué dejamos como recomendación para cuidar tu credibilidad.')
     } catch (err: any) {
@@ -1338,7 +1379,19 @@ export default function SignupPage() {
             </div>
           </form>        ) : (
           <div className="space-y-5">
-            {shouldRenderEvidenceQuestions ? (
+            <ResultWizardNav
+              steps={resultWizardSteps}
+              activeStep={activeResultStep}
+              onStepChange={(step) => {
+                if (step === 'cv' && !canOpenCvStep) {
+                  setError('Antes de descargar, completa el paso de contexto para ajustar sin inventar.')
+                  return
+                }
+                setError('')
+                setActiveResultStep(step as 'evidence' | 'context' | 'cv')
+              }}
+            />
+            {activeResultStep === 'context' && shouldRenderEvidenceQuestions ? (
               <section className="rounded-[22px] border border-[rgba(242,156,56,.38)] bg-white p-5 shadow-sm">
                 <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
                   <div>
@@ -1414,7 +1467,10 @@ export default function SignupPage() {
                 </div>
               </section>
             ) : null}
-            <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
+
+            {activeResultStep === 'evidence' ? (
+              <>
+                <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
 
             <section className="rounded-[18px] border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.07)] p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-6">
               <div>
@@ -1431,7 +1487,26 @@ export default function SignupPage() {
 
             {!shouldRenderEvidenceQuestions ? renderDecisionGate(result) : null}
 
-            <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
+                <section className="rounded-[22px] border border-[var(--color-line)] bg-white p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Siguiente paso</p>
+                    <h2 className="mt-1 font-display text-2xl font-semibold text-[var(--color-ink)]">{shouldRenderEvidenceQuestions ? 'Completemos contexto real antes del CV final.' : 'Tu CV adaptado está listo para revisar.'}</h2>
+                    <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Avanzas paso a paso y puedes volver a este termómetro cuando quieras.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveResultStep(shouldRenderEvidenceQuestions ? 'context' : 'cv')}
+                    className="mt-4 rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] hover:text-white md:mt-0"
+                  >
+                    {shouldRenderEvidenceQuestions ? 'Responder contexto' : 'Ver CV adaptado'}
+                  </button>
+                </section>
+              </>
+            ) : null}
+
+            {activeResultStep === 'cv' ? (
+              <>
+                <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
 
             <section className="space-y-5 py-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end">
@@ -1529,7 +1604,7 @@ export default function SignupPage() {
 
             <div className="flex flex-col md:flex-row gap-4">
               <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); window.localStorage.removeItem('revisamicv:last-analysis-draft-key'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
+                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); window.localStorage.removeItem('revisamicv:last-analysis-draft-key'); setActiveResultStep('evidence'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
                 className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
               >
                 Analizar otra vacante
@@ -1547,6 +1622,8 @@ export default function SignupPage() {
                 Comprar más créditos
               </a>
             </div>
+              </>
+            ) : null}
           </div>
         )}
       </div>

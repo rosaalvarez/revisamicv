@@ -99,6 +99,48 @@ export function shouldShowEvidenceQuestions(result) {
   return scoreOf(result) < 60 && decision !== 'optimize'
 }
 
+export function getResultWizardSteps(result, options = {}) {
+  const needsContext = shouldShowEvidenceQuestions(result)
+  const canDownloadCv = Boolean(options.canDownloadCv)
+  const contextComplete = Boolean(options.contextComplete)
+  const steps = [
+    {
+      id: 'evidence',
+      number: 1,
+      label: 'Termómetro',
+      title: 'Entiende tu evidencia visible',
+      status: needsContext ? 'completed' : 'completed',
+      disabled: false,
+    },
+  ]
+
+  if (needsContext) {
+    steps.push({
+      id: 'context',
+      number: steps.length + 1,
+      label: 'Contexto',
+      title: 'Completa evidencia real',
+      status: contextComplete ? 'completed' : 'current',
+      disabled: false,
+    })
+  }
+
+  steps.push({
+    id: 'cv',
+    number: steps.length + 1,
+    label: 'CV final',
+    title: 'Edita y descarga',
+    status: !needsContext || contextComplete ? 'current' : 'pending',
+    disabled: needsContext && !contextComplete,
+  })
+
+  if (!canDownloadCv) {
+    steps[steps.length - 1] = { ...steps[steps.length - 1], disabled: true, status: needsContext && !contextComplete ? 'pending' : 'current' }
+  }
+
+  return steps
+}
+
 export function getEvidenceStepState(result) {
   const score = scoreOf(result)
   const needsQuestions = shouldShowEvidenceQuestions(result)
