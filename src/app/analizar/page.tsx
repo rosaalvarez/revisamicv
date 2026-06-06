@@ -1506,8 +1506,6 @@ export default function SignupPage() {
 
             {activeResultStep === 'cv' ? (
               <>
-                <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
-
             <section className="space-y-5 py-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
@@ -1520,20 +1518,34 @@ export default function SignupPage() {
                     <div>
                       <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{getCvTitle(editableCv || result.optimizedCV || result.rawText)}</h3>
                       <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">{canDownloadCv ? `Versión adaptada a esta vacante, en ${outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.` : 'Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.'}</p>
-                      <button type="button" onClick={openEditor} className="mt-2 inline-block text-sm font-bold text-[var(--color-primary-deep)] underline">✎ Editar antes de descargar</button>
                     </div>
                   </div>
-                  <div className="grid min-w-[180px] gap-3">
-                    <button type="button" onClick={() => canDownloadCv ? setCvPreviewOpen(true) : setError('Todavía no hay un CV adaptado listo para previsualizar. Responde las preguntas rápidas o edítalo antes.')} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">👁 Ver CV completo</button>
-                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">DOCX</button>
-                      <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">TXT</button>
-                    </div>
+                  <div className="grid min-w-[230px] gap-3">
+                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl bg-[var(--color-primary)] px-5 py-4 text-sm font-extrabold text-[var(--color-ink)] shadow-sm transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
+                    <button type="button" onClick={() => canDownloadCv ? setCvPreviewOpen(true) : setError('Todavía no hay un CV adaptado listo para previsualizar. Responde las preguntas rápidas o edítalo antes.')} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">Ver CV completo</button>
+                    <button type="button" onClick={openEditor} className="rounded-xl border border-[var(--color-line)] px-5 py-3 text-sm font-bold text-[var(--color-ink-soft)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-ink)]">Editar</button>
+                    <details className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] text-sm [&>summary::-webkit-details-marker]:hidden">
+                      <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-bold text-[var(--color-ink-soft)]">
+                        <span>Más formatos</span>
+                      </summary>
+                      <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-line)] px-4 py-3">
+                        <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg border border-[var(--color-ink)] bg-white px-4 py-2 text-sm font-bold disabled:opacity-50">DOCX</button>
+                        <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg border border-[var(--color-ink)] bg-white px-4 py-2 text-sm font-bold disabled:opacity-50">TXT</button>
+                      </div>
+                    </details>
                   </div>
                 </div>
               </div>
             </section>
+
+            <details className="rounded-[22px] border border-[var(--color-line)] bg-white shadow-sm [&>summary::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-extrabold text-[var(--color-ink)]">
+                <span>Ver cambios, brechas y recomendaciones</span>
+              </summary>
+              <div className="border-t border-[var(--color-line)] p-5">
+                <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
+              </div>
+            </details>
 
             {cvPreviewOpen && (
               <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(15,20,15,.62)] px-4 py-8 backdrop-blur-sm" onClick={() => setCvPreviewOpen(false)}>
@@ -1602,26 +1614,6 @@ export default function SignupPage() {
 
             <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos empleadores, cargos, títulos ni métricas. Solo reescribimos lo que ya es tuyo. <strong className="text-[var(--color-ink)]">La credibilidad en la entrevista la pones tú; nosotros la protegemos.</strong></p>
 
-            <div className="flex flex-col md:flex-row gap-4">
-              <button
-                onClick={() => { setResult(null); setEditableCv(null); setFile(null); setJobFile(null); setJobDescription(''); window.localStorage.removeItem('revisamicv_job_description'); window.localStorage.removeItem('revisamicv:last-analysis-draft-key'); setActiveResultStep('evidence'); setCopySuccess(''); setRevisionInstruction(''); setRevisionNotes([]); setRevisionAddedSkills([]); setRevisionChanges([]); setBlockedChanges([]); setManualClarificationPrompts([]); setClarificationAnswers({}); setCvPreviewOpen(false); setEditorOpen(false) }}
-                className="flex-1 py-3 rounded-full font-semibold border-2 border-slate-200 hover:bg-[var(--color-paper-2)] transition"
-              >
-                Analizar otra vacante
-              </button>
-              <a
-                href={dashboardHref}
-                className="flex-1 flex items-center justify-center gap-2 bg-[var(--color-primary)] text-[var(--color-ink)] py-3 rounded-full font-semibold hover:bg-[var(--color-primary-deep)] transition"
-              >
-                Ir a mi dashboard <ArrowRightIcon className="w-4 h-4" />
-              </a>
-              <a
-                href={`/dashboard?intent=checkout&pack=pro&email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`}
-                className="flex-1 flex items-center justify-center gap-2 border-2 border-[var(--color-primary)] text-[var(--color-primary-deep)] py-3 rounded-full font-semibold hover:bg-orange-50 transition"
-              >
-                Comprar más créditos
-              </a>
-            </div>
               </>
             ) : null}
           </div>
