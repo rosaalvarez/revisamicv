@@ -81,10 +81,10 @@ const revisionProgressSteps = [
   { pct: 40, label: 'Validando qué se puede agregar sin inventar...' },
   { pct: 62, label: 'Actualizando skills, perfil y bullets...' },
   { pct: 82, label: 'Revisando coherencia con la vacante...' },
-  { pct: 94, label: 'Preparando resumen de cambios...' },
+  { pct: 94, label: 'Generando el CV final. Si faltan datos, te haré preguntas concretas.' },
 ]
 
-const fallbackClarificationOptions = ['Sí, tengo experiencia relacionada', 'No directamente', 'Parcialmente o en un proyecto puntual', 'Otro: escribir mi caso']
+const fallbackClarificationOptions = ['Sí, usa esta experiencia que ya aparece en mi CV', 'Sí, tengo más contexto real para agregar', 'Parcialmente o en un proyecto puntual', 'No tengo esa experiencia']
 
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
@@ -337,10 +337,10 @@ function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void)
 
   return (
     <section className={`rounded-2xl border p-5 shadow-sm ${copy.tone}`}>
-      <p className="text-xs font-bold uppercase tracking-wide opacity-70">Filtro inteligente de evidencia</p>
-      <h3 className="mt-1 text-xl font-bold">{copy.title}</h3>
-      <p className="mt-2 inline-flex rounded-full bg-white/70 px-3 py-1 text-xs font-bold">{copy.label}</p>
-      {result.decisionReason && <p className="mt-3 text-sm leading-6 opacity-90">{result.decisionReason}</p>}
+      <p className="text-xs font-bold uppercase tracking-wide opacity-70">Antes de descargar</p>
+      <h3 className="mt-1 text-xl font-bold">Necesito confirmar datos para completar el CV.</h3>
+      <p className="mt-2 text-sm leading-6 opacity-90">El score muestra qué tanto encaja tu CV con esta vacante. Si falta evidencia, no voy a inventarla: puedes responder preguntas rápidas para mejorar el CV con información real.</p>
+      {result.decisionReason && <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm leading-6 opacity-90">{result.decisionReason}</p>}
       {shouldShowQuestions && (
         <div className="mt-4 rounded-2xl bg-white/70 p-4">
           <p className="text-sm font-bold">Máximo 3 preguntas para no adivinar:</p>
@@ -489,6 +489,29 @@ function getCvTitle(cv: any) {
     return `CV_${String(title).replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 36)}_adaptado`
   }
   return 'CV_adaptado'
+}
+
+
+function hasDownloadableCv(cv: any) {
+  if (typeof cv === 'string') return cv.trim().length >= 40
+  if (!cv || typeof cv !== 'object') return false
+  const featuredProjects = cv.featuredProjects || cv.projects
+  return Boolean(
+    cv.candidateName ||
+    cv.name ||
+    cv.targetTitle ||
+    cv.headline ||
+    (typeof cv.summary === 'string' && cv.summary.trim().length >= 40) ||
+    (Array.isArray(cv.coreCompetencies) && cv.coreCompetencies.length) ||
+    (Array.isArray(cv.skills) && cv.skills.length) ||
+    (Array.isArray(cv.technicalSkills) && cv.technicalSkills.length) ||
+    (Array.isArray(cv.experience) && cv.experience.some((role: any) => role?.title || role?.company || role?.bullets?.length)) ||
+    (Array.isArray(featuredProjects) && featuredProjects.some((project: any) => project?.name || project?.description || project?.bullets?.length)) ||
+    (Array.isArray(cv.education) && cv.education.length) ||
+    (Array.isArray(cv.certifications) && cv.certifications.length) ||
+    (Array.isArray(cv.tools) && cv.tools.length) ||
+    (Array.isArray(cv.languages) && cv.languages.length)
+  )
 }
 
 function getCvPreviewBullets(cv: any, limit = 3) {
@@ -751,6 +774,8 @@ export default function SignupPage() {
   const [editorOpen, setEditorOpen] = useState(false)
   const normalizedEmailForLinks = email.trim().toLowerCase()
   const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
+  const cvForActions = editableCv || result?.optimizedCV
+  const canDownloadCv = hasDownloadableCv(cvForActions)
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
@@ -866,7 +891,7 @@ export default function SignupPage() {
       })
       setResult(data)
       setEditableCv(data.optimizedCV || null)
-      setCopySuccess('Te enviamos un enlace por email para volver a descargar este CV desde tu dashboard si cierras la página.')
+      setCopySuccess('Tu análisis está listo. Si el score es bajo, responde las preguntas para completar el CV antes de descargarlo.')
       setRevisionInstruction('')
       setRevisionNotes([])
       setBlockedChanges([])
@@ -894,7 +919,7 @@ export default function SignupPage() {
 
   const downloadFile = async (format: 'pdf' | 'docx' | 'txt') => {
     const cvForDownload = editableCv || result?.optimizedCV
-    if (!cvForDownload) return setError('Primero genera un CV adaptado')
+    if (!hasDownloadableCv(cvForDownload)) return setError('Todavía no hay un CV adaptado listo para descargar. Responde las preguntas rápidas o usa “Editar antes de descargar” para completar la información.')
 
     trackEvent('download_started', { format })
     setDownloadLoading(format)
@@ -1072,7 +1097,7 @@ export default function SignupPage() {
             RevisaMiCV
           </a>
           <div className="flex items-center gap-3 text-sm">
-            <span className="hidden rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex">● 1 análisis gratis</span>
+            <span className="hidden rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex">● Análisis de CV</span>
             <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Dashboard</a>
           </div>
         </div>
@@ -1351,7 +1376,7 @@ export default function SignupPage() {
             <section className="space-y-5 py-4">
               <div className="flex flex-col gap-2 md:flex-row md:items-end">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
-                <h2 className="font-display text-3xl font-semibold text-[var(--color-ink)]">Listo para enviar. Y para editar antes.</h2>
+                <h2 className="font-display text-3xl font-semibold text-[var(--color-ink)]">{canDownloadCv ? 'Listo para enviar. Y para editar antes.' : 'Casi listo: falta completar datos reales.'}</h2>
               </div>
               <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 shadow-sm">
                 <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
@@ -1359,16 +1384,16 @@ export default function SignupPage() {
                     <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] before:absolute before:left-3 before:right-3 before:top-3 before:h-[3px] before:rounded before:bg-[var(--color-ink)] after:absolute after:bottom-3 after:left-3 after:right-5 after:top-6 after:bg-[repeating-linear-gradient(var(--color-line)_0_3px,transparent_3px_9px)]" />
                     <div>
                       <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{getCvTitle(editableCv || result.optimizedCV || result.rawText)}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Versión adaptada a esta vacante, en {outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">{canDownloadCv ? `Versión adaptada a esta vacante, en ${outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.` : 'Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.'}</p>
                       <button type="button" onClick={openEditor} className="mt-2 inline-block text-sm font-bold text-[var(--color-primary-deep)] underline">✎ Editar antes de descargar</button>
                     </div>
                   </div>
                   <div className="grid min-w-[180px] gap-3">
-                    <button type="button" onClick={() => setCvPreviewOpen(true)} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">👁 Ver CV completo</button>
-                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
+                    <button type="button" onClick={() => canDownloadCv ? setCvPreviewOpen(true) : setError('Todavía no hay un CV adaptado listo para previsualizar. Responde las preguntas rápidas o edítalo antes.')} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">👁 Ver CV completo</button>
+                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">DOCX</button>
-                      <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">TXT</button>
+                      <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">DOCX</button>
+                      <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-ink)] px-4 py-3 text-sm font-bold disabled:opacity-50">TXT</button>
                     </div>
                   </div>
                 </div>
@@ -1385,12 +1410,12 @@ export default function SignupPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={openEditor} className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]">✎ Editar</button>
-                      <button type="button" onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !(editableCv || result.optimizedCV)} className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-ink)] disabled:opacity-50">PDF</button>
+                      <button type="button" onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-ink)] disabled:opacity-50">PDF</button>
                       <button type="button" onClick={() => setCvPreviewOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Cerrar</button>
                     </div>
                   </div>
                   <div className="max-h-[76vh] overflow-y-auto px-5 py-6 md:px-10">
-                    {renderOptimizedCV(editableCv || result.optimizedCV || result.rawText)}
+                    {renderOptimizedCV(cvForActions)}
                   </div>
                   <div className="border-t border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 py-3 text-center text-xs text-[var(--color-ink-soft)]">Esta es una vista previa. Puedes editar antes de descargar. Nada de lo que ves fue inventado.</div>
                 </div>

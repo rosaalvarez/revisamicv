@@ -209,8 +209,32 @@ function hasItems(value) {
   return asArray(value).length > 0
 }
 
+export function hasMeaningfulCvContent(cv) {
+  if (typeof cv === 'string') return clean(cv).length >= 40
+  if (!cv || typeof cv !== 'object') return false
+
+  const featuredProjects = cv.featuredProjects || cv.projects
+  return Boolean(
+    getCandidateName(cv) ||
+    getTargetTitle(cv) ||
+    clean(cv.summary).length >= 40 ||
+    hasItems(cv.coreCompetencies) ||
+    hasItems(cv.skills) ||
+    hasItems(cv.technicalSkills) ||
+    (Array.isArray(cv.experience) && cv.experience.some((role) => clean(role?.title || role?.company || role?.bullets?.join(' ')).length >= 8)) ||
+    (Array.isArray(featuredProjects) && featuredProjects.some((project) => clean(project?.name || project?.description || project?.bullets?.join(' ')).length >= 8)) ||
+    hasItems(cv.education) ||
+    hasItems(cv.certifications) ||
+    hasItems(cv.tools) ||
+    hasItems(cv.languages)
+  )
+}
+
 export async function generateCvPdfBuffer(payload) {
   const optimizedCV = payload?.optimizedCV || payload?.cv || payload || {}
+  if (!hasMeaningfulCvContent(optimizedCV)) {
+    throw new Error('CV content is empty or incomplete. Ask the user for clarification before generating a PDF.')
+  }
   const language = payload?.outputLanguage === 'spanish' ? 'spanish' : 'english'
   const labels = getLabels(language)
 

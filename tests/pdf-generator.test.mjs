@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { generateCvPdfBuffer, sanitizePdfFilename } from '../src/lib/pdf-generator.js'
+import { generateCvPdfBuffer, hasMeaningfulCvContent, sanitizePdfFilename } from '../src/lib/pdf-generator.js'
 
 async function extractPdfText(buffer) {
   await import('pdf-parse/worker')
@@ -20,6 +20,13 @@ test('sanitizePdfFilename creates safe pdf names', () => {
   assert.equal(sanitizePdfFilename(''), 'optimized-cv.pdf')
 })
 
+test('generateCvPdfBuffer blocks empty CV content instead of producing a blank PDF', async () => {
+  assert.equal(hasMeaningfulCvContent({}), false)
+  await assert.rejects(
+    () => generateCvPdfBuffer({ outputLanguage: 'spanish', optimizedCV: {} }),
+    /empty or incomplete/i
+  )
+})
 test('generateCvPdfBuffer returns a valid PDF buffer', async () => {
   const buffer = await generateCvPdfBuffer({
     outputLanguage: 'english',
