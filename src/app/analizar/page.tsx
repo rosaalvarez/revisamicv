@@ -3,13 +3,13 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { UploadIcon, SparklesIcon, ArrowRightIcon } from '@/components/icons'
+import { UploadIcon, SparklesIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
-import { createAnalysisDraftKey, getEvidenceStepState, getEvidenceThermometer, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
+import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
   question: string
@@ -143,7 +143,7 @@ function normalizeClarificationPrompts(value: ProcessResult['clarificationQuesti
       return null
     })
     .filter(Boolean)
-    .slice(0, 3) as ClarificationPrompt[]
+    .slice(0, 4) as ClarificationPrompt[]
 }
 
 function buildClarificationInstruction(prompts: ClarificationPrompt[], answers: Record<number, { option: string; detail: string }>) {
@@ -540,67 +540,65 @@ function getCvPreviewBullets(cv: any, limit = 3) {
   return bullets.slice(0, limit)
 }
 
-function ResultHero({ result, cv }: { result: ProcessResult; cv: any }) {
+function getScoreVerdict(score?: number) {
+  if (score === undefined) return 'Compatibilidad estimada para esta vacante'
+  if (score >= 80) return 'Encaje fuerte para esta vacante'
+  if (score >= 60) return 'Buen potencial, conviene afinar evidencia'
+  if (score >= 40) return 'Hay señales útiles, falta contexto'
+  return 'Falta evidencia visible antes de aplicar'
+}
+
+function ResultHero({ result }: { result: ProcessResult; cv: any }) {
   const originalScore = normalizeScore(result.compatibilityScore)
   const revisedScore = normalizeScore(result.revisedCompatibilityScore)
   const score = revisedScore ?? originalScore
   const scoreValue = score ?? 0
-  const role = typeof cv === 'object' && cv ? (cv.targetTitle || cv.headline || 'Vacante objetivo') : 'Vacante objetivo'
-  const keywordScore = getBreakdownDisplayScore('keywords', normalizeScore((result.matchBreakdown?.keywords as any)?.score ?? result.matchBreakdown?.keywords), (result.matchBreakdown?.keywords as any)?.summary || '')
-  const experienceScore = getBreakdownDisplayScore('experience', normalizeScore((result.matchBreakdown?.experience as any)?.score ?? result.matchBreakdown?.experience), (result.matchBreakdown?.experience as any)?.summary || '')
-  const gapsClosed = Math.min(2, Math.max(0, result.gaps?.length || result.keywordsToInclude?.length ? 2 : 0))
-  const thermometer = getEvidenceThermometer(result)
+  const strengths = (result.strengths?.length ? result.strengths : ['Tu experiencia tiene señales que se pueden presentar con más fuerza para esta vacante.']).slice(0, 3)
+  const keywords = result.keywordsToInclude?.slice(0, 8) || []
+  const circumference = 2 * Math.PI * 86
+  const dashOffset = circumference - (scoreValue / 100) * circumference
 
   return (
-    <section className="overflow-hidden rounded-[28px] bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[var(--shadow-screen)] md:p-9">
-      <div className="grid gap-8 md:grid-cols-[1.35fr_0.65fr] md:items-center">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--color-secondary)]">{String(role).slice(0, 44)}</p>
-          <h1 className="mt-5 font-display text-4xl font-semibold leading-tight md:text-5xl">
-            {scoreValue >= 75 ? <>Tu experiencia encaja. <em className="text-[var(--color-primary)]">Tu CV no lo estaba mostrando.</em></> : <>Tu CV puede pelear mejor esta vacante. <em className="text-[var(--color-primary)]">Hay que mostrar mejor la evidencia.</em></>}
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-[#DDE8E5]">Cruzamos tu CV real contra esta vacante y reescribimos lo que ya hiciste en el lenguaje que la oferta busca. Sin inventar nada.</p>
-        </div>
-        <div className="grid justify-center text-center">
-          <div className="grid h-40 w-40 place-items-center rounded-full" style={{ background: `conic-gradient(var(--color-primary) ${scoreValue * 3.6}deg, rgba(255,255,255,.13) 0deg)` }}>
-            <div className="grid h-28 w-28 place-items-center rounded-full bg-[var(--color-block)]">
-              <div><div className="font-display text-5xl font-bold text-[var(--color-primary)]">{score ?? '—'}</div><div className="text-xs text-[#AFC6C0]">/100 compatible</div></div>
-            </div>
-          </div>
-          {revisedScore !== undefined && originalScore !== undefined ? <p className="mt-4 text-sm text-[#B9CDC8]">Tu versión original marcaba {originalScore}/100 para esta vacante.</p> : <p className="mt-4 text-sm text-[#B9CDC8]">Compatibilidad estimada para esta vacante.</p>}
-        </div>
-      </div>
-      <div className="mt-8 rounded-3xl border border-white/15 bg-white/[.08] p-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary)]">Termómetro de evidencia visible</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold text-white">{thermometer.title}</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[#DDE8E5]">{thermometer.explainer}</p>
-          </div>
-          <div className="rounded-2xl bg-white/10 px-4 py-3 text-center">
-            <p className="font-display text-4xl font-bold text-[var(--color-primary)]">{thermometer.score}</p>
-            <p className="text-xs font-semibold text-[#AFC6C0]">/100 evidencia</p>
+    <section className="text-center">
+      <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Tu compatibilidad</p>
+      <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">Tu CV ya encaja con esta vacante.</h1>
+      <div className="mt-8 flex flex-col items-center">
+        <div className="relative h-[200px] w-[200px]">
+          <svg width="200" height="200" className="-rotate-90">
+            <circle cx="100" cy="100" r="86" fill="none" stroke="#EDE6D8" strokeWidth="16" />
+            <circle cx="100" cy="100" r="86" fill="none" stroke="#F5800A" strokeWidth="16" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={dashOffset} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-display text-[3.4rem] font-bold leading-none text-[var(--color-primary-deep)]">{score ?? '—'}</span>
+            <span className="mt-1 text-xs text-[var(--color-ink-soft)]">/100 · encaje</span>
           </div>
         </div>
-        <div className="mt-5 grid grid-cols-5 overflow-hidden rounded-2xl border border-white/10 bg-white/10">
-          {thermometer.bands.map((band: any) => (
-            <div key={band.level} className={`min-h-20 border-r border-white/10 p-2 last:border-r-0 ${band.active ? 'bg-white/[.16]' : ''}`}>
-              <div className={`h-2 rounded-full ${band.color} ${band.active ? 'opacity-100' : 'opacity-35'}`} />
-              <p className={`mt-2 text-[10px] font-bold uppercase leading-4 tracking-wide ${band.active ? 'text-white' : 'text-[#8FA9A4]'}`}>{band.shortLabel}</p>
-              <p className={`mt-1 hidden text-[11px] leading-4 md:block ${band.active ? 'text-[#DDE8E5]' : 'text-[#8FA9A4]'}`}>{band.min}-{band.max}%</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs leading-5 text-[#AFC6C0]">{thermometer.description} Si tienes experiencia que no aparece en tu CV, puedes agregarla sin inventar.</p>
+        <p className="mt-4 font-display text-xl font-semibold text-[var(--color-ink)]"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--color-seen)] align-middle" />{getScoreVerdict(score)}</p>
+        {revisedScore !== undefined && originalScore !== undefined && revisedScore !== originalScore ? <p className="mt-2 text-sm text-[var(--color-ink-soft)]">Tu versión original marcaba {originalScore}/100 para esta vacante.</p> : null}
       </div>
 
-      <div className="mt-8 grid gap-4 border-t border-white/15 pt-6 md:grid-cols-3">
-        {[['Keywords de la vacante', keywordScore], ['Experiencia relevante', experienceScore], ['Brechas cerradas', gapsClosed ? `${gapsClosed} de ${Math.max(gapsClosed, Math.min(4, (result.gaps?.length || 2)))}` : '—']].map(([label, value]) => (
-          <div key={label as string}>
-            <div className="flex items-center justify-between text-sm text-[#DDE8E5]"><span>{label}</span><strong>{typeof value === 'number' ? `${value}%` : value}</strong></div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: typeof value === 'number' ? `${value}%` : value !== '—' ? '100%' : '12%' }} /></div>
+      <details className="mx-auto mt-3 max-w-xl border-0 bg-transparent text-center [&>summary::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-4 py-2 text-sm font-semibold text-[var(--color-secondary-deep)]">¿Qué significa este número? ▾</summary>
+        <p className="px-4 pb-3 text-sm leading-6 text-[var(--color-ink-soft)]">No mide tu valor profesional. Mide qué tan bien tu CV actual demuestra lo que esta vacante pide. Si hay experiencia real que no aparece, puedes agregarla sin inventar.</p>
+      </details>
+
+      <div className="mt-5 space-y-3 text-left">
+        <details className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-white [&>summary::-webkit-details-marker]:hidden">
+          <summary style={{ listStyle: 'none' }} className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-[var(--color-ink)] [&::-webkit-details-marker]:hidden"><span>Lo que ya tienes fuerte</span><span className="text-[var(--color-primary)]">+</span></summary>
+          <div className="border-t border-[var(--color-line)] px-5 py-4">
+            <ul className="space-y-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+              {strengths.map((item, index) => <li key={index} className="flex gap-3"><span className="font-bold text-[var(--color-seen)]">✓</span><span>{item}</span></li>)}
+            </ul>
           </div>
-        ))}
+        </details>
+        {keywords.length > 0 ? (
+          <details className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-white [&>summary::-webkit-details-marker]:hidden">
+            <summary style={{ listStyle: 'none' }} className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold text-[var(--color-ink)] [&::-webkit-details-marker]:hidden"><span>Keywords de la vacante que ya están en tu CV</span><span className="text-[var(--color-primary)]">+</span></summary>
+            <div className="border-t border-[var(--color-line)] px-5 py-4">
+              <div className="flex flex-wrap gap-2">{keywords.map((kw) => <span key={kw} className="rounded-full border border-[#CDE9E3] bg-[#E7F4F1] px-3 py-1.5 text-xs font-bold text-[var(--color-secondary-deep)]">{kw}</span>)}</div>
+            </div>
+          </details>
+        ) : null}
       </div>
     </section>
   )
@@ -825,7 +823,6 @@ export default function SignupPage() {
   const [clarificationError, setClarificationError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const jobFileRef = useRef<HTMLInputElement>(null)
-  const [cvPreviewOpen, setCvPreviewOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [activeResultStep, setActiveResultStep] = useState<'evidence' | 'context' | 'cv'>('evidence')
   const normalizedEmailForLinks = email.trim().toLowerCase()
@@ -989,7 +986,7 @@ export default function SignupPage() {
         tokens_remaining: typeof data.tokens_remaining === 'number' ? data.tokens_remaining : -1,
       })
       setResult(data)
-      setActiveResultStep('evidence')
+      setActiveResultStep(getInitialResultStep(data, { canDownloadCv: hasDownloadableCv(data.optimizedCV) }) as 'evidence' | 'context' | 'cv')
       setEditableCv(data.optimizedCV || null)
       setCopySuccess('Tu análisis está listo. Si el score es bajo, responde las preguntas para completar el CV antes de descargarlo.')
       setRevisionInstruction('')
@@ -1011,7 +1008,6 @@ export default function SignupPage() {
   }
 
   const openEditor = () => {
-    setCvPreviewOpen(false)
     setEditorOpen(true)
     setTimeout(() => document.getElementById('cv-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -1090,10 +1086,16 @@ export default function SignupPage() {
       : normalizeClarificationPrompts(result?.clarificationQuestions)
     if (!questions.length) return
 
+    const normalizedAnswers = questions.reduce((acc, _question, index) => {
+      const answer = clarificationAnswers[index] || { option: '', detail: '' }
+      const detail = answer.detail.trim()
+      acc[index] = { option: answer.option || (detail ? 'Sí, tengo esto' : 'No aplica'), detail }
+      return acc
+    }, {} as Record<number, { option: string; detail: string }>)
+
     const missing = questions.findIndex((_, index) => {
-      const answer = clarificationAnswers[index]
-      if (!answer?.option) return true
-      const optionNeedsDetail = !/^no|no directamente|no tengo/i.test(answer.option)
+      const answer = normalizedAnswers[index]
+      const optionNeedsDetail = !/^no\b|no directamente|no tengo|no aplica/i.test(answer.option)
       return optionNeedsDetail && answer.detail.trim().length < 20
     })
 
@@ -1106,7 +1108,7 @@ export default function SignupPage() {
     setManualClarificationPrompts([])
     setActiveResultStep('cv')
     setCopySuccess('Estoy aplicando tus respuestas. Te muestro el CV ajustado en unos segundos.')
-    await applyRevisionInstruction(buildClarificationInstruction(questions, clarificationAnswers))
+    await applyRevisionInstruction(buildClarificationInstruction(questions, normalizedAnswers))
   }
 
   const applyRevisionInstruction = async (instructionOverride?: string) => {
@@ -1378,243 +1380,159 @@ export default function SignupPage() {
               <p className="mt-2 text-sm text-[var(--color-ink-soft)]">No inventamos experiencia. Tú editas todo antes de descargar.</p>
             </div>
           </form>        ) : (
-          <div className="space-y-5">
+          <div className="mx-auto max-w-[760px] space-y-8">
             <ResultWizardNav
               steps={resultWizardSteps}
               activeStep={activeResultStep}
               onStepChange={(step) => {
                 if (step === 'cv' && !canOpenCvStep) {
-                  setError('Antes de descargar, completa el paso de contexto para ajustar sin inventar.')
+                  setError('Antes de descargar, afina tu evidencia para ajustar sin inventar.')
                   return
                 }
                 setError('')
                 setActiveResultStep(step as 'evidence' | 'context' | 'cv')
               }}
             />
-            {activeResultStep === 'context' && shouldRenderEvidenceQuestions ? (
-              <section className="rounded-[22px] border border-[rgba(242,156,56,.38)] bg-white p-5 shadow-sm">
-                <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary-deep)]">Paso de evidencia</p>
-                    <h2 className="mt-1 font-display text-2xl font-semibold text-[var(--color-ink)]">{evidenceStep?.title || 'Completemos tu evidencia.'}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Este score no mide tu valor profesional. Mide qué tan bien tu CV actual demuestra evidencia para esta vacante específica.</p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Ya hicimos el análisis inicial. No vas a gastar otro crédito por responder estas preguntas.</p>
-                  </div>
-                  <span className="rounded-full border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.10)] px-4 py-2 text-sm font-bold text-[var(--color-secondary-deep)]">Recuperable si refrescas</span>
-                </div>
-
-                <div className="mt-5 space-y-4">
-                  {activeClarificationPrompts.map((prompt, index) => {
-                    const answer = clarificationAnswers[index] || { option: '', detail: '' }
-                    const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
-                    return (
-                      <div key={prompt.question} className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">
-                        <p className="font-bold text-[var(--color-ink)]">{index + 1}. {prompt.question}</p>
-                        <div className="mt-3 grid gap-2">
-                          {options.map((option, optionIndex) => (
-                            <button
-                              key={`${prompt.question}-${optionIndex}`}
-                              type="button"
-                              onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option } }))}
-                              className={`rounded-2xl border px-3 py-3 text-left text-sm font-semibold leading-5 transition ${answer.option === option ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-ink)]'}`}
-                            >
-                              <span className="mr-2 text-xs opacity-70">Opción {optionIndex + 1}</span>{option}
-                            </button>
-                          ))}
-                        </div>
-                        <label className="mt-4 block text-sm font-bold text-[var(--color-ink)]">
-                          Ahora escribe contexto real: qué hiciste, cuánto tiempo, herramienta, proyecto, resultado o ejemplo.
-                        </label>
-                        <textarea
-                          value={answer.detail}
-                          onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, detail: e.target.value } }))}
-                          rows={3}
-                          placeholder={prompt.freeTextLabel || 'Ej: Sí usé esa herramienta en el proyecto X durante 6 meses; hice A, B y C. No tengo certificación, pero sí experiencia práctica...'}
-                          className="mt-3 w-full rounded-xl border border-[var(--color-line)] bg-white p-3 text-sm text-[var(--color-ink)] placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                        />
-                        {answer.option && !/^no\b|no directamente|no tengo/i.test(answer.option) && answer.detail.trim().length < 20 && (
-                          <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para que la IA pueda ajustar sin inventar.</p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {clarificationError && <p className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
-                <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs leading-5 text-[var(--color-ink-soft)]">No necesitas escribir perfecto. Responde como puedas; el sistema lo traduce a lenguaje profesional si es verdadero.</p>
-                    {revisionLoading && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-deep)]">
-                          <span>{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando respuestas...'}</span>
-                          <span>{revisionProgress}%</span>
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-orange-50">
-                          <div className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700" style={{ width: `${revisionProgress}%` }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={submitClarificationAnswers}
-                    disabled={revisionLoading}
-                    className="rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
-                  >
-                    {revisionLoading ? 'Aplicando respuestas...' : 'Usar respuestas para ajustar mi CV'}
-                  </button>
-                </div>
-              </section>
-            ) : null}
 
             {activeResultStep === 'evidence' ? (
-              <>
+              <section className="space-y-7">
                 <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
-
-            <section className="rounded-[18px] border border-[rgba(15,181,160,.35)] bg-[rgba(15,181,160,.07)] p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Tu panel ya quedó listo</p>
-                <h2 className="mt-2 font-display text-2xl font-semibold text-[var(--color-ink)]">Guarda este análisis en tu dashboard.</h2>
-                <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Ahí recuperas este CV, ves tus créditos y analizas otra vacante sin repetir todo desde cero.</p>
-              </div>
-              <a href={dashboardHref} className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-ink)] shadow-[var(--shadow-cta)] transition hover:bg-[var(--color-primary-deep)] hover:text-white md:mt-0">
-                Ir a mi dashboard <ArrowRightIcon className="ml-2 h-4 w-4" />
-              </a>
-            </section>
-
-            <FindingsSection result={result} />
-
-            {!shouldRenderEvidenceQuestions ? renderDecisionGate(result) : null}
-
-                <section className="rounded-[22px] border border-[var(--color-line)] bg-white p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Siguiente paso</p>
-                    <h2 className="mt-1 font-display text-2xl font-semibold text-[var(--color-ink)]">{shouldRenderEvidenceQuestions ? 'Completemos contexto real antes del CV final.' : 'Tu CV adaptado está listo para revisar.'}</h2>
-                    <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">Avanzas paso a paso y puedes volver a este termómetro cuando quieras.</p>
-                  </div>
+                <div className="flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
+                  <a href={dashboardHref} className="text-sm font-semibold text-[var(--color-ink-soft)] underline underline-offset-4 hover:text-[var(--color-ink)]">Guardar en mi dashboard</a>
                   <button
                     type="button"
                     onClick={() => setActiveResultStep(shouldRenderEvidenceQuestions ? 'context' : 'cv')}
-                    className="mt-4 rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:bg-[var(--color-primary-deep)] hover:text-white md:mt-0"
+                    className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]"
                   >
-                    {shouldRenderEvidenceQuestions ? 'Responder contexto' : 'Ver CV adaptado'}
+                    {shouldRenderEvidenceQuestions ? 'Continuar →' : 'Ver mi CV adaptado →'}
                   </button>
-                </section>
-              </>
+                </div>
+              </section>
+            ) : null}
+
+            {activeResultStep === 'context' ? (
+              <section className="space-y-5">
+                <div className="text-center">
+                  <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Tu experiencia</p>
+                  <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">¿Algo de esto sí lo tienes, pero no está en tu CV?</h1>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos nada. Si lo viviste y no aparece, lo agregas y lo reescribimos en el lenguaje de la vacante. Si no aplica, sáltalo.</p>
+                </div>
+
+                {shouldRenderEvidenceQuestions ? (
+                  <section className="space-y-4">
+                    {activeClarificationPrompts.map((prompt, index) => {
+                      const answer = clarificationAnswers[index] || { option: '', detail: '' }
+                      const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
+                      const isNoApply = /^no\b|no directamente|no tengo|no aplica/i.test(answer.option || '')
+                      return (
+                        <div key={prompt.question} className={`rounded-xl border border-[var(--color-line)] bg-white p-5 transition ${isNoApply ? 'opacity-55' : ''}`}>
+                          <h3 className="font-bold text-[var(--color-ink)]">{prompt.question}</h3>
+                          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">La vacante lo pide y tu CV no lo muestra claro.</p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {options.map((option, optionIndex) => {
+                              const noOption = /^no\b|no directamente|no tengo|no aplica/i.test(option)
+                              return (
+                                <button
+                                  key={`${prompt.question}-${optionIndex}`}
+                                  type="button"
+                                  onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option, detail: noOption ? '' : answer.detail } }))}
+                                  className={`rounded-lg border px-4 py-2 text-sm font-bold transition ${answer.option === option ? (noOption ? 'border-[var(--color-line)] bg-[var(--color-paper-2)] text-[var(--color-ink-soft)]' : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white') : 'border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary)]'}`}
+                                >
+                                  {noOption ? 'No aplica' : optionIndex === 0 ? 'Sí, tengo esto → agregar' : option}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          <div className="mt-4">
+                            <textarea
+                              value={answer.detail}
+                              onFocus={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option: answer.option || 'Sí, tengo esto' } }))}
+                              onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option: answer.option || 'Sí, tengo esto', detail: e.target.value } }))}
+                              rows={4}
+                              placeholder={prompt.freeTextLabel || 'Ej: En mi proyecto X medía retención y activación; usé Mixpanel durante 6 meses y mejoré el seguimiento del funnel.'}
+                              className="w-full resize-y rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] p-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-orange-100"
+                            />
+                            {answer.detail.trim().length > 0 && answer.detail.trim().length < 20 ? <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para ajustar sin inventar.</p> : null}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {clarificationError && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
+                    {revisionLoading ? (
+                      <div className="rounded-xl border border-orange-100 bg-orange-50 p-4">
+                        <div className="flex items-center justify-between text-xs font-bold text-[var(--color-primary-deep)]"><span>{revisionProgressSteps[revisionStepIndex]?.label || 'Aplicando respuestas...'}</span><span>{revisionProgress}%</span></div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white"><div className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700" style={{ width: `${revisionProgress}%` }} /></div>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : (
+                  <section className="rounded-xl border border-[var(--color-line)] bg-white p-5 text-center">
+                    <p className="font-bold text-[var(--color-ink)]">Tu CV ya muestra suficiente evidencia visible.</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Puedes pasar directo a revisar y descargar. Este paso queda disponible por si recuerdas algo real que quieras agregar luego.</p>
+                  </section>
+                )}
+
+                <div className="flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
+                  <button type="button" onClick={() => setActiveResultStep('evidence')} className="text-sm font-semibold text-[var(--color-ink-soft)] underline underline-offset-4 hover:text-[var(--color-ink)]">← Volver al resultado</button>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <button type="button" onClick={() => setActiveResultStep('cv')} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]">Mi CV ya está completo →</button>
+                    {shouldRenderEvidenceQuestions ? (
+                      <button type="button" onClick={submitClarificationAnswers} disabled={revisionLoading} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)] disabled:opacity-50">{revisionLoading ? 'Generando...' : 'Generar mi CV adaptado →'}</button>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="text-center text-xs leading-5 text-[var(--color-ink-soft)]">Puedes saltarte lo que no aplique. Nada de lo que no confirmes se inventará.</p>
+              </section>
             ) : null}
 
             {activeResultStep === 'cv' ? (
-              <>
-            <section className="space-y-5 py-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
-                <h2 className="font-display text-3xl font-semibold text-[var(--color-ink)]">{canDownloadCv ? 'Listo para enviar. Y para editar antes.' : 'Casi listo: falta completar datos reales.'}</h2>
-              </div>
-              <div className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 shadow-sm">
-                <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
-                  <div className="flex gap-4">
-                    <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] before:absolute before:left-3 before:right-3 before:top-3 before:h-[3px] before:rounded before:bg-[var(--color-ink)] after:absolute after:bottom-3 after:left-3 after:right-5 after:top-6 after:bg-[repeating-linear-gradient(var(--color-line)_0_3px,transparent_3px_9px)]" />
-                    <div>
-                      <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{getCvTitle(editableCv || result.optimizedCV || result.rawText)}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--color-ink-soft)]">{canDownloadCv ? `Versión adaptada a esta vacante, en ${outputLanguage === 'spanish' ? 'español' : 'inglés'}. Tú tienes la última palabra.` : 'Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.'}</p>
-                    </div>
-                  </div>
-                  <div className="grid min-w-[230px] gap-3">
-                    <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl bg-[var(--color-primary)] px-5 py-4 text-sm font-extrabold text-[var(--color-ink)] shadow-sm transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50">{downloadLoading === 'pdf' ? 'Generando PDF...' : 'Descargar PDF'}</button>
-                    <button type="button" onClick={() => canDownloadCv ? setCvPreviewOpen(true) : setError('Todavía no hay un CV adaptado listo para previsualizar. Responde las preguntas rápidas o edítalo antes.')} className="rounded-xl border border-[var(--color-secondary)] bg-[rgba(15,181,160,.08)] px-5 py-3 text-sm font-bold text-[var(--color-secondary-deep)] transition hover:bg-[rgba(15,181,160,.16)]">Ver CV completo</button>
-                    <button type="button" onClick={openEditor} className="rounded-xl border border-[var(--color-line)] px-5 py-3 text-sm font-bold text-[var(--color-ink-soft)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-ink)]">Editar</button>
-                    <details className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] text-sm [&>summary::-webkit-details-marker]:hidden">
-                      <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-bold text-[var(--color-ink-soft)]">
-                        <span>Más formatos</span>
-                      </summary>
-                      <div className="grid grid-cols-2 gap-3 border-t border-[var(--color-line)] px-4 py-3">
-                        <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg border border-[var(--color-ink)] bg-white px-4 py-2 text-sm font-bold disabled:opacity-50">DOCX</button>
-                        <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg border border-[var(--color-ink)] bg-white px-4 py-2 text-sm font-bold disabled:opacity-50">TXT</button>
+              <section className="space-y-5">
+                <div className="text-center">
+                  <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
+                  <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">Listo. Revisa y descarga tu CV para esta vacante.</h1>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)] disabled:opacity-50">{downloadLoading === 'pdf' ? 'Descargando PDF...' : 'Descargar PDF'}</button>
+                  <button type="button" onClick={openEditor} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]">Editar</button>
+                  <button onClick={() => downloadFile('docx')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)] disabled:opacity-50">DOCX</button>
+                  <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)] disabled:opacity-50">TXT</button>
+                </div>
+
+                <div className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
+                  {canDownloadCv ? renderOptimizedCV(cvForActions) : (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
+                  )}
+                </div>
+
+                <details className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-white [&>summary::-webkit-details-marker]:hidden">
+                  <summary style={{ listStyle: 'none' }} className="cursor-pointer list-none px-5 py-4 font-semibold text-[var(--color-ink)] [&::-webkit-details-marker]:hidden">Ver qué cambiamos y por qué</summary>
+                  <div className="border-t border-[var(--color-line)] p-5"><ChangeSection result={result} cv={cvForActions} /></div>
+                </details>
+
+                {editorOpen && (
+                  <section id="cv-editor" className="rounded-xl border border-[var(--color-line)] bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Editor</p>
+                        <h3 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Edita tu CV antes de descargar</h3>
+                        <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Cambia campos, bullets o skills y luego descarga PDF, DOCX o TXT.</p>
                       </div>
-                    </details>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <details className="rounded-[22px] border border-[var(--color-line)] bg-white shadow-sm [&>summary::-webkit-details-marker]:hidden">
-              <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-extrabold text-[var(--color-ink)]">
-                <span>Ver cambios, brechas y recomendaciones</span>
-              </summary>
-              <div className="border-t border-[var(--color-line)] p-5">
-                <ChangeSection result={result} cv={editableCv || result.optimizedCV || result.rawText} />
-              </div>
-            </details>
-
-            {cvPreviewOpen && (
-              <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(15,20,15,.62)] px-4 py-8 backdrop-blur-sm" onClick={() => setCvPreviewOpen(false)}>
-                <div className="my-auto w-full max-w-3xl overflow-hidden rounded-[18px] bg-white shadow-[0_40px_90px_-30px_rgba(0,0,0,.55)]" onClick={(e) => e.stopPropagation()}>
-                  <div className="sticky top-0 z-10 flex flex-col gap-3 border-b border-[var(--color-line)] bg-white px-5 py-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">Tu CV adaptado</h3>
-                      <p className="text-xs font-semibold text-[var(--color-secondary-deep)]">Vista previa completa antes de descargar</p>
+                      <button type="button" onClick={() => setEditorOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Ocultar editor</button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={openEditor} className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink)]">✎ Editar</button>
-                      <button type="button" onClick={() => downloadFile('pdf')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-bold text-[var(--color-ink)] disabled:opacity-50">PDF</button>
-                      <button type="button" onClick={() => setCvPreviewOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Cerrar</button>
-                    </div>
-                  </div>
-                  <div className="max-h-[76vh] overflow-y-auto px-5 py-6 md:px-10">
-                    {renderOptimizedCV(cvForActions)}
-                  </div>
-                  <div className="border-t border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 py-3 text-center text-xs text-[var(--color-ink-soft)]">Esta es una vista previa. Puedes editar antes de descargar. Nada de lo que ves fue inventado.</div>
-                </div>
-              </div>
-            )}
+                    <EditableCvForm
+                      cv={editableCv}
+                      onChange={setEditableCv}
+                      score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
+                      gaps={result.gaps}
+                      keywords={result.keywordsToInclude}
+                      honestyWarnings={result.honestyWarnings}
+                    />
+                  </section>
+                )}
 
-            {editorOpen && (
-              <section id="cv-editor" className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-sm">
-                <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-secondary-deep)]">Editor</p>
-                    <h3 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Edita tu CV antes de descargar</h3>
-                    <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Cambia campos, bullets o skills y luego descarga PDF, DOCX o TXT.</p>
-                  </div>
-                  <button type="button" onClick={() => setEditorOpen(false)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-ink-soft)]">Ocultar editor</button>
-                </div>
-                <EditableCvForm
-                  cv={editableCv}
-                  onChange={setEditableCv}
-                  score={normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)}
-                  gaps={result.gaps}
-                  keywords={result.keywordsToInclude}
-                  honestyWarnings={result.honestyWarnings}
-                />
+                <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos empleadores, cargos ni métricas. <strong className="text-[var(--color-ink)]">Tú tienes la última palabra antes de descargar.</strong></p>
               </section>
-            )}
-
-            <section className="rounded-[32px] bg-[#F4EFE7] p-7 text-center shadow-sm md:p-10">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--color-secondary-deep)]">Para tu próxima vacante</p>
-              <h2 className="mt-4 font-display text-3xl font-semibold text-[var(--color-ink)] md:text-4xl">Cada vacante merece su propio CV.</h2>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">Este análisis fue gratis. Si tienes más ofertas en la mira, compra créditos una sola vez. Sin suscripción, sin vencimiento.</p>
-              <div className="mx-auto mt-8 grid max-w-4xl gap-5 md:grid-cols-3">
-                {[
-                  { key: 'basic', name: 'Básico', price: '$5', desc: '5 análisis · $1 c/u' },
-                  { key: 'pro', name: 'Pro', price: '$12', desc: '15 análisis · $0.80 c/u', featured: true },
-                  { key: 'premium', name: 'Premium', price: '$19', desc: '30 análisis · $0.63 c/u' },
-                ].map((plan) => (
-                  <div key={plan.key} className={`relative rounded-2xl border bg-white p-6 ${plan.featured ? 'border-[var(--color-primary)] shadow-[var(--shadow-soft)]' : 'border-[var(--color-line)]'}`}>
-                    {plan.featured && <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-4 py-1 text-xs font-bold text-[var(--color-ink)]">MÁS ELEGIDO</span>}
-                    <h3 className="font-display text-xl font-semibold">{plan.name}</h3>
-                    <p className="mt-4 font-display text-4xl font-bold">{plan.price}<span className="ml-1 text-sm font-semibold">USD</span></p>
-                    <p className="mt-2 text-sm text-[var(--color-ink-soft)]">{plan.desc}</p>
-                    <a href={`/dashboard?intent=checkout&pack=${plan.key}&email=${encodeURIComponent(email.trim().toLowerCase())}`} className={`mt-6 block rounded-xl border-2 px-4 py-3 text-sm font-bold ${plan.featured ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border-[var(--color-ink)] text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]'}`}>Comprar</a>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-6 text-xs text-[var(--color-ink-soft)]">Tu primer análisis ya es tuyo. Pagas solo si quieres seguir.</p>
-            </section>
-
-            <p className="mx-auto max-w-2xl text-center text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos empleadores, cargos, títulos ni métricas. Solo reescribimos lo que ya es tuyo. <strong className="text-[var(--color-ink)]">La credibilidad en la entrevista la pones tú; nosotros la protegemos.</strong></p>
-
-              </>
             ) : null}
           </div>
         )}

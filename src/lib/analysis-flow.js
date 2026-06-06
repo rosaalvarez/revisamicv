@@ -66,7 +66,7 @@ function normalizeQuestions(value) {
       return ''
     })
     .filter(Boolean)
-    .slice(0, 3)
+    .slice(0, 4)
 }
 
 function scoreOf(result) {
@@ -100,45 +100,44 @@ export function shouldShowEvidenceQuestions(result) {
 }
 
 export function getResultWizardSteps(result, options = {}) {
+  const score = scoreOf(result)
   const needsContext = shouldShowEvidenceQuestions(result)
   const canDownloadCv = Boolean(options.canDownloadCv)
-  const contextComplete = Boolean(options.contextComplete)
-  const steps = [
+  const contextComplete = Boolean(options.contextComplete) || !needsContext || score >= 80
+  return [
     {
       id: 'evidence',
       number: 1,
-      label: 'Termómetro',
-      title: 'Entiende tu evidencia visible',
-      status: needsContext ? 'completed' : 'completed',
+      label: 'Compatibilidad',
+      title: 'Tu encaje',
+      status: 'completed',
       disabled: false,
     },
-  ]
-
-  if (needsContext) {
-    steps.push({
+    {
       id: 'context',
-      number: steps.length + 1,
-      label: 'Contexto',
-      title: 'Completa evidencia real',
-      status: contextComplete ? 'completed' : 'current',
+      number: 2,
+      label: 'Tu experiencia',
+      title: score >= 80 ? 'Opcional' : 'Afina evidencia',
+      status: needsContext && !contextComplete ? 'current' : score >= 80 ? 'optional' : 'completed',
       disabled: false,
-    })
-  }
+      optional: score >= 80,
+    },
+    {
+      id: 'cv',
+      number: 3,
+      label: 'Revisar y descargar',
+      title: 'Tu CV',
+      status: canDownloadCv && contextComplete ? 'current' : 'pending',
+      disabled: !canDownloadCv || !contextComplete,
+    },
+  ]
+}
 
-  steps.push({
-    id: 'cv',
-    number: steps.length + 1,
-    label: 'CV final',
-    title: 'Edita y descarga',
-    status: !needsContext || contextComplete ? 'current' : 'pending',
-    disabled: needsContext && !contextComplete,
-  })
-
-  if (!canDownloadCv) {
-    steps[steps.length - 1] = { ...steps[steps.length - 1], disabled: true, status: needsContext && !contextComplete ? 'pending' : 'current' }
-  }
-
-  return steps
+export function getInitialResultStep(result, options = {}) {
+  const score = scoreOf(result)
+  const canDownloadCv = Boolean(options.canDownloadCv)
+  if (score >= 80 && canDownloadCv) return 'cv'
+  return 'evidence'
 }
 
 export function getEvidenceStepState(result) {
