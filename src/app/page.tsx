@@ -7,28 +7,28 @@ const plans = [
   {
     key: 'basic',
     name: 'Básico',
-    blurb: 'Compra 5 análisis adicionales. Nada mensual.',
+    blurb: 'Para revisar varias postulaciones sin pagar una suscripción.',
     price: '$5',
     per: 'Pago único · 5 análisis · $1 por CV',
-    features: ['Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado PDF / DOCX / TXT', 'Créditos sin vencimiento'],
+    features: ['5 análisis adicionales', 'Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado PDF / DOCX / TXT'],
     featured: false,
   },
   {
     key: 'pro',
     name: 'Pro',
-    blurb: 'Compra 15 análisis adicionales. Mejor costo por CV.',
+    blurb: 'Para aplicar a más vacantes con mejor costo por CV.',
     price: '$12',
     per: 'Pago único · 15 análisis · $0.80 por CV',
-    features: ['Todo lo del plan Básico', '15 análisis en tu cuenta', 'Historial de análisis en tu panel', 'Úsalo con 15 vacantes distintas', 'Créditos sin vencimiento'],
+    features: ['Todo lo del plan Básico', '15 análisis en tu cuenta', 'Historial en tu dashboard', 'Úsalo con 15 vacantes distintas', 'Créditos sin vencimiento'],
     featured: true,
   },
   {
     key: 'premium',
     name: 'Premium',
-    blurb: 'Compra 30 análisis adicionales. El menor costo por CV.',
+    blurb: 'Para una búsqueda activa con muchas postulaciones.',
     price: '$19',
     per: 'Pago único · 30 análisis · $0.63 por CV',
-    features: ['Todo lo del plan Pro', '30 análisis en tu cuenta', 'Historial completo en tu panel', 'Úsalo con 30 vacantes distintas', 'Créditos sin vencimiento'],
+    features: ['Todo lo del plan Pro', '30 análisis en tu cuenta', 'Historial completo', 'Úsalo con 30 vacantes distintas', 'Créditos sin vencimiento'],
     featured: false,
   },
 ]
@@ -44,208 +44,201 @@ function LandingCta({ children, location, className = 'btn-primary' }: { childre
 export default function HomePage() {
   return (
     <>
-      <nav>
+      <nav className="site-nav">
         <div className="wrap">
-          <Link href="/" className="logo"><b>R</b> RevisaMiCV</Link>
+          <Link href="/" className="logo"><b>R</b> Revisa mi CV</Link>
           <div className="navlinks">
-            <a href="#silencio">El silencio</a>
             <a href="#como">Cómo funciona</a>
-            <a href="#ia">vs. IA genérica</a>
             <a href="#precios">Precios</a>
             <Link href="/blog">Blog</Link>
             <Link href="/dashboard">Dashboard</Link>
           </div>
-          <LandingCta location="nav" className="nav-cta">Analiza tu CV gratis</LandingCta>
+          <LandingCta location="nav" className="nav-cta">Revisar mi CV gratis</LandingCta>
         </div>
       </nav>
 
       <header className="hero">
         <div className="wrap">
-          <span className="badge"><span className="dot" /> Primer análisis gratis · sin tarjeta</span>
-          <h1>No es tu experiencia.<br />Es que tu CV no le habla a <span className="pop-serif">esa</span> vacante.</h1>
-          <p className="sub">Y por eso un filtro automático lo descarta <b>antes de que un humano lo lea</b>. Sube tu CV, pega la vacante y recibe una versión adaptada (en español o en inglés) que esta vez sí logra que te vean. En 3 minutos, sin inventar experiencia.</p>
-          <div className="cta-row">
-            <LandingCta location="hero">Analiza tu primer CV gratis &rarr;</LandingCta>
-            <a href="#como" className="btn-ghost">Ver cómo funciona</a>
+          <span className="badge"><span className="dot" /> Sin registro · primer análisis gratis</span>
+          <h1>Antes de enviar otro CV, asegúrate de que diga lo que esa vacante está buscando.</h1>
+          <p className="sub">Sube tu CV, pega la oferta y recibe un análisis claro: qué coincide, qué falta y cómo ajustarlo para que tenga más opciones de pasar el primer filtro.</p>
+
+          <div className="hero-search" aria-label="Resumen del flujo de análisis">
+            <div className="hero-seg">
+              <div className="lbl">Tu CV</div>
+              <div className="val">Sube tu PDF, Word o TXT</div>
+            </div>
+            <div className="hero-divider" />
+            <div className="hero-seg">
+              <div className="lbl">La vacante</div>
+              <div className="val">Pega el texto de la oferta</div>
+            </div>
+            <LandingCta location="hero_search">Analizar</LandingCta>
           </div>
-          <div className="microtrust"><span>Sin tarjeta</span><span>3 minutos</span><span>Español ⇄ inglés</span><span>No inventa experiencia</span></div>
+
+          <p className="freenote"><b>Primer análisis gratis.</b> Sin tarjeta. Diagnóstico claro en español o inglés.</p>
+          <div className="trust-stats">
+            <div className="stat"><b>0-100%</b><span>porcentaje de ajuste</span></div>
+            <div className="stat"><b>CV + oferta</b><span>comparación real</span></div>
+            <div className="stat"><b>ES · EN</b><span>resultado bilingüe</span></div>
+            <div className="stat"><b>Sin inventar</b><span>solo mejora lo que ya tienes</span></div>
+          </div>
         </div>
       </header>
 
-      <section className="stakes" id="silencio">
+      <section className="sec" id="dolor">
         <div className="wrap">
-          <span className="kicker">Lo que de verdad está en juego</span>
-          <h2>No estás buscando un trabajo.<br />Estás esperando para <span className="pop-serif">volver a vivir</span>.</h2>
-          <ul className="hold">
-            <li>La boda que dejaste para <b>“cuando esté estable”</b>.</li>
-            <li>La cita médica que sigues posponiendo porque ahorita no.</li>
-            <li>El apartamento, el gimnasio, el viaje. Todo en <b>standby</b>.</li>
-            <li>Ese sueño que llevas tres años mandando <b>“para el otro año”</b>.</li>
-          </ul>
-          <p className="silence-line">Y mientras tanto, cada CV que mandas cae en un silencio que te hace dudar de ti. <b>El silencio no significa que no sirvas.</b></p>
-        </div>
-      </section>
-
-      <section className="agit">
-        <div className="wrap">
-          <div className="pain-grid">
-            <div className="pain"><q>Mandé 400 aplicaciones. Ni un rechazo. Silencio total.</q><cite>3 años de experiencia, en búsqueda activa</cite></div>
-            <div className="pain"><q>Reescribí mi CV 10 veces. Sigo sin saber qué está mal.</q><cite>Profesional con experiencia, 2 meses buscando</cite></div>
-            <div className="pain"><q>Treinta minutos adaptando cada CV a mano. Multiplícalo por 200.</q><cite>Developer, 10 años en tech</cite></div>
-            <div className="pain"><q>Puedo hacer cinco roles, pero atraigo siempre el equivocado.</q><cite>Perfil multidisciplinario (PM / UX / Dev)</cite></div>
-          </div>
-          <p className="punch">Tienes la experiencia. Tienes las skills. Pero tu CV genérico le habla a todos y no le habla a <b>nadie</b>, y frente a esa vacante específica no se nota lo bueno que eres. Casi siempre, un filtro lo descartó antes de que un humano lo leyera. <b>Eso sí se puede arreglar.</b></p>
-        </div>
-      </section>
-
-      <section className="light">
-        <div className="wrap">
-          <div className="sec-head reveal in">
-            <span className="kicker">La diferencia</span>
-            <h2>El mismo logro. Dos formas de contarlo.</h2>
-            <p>No inventamos experiencia. Tomamos lo que ya hiciste y lo traducimos al lenguaje que esa vacante, y su filtro ATS, está buscando.</p>
-          </div>
-          <div className="ba reveal in">
-            <div className="card before">
-              <div className="tag"><span className="lbl">Antes · genérico</span><span className="score">23%</span></div>
-              <ul>
-                <li>Fui el encargado del proyecto de migración.</li>
-                <li>Responsable de coordinar el equipo de desarrollo.</li>
-                <li>Hice tareas de testing y documentación.</li>
-              </ul>
+          <div className="stakes">
+            <div className="stakes-head">
+              <span className="kicker">Lo que de verdad está en juego</span>
+              <h2>No es solo conseguir trabajo. Es recuperar la vida que quedó en pausa.</h2>
+              <p className="lead">Cuando nadie responde, no solo se frustra una postulación. Se frena el dinero, la tranquilidad y las decisiones que dependen de volver a tener estabilidad.</p>
             </div>
-            <div className="card after">
-              <div className="tag"><span className="lbl">Después · adaptado</span><span className="score">94%</span></div>
-              <ul>
-                <li><b>Lideré</b> una migración técnica, conectando alcance, equipo y resultado verificable.</li>
-                <li><b>Coordiné</b> prioridades con desarrollo, producto y stakeholders para entregar mejor.</li>
-                <li><b>Documenté</b> pruebas y procesos para mejorar handoff, calidad y trazabilidad.</li>
-              </ul>
+
+            <div className="stakes-body">
+              <div className="stakes-panel">
+                <h3>Lo que también se queda esperando</h3>
+                <p>Desde afuera parece solo una búsqueda de empleo. Por dentro se siente como tener media vida detenida.</p>
+                <div className="stakes-list">
+                  <div className="stake-item"><span className="dot" />La cita médica que pospones porque ahora no quieres sumar otro gasto.</div>
+                  <div className="stake-item"><span className="dot" />La deuda que quieres cerrar para dejar de vivir haciendo cuentas.</div>
+                  <div className="stake-item"><span className="dot" />El apartamento, el viaje, el gimnasio o el plan que quedó en standby.</div>
+                  <div className="stake-item"><span className="dot" />La conversación que siempre termina en: “cuando tenga plata”.</div>
+                  <div className="stake-item"><span className="dot" />La tranquilidad de decidir sin sentir que todo depende del próximo “te llamamos”.</div>
+                </div>
+              </div>
+
+              <div className="stakes-result">
+                <div>
+                  <div className="label"><span /> El punto crítico</div>
+                  <blockquote>El silencio no siempre significa que no sirvas. A veces significa que tu CV no está diciendo lo que la vacante necesita leer.</blockquote>
+                </div>
+                <p>Por eso Revisa mi CV cruza tu hoja de vida con la oferta real: para mostrar tu porcentaje de ajuste, las palabras que faltan, lo que sí juega a tu favor y cómo mejorar el CV antes de enviarlo.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="light" id="como" style={{ paddingTop: 0 }}>
+      <section className="sec" id="como">
         <div className="wrap">
-          <div className="sec-head reveal in">
+          <div className="sec-head">
             <span className="kicker">Cómo funciona</span>
-            <h2>De CV genérico a aplicación específica, en minutos.</h2>
-            <p>Cada vacante se vuelve una decisión clara: aplicar fuerte, adaptar con cuidado, o entender los riesgos antes de enviar.</p>
+            <h2>Así sabes qué cambiar antes de aplicar.</h2>
+            <p>Muchas veces el problema no es tu experiencia: es que tu CV no está conectado con la vacante, le faltan palabras clave o tus logros están escritos de forma demasiado general.</p>
           </div>
-          <div className="steps reveal in">
-            <div className="step"><div className="n">01</div><h3>Sube tu CV real</h3><p>PDF, Word .docx o TXT. En español o inglés.</p></div>
-            <div className="step"><div className="n">02</div><h3>Pega la vacante</h3><p>Responsabilidades, requisitos y contexto del cargo.</p></div>
-            <div className="step"><div className="n">03</div><h3>Recibe el diagnóstico</h3><p>Score /100, brechas, fortalezas, riesgos y keywords.</p></div>
-            <div className="step"><div className="n">04</div><h3>Descarga tu CV adaptado</h3><p>Editable y listo para enviar en PDF, DOCX o TXT.</p></div>
+
+          <div className="cards">
+            <div className="card"><div className="ic">1</div><div className="step">PASO 1</div><h3>Subes tu CV</h3><p>Carga tu hoja de vida en PDF, Word o TXT. Sin formularios largos ni tarjeta.</p></div>
+            <div className="card"><div className="ic">2</div><div className="step">PASO 2</div><h3>Pegas la vacante</h3><p>Usamos el texto real de la oferta para revisar si tu perfil está alineado.</p></div>
+            <div className="card"><div className="ic">3</div><div className="step">PASO 3</div><h3>Ves qué mejorar</h3><p>Recibes coincidencias, vacíos y una versión ajustada para esa postulación, sin inventar experiencia.</p></div>
           </div>
-          <div className="output reveal in">
-            <div className="ohead">
-              <div className="role">Esto recibes<b>Product Manager · Remoto</b></div>
-              <div className="gauge"><div className="num">94</div><div className="den">/ 100 compatible</div></div>
+
+          <div className="diff-card">
+            <div className="diff-top">
+              <div className="dt-left">
+                <div className="dial"><div><strong>78</strong><span>/100 ajuste</span></div></div>
+                <h3>Tu CV no necesita sonar bonito. Necesita responderle a esa vacante.</h3>
+                <p>El análisis no se basa en consejos genéricos. Cruza tu experiencia con requisitos, keywords y contexto de la oferta.</p>
+              </div>
+              <div className="dt-right">
+                <div className="match"><b>Lo que ya juega a tu favor</b><p>Experiencia, herramientas y logros que sí conectan con la vacante.</p></div>
+                <div className="gap"><b>Lo que conviene ajustar</b><p>Palabras clave, evidencias o enfoques que hoy no están claros en tu CV.</p></div>
+              </div>
             </div>
-            <div className="bars">
-              <div className="bar"><div className="br-top"><span>Keywords de la vacante</span><span>92%</span></div><div className="track"><div className="fill" style={{ width: '92%' }} /></div></div>
-              <div className="bar"><div className="br-top"><span>Experiencia relevante</span><span>88%</span></div><div className="track"><div className="fill" style={{ width: '88%' }} /></div></div>
-              <div className="bar"><div className="br-top"><span>Brechas que cerramos</span><span>2 detectadas</span></div><div className="track"><div className="fill" style={{ width: '78%' }} /></div></div>
+            <div className="diff-bottom">
+              <div className="drow"><span className="ko">“Responsable de coordinar equipo”</span><span className="ar">→</span><span className="ok">“Coordiné prioridades entre producto, desarrollo y stakeholders.”</span></div>
+              <div className="drow"><span className="ko">“Hice tareas de testing”</span><span className="ar">→</span><span className="ok">“Documenté pruebas y procesos para mejorar calidad y trazabilidad.”</span></div>
             </div>
-            <div className="rew"><div className="rlbl">Reescrito · con tu evidencia real</div>“Lideré” se vuelve “<b>Spearheaded cloud migration, reducing deploy time 40%</b>”. Sin inventar nada.</div>
           </div>
         </div>
       </section>
 
-      <section className="light section-alt" id="ia">
+      <section className="sec">
         <div className="wrap">
-          <div className="sec-head reveal in">
-            <span className="kicker">Menos prompt, más producto</span>
-            <h2>¿Por qué no lo hago gratis con ChatGPT?</h2>
-            <p>Puedes, si tienes el prompt perfecto, lees el PDF a mano, iteras, formateas, traduces y exportas. Cada vez. Aquí no pagas por “usar IA”: pagas por no tener que armar todo eso en cada aplicación.</p>
-          </div>
-          <div className="cmp reveal in">
-            <div className="row head"><div>Capacidad</div><div className="gen">ChatGPT, Claude, Gemini…</div><div className="mine">RevisaMiCV</div></div>
-            {[
-              ['Cruza tu CV vs la vacante', 'Depende del prompt', 'Flujo guiado'],
-              ['Score de compatibilidad', 'No estructurado', '/100 con desglose'],
-              ['Brechas y riesgos', 'Genérico', 'Por cada vacante'],
-              ['Convierte ES ⇄ EN', 'Traducción literal, suena raro', 'Adapta, no traduce literal'],
-              ['CV adaptado descargable', 'Copiar y pegar', 'PDF / DOCX / TXT'],
-              ['Control anti invención', 'Riesgo alto de exagerar', 'Reglas explícitas'],
-              ['Tiempo por vacante', '15 a 30 min de pelea', '~3 minutos'],
-            ].map(([cap, gen, mine]) => <div className="row" key={cap}><div className="cap">{cap}</div><div className="gen">{gen}</div><div className="mine">{mine}</div></div>)}
-          </div>
-        </div>
-      </section>
-
-      <section className="light">
-        <div className="wrap">
-          <div className="sec-head reveal in"><span className="kicker">Reglas de confianza</span><h2>Mejora tu historia. Sin inventar una nueva.</h2><p>La credibilidad es lo único que no puedes recuperar en una entrevista. Por eso esto está construido para no traicionarla.</p></div>
-          <div className="trust reveal in">
-            <div className="pill"><div className="ic">⊘</div><h3>No inventa nada</h3><p>Ni empleadores, ni cargos, ni títulos, ni certificaciones, ni años, ni métricas que no tengas.</p></div>
-            <div className="pill"><div className="ic">⊕</div><h3>Preserva tu evidencia</h3><p>Métricas, marcas, links, proyectos propios, GitHub y tu stack por cada rol. Lo valioso se queda.</p></div>
-            <div className="pill"><div className="ic">⇄</div><h3>Te habla de tu vacante</h3><p>Cruza tu CV real contra esa vacante específica, no contra consejos genéricos de internet.</p></div>
-            <div className="pill"><div className="ic">✎</div><h3>Tú tienes la última palabra</h3><p>Editas todo antes de descargar y exportas en PDF, Word o TXT compatible con ATS.</p></div>
-          </div>
-          <p className="privacy-note reveal in">Tu CV contiene datos sensibles. El pago lo procesa Stripe y no guardamos los datos de tu tarjeta. Privacidad, términos y opción de eliminar tus datos, visibles antes de pagar.</p>
-        </div>
-      </section>
-
-      <section className="light section-alt">
-        <div className="wrap">
-          <div className="sec-head reveal in"><span className="kicker">Para quién es</span><h2>Para que cada aplicación cuente.</h2></div>
-          <div className="who reveal in">
-            <div className="whocard"><q>“Tengo varias vacantes parecidas. ¿A cuál aplico primero?”</q><p>Un score distinto por cada vacante. Sabes dónde vale la pena el esfuerzo.</p></div>
-            <div className="whocard"><q>“Puedo aplicar a PM, UX o Dev. Mi CV grita uno solo.”</q><p>Reposiciona tus fortalezas transferibles por rol, sin inventar cargos.</p></div>
-            <div className="whocard"><q>“Mi CV está en español y la vacante en inglés. O al revés.”</q><p>Adapta tu CV al otro idioma con lenguaje profesional real, listo para remoto global.</p></div>
+          <div className="scope-panel">
+            <div className="scope-copy">
+              <span className="kicker">Qué hace la herramienta</span>
+              <h2>Convierte tu CV en una respuesta directa a la vacante.</h2>
+              <p>La idea no es adornar ni inventar. Es hacer visible lo que ya tienes, ordenar mejor tus logros y acercar tu CV al lenguaje exacto de la oferta.</p>
+            </div>
+            <div className="scope-grid">
+              <div className="scope-card yes">
+                <h3>Lo que sí hace</h3>
+                <ul>
+                  <li>Calcula un porcentaje de ajuste entre tu CV y la vacante.</li>
+                  <li>Detecta palabras clave, requisitos y habilidades que faltan.</li>
+                  <li>Te muestra qué partes de tu experiencia ya coinciden.</li>
+                  <li>Reescribe frases débiles para que suenen más claras y específicas.</li>
+                </ul>
+              </div>
+              <div className="scope-card no">
+                <h3>Lo que no hace</h3>
+                <ul>
+                  <li>No inventa experiencia, cargos, estudios ni resultados.</li>
+                  <li>No promete contratación, porque eso depende del proceso.</li>
+                  <li>No envía postulaciones por ti.</li>
+                  <li>No reemplaza tu criterio: tú decides qué versión usar.</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="light" id="precios">
+      <section className="sec" id="precios">
         <div className="wrap">
-          <div className="sec-head reveal in"><span className="kicker">Precios</span><h2>Simple. Sin suscripción. El primero es gratis.</h2><p>Tu primer análisis es gratis. Estos planes son para comprar análisis adicionales: cada uno compara tu CV contra 1 vacante y genera un CV adaptado descargable.</p></div>
-          <div className="plans reveal in">
+          <div className="sec-head">
+            <span className="kicker">Precios</span>
+            <h2>Pago único. Sin suscripción.</h2>
+            <p>Tu primer análisis es gratis. Si te sirve, compras más análisis para comparar tu CV contra vacantes distintas.</p>
+          </div>
+          <div className="plans">
             {plans.map((plan) => (
               <div className={`plan ${plan.featured ? 'feat' : ''}`} key={plan.key}>
                 {plan.featured && <span className="ptag">Más elegido</span>}
-                <h3>{plan.name}</h3><p className="blurb">{plan.blurb}</p>
-                <div className="price">{plan.price}<small> USD</small></div><div className="per">{plan.per}</div>
+                <h3>{plan.name}</h3>
+                <p className="blurb">{plan.blurb}</p>
+                <div className="price">{plan.price}<small> USD</small></div>
+                <div className="per">{plan.per}</div>
                 <ul>{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-                <Link href={`/dashboard?intent=checkout&pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing', intent: 'checkout' })} className={`pbtn ${plan.featured ? 'solid' : 'outline'}`}>Comprar {plan.name}</Link>
+                <Link href={`/dashboard?intent=checkout&pack=${plan.key}`} onClick={() => trackEvent('pricing_pack_click', { pack: plan.key, location: 'landing_pricing', intent: 'checkout' })} className={`pbtn ${plan.featured ? 'solid' : 'outline'}`}>Elegir {plan.name}</Link>
               </div>
             ))}
           </div>
-          <p className="privacy-note reveal in">Empieza gratis, sin tarjeta. Si te sirve, compras más análisis. Te pedimos tu email solo para guardar tus créditos e historial.</p>
         </div>
       </section>
 
-      <section className="light section-alt">
+      <section className="sec">
         <div className="wrap">
-          <div className="sec-head reveal in"><span className="kicker">Antes de empezar</span><h2>Las preguntas que sí importan.</h2></div>
-          <div className="faq reveal in">
-            <details open><summary>¿Esto me garantiza que voy a conseguir trabajo?</summary><p>No, y desconfía de quien te lo prometa. Lo que sí hace es atacar el punto donde se cae la mayoría de buenos perfiles: hoy gran parte de los CV quedan descartados por un filtro automático antes de que un humano los lea. RevisaMiCV mejora la compatibilidad de tu CV con esa vacante específica para que apliques con más fuerza. La entrevista la ganas tú; lo nuestro es que llegues a tenerla.</p></details>
-            <details><summary>¿Va a inventar experiencia que no tengo?</summary><p>Nunca. Es la regla central del producto: no inventa empleadores, cargos, títulos, certificaciones, años ni métricas. Toma tu experiencia real y la reescribe en el lenguaje que la vacante busca. La credibilidad en la entrevista es tuya y la protegemos.</p></details>
-            <details><summary>¿El score es real o es decorativo?</summary><p>Es real: mide qué tan alineado está tu CV con el texto de esa vacante específica. Keywords, experiencia relevante y brechas. No predice el algoritmo interno de cada empresa ni promete entrevistas. Sirve para algo concreto: priorizar a cuál aplicar fuerte y qué arreglar antes de enviar.</p></details>
-            <details><summary>¿Tengo que suscribirme?</summary><p>No. Compras créditos una sola vez y no vencen. Sin cobros mensuales, sin tarjeta para el primer análisis, sin la trampa de la suscripción que se te olvidó cancelar.</p></details>
+          <div className="sec-head">
+            <span className="kicker">Antes de empezar</span>
+            <h2>Las preguntas que sí importan.</h2>
+          </div>
+          <div className="faq">
+            <details open><summary>¿Esto me garantiza que voy a conseguir trabajo?</summary><p>No. Lo que sí hace es atacar un punto donde se caen muchos perfiles: el CV no muestra con claridad lo que esa vacante necesita leer. La entrevista la ganas tú; esto ayuda a que llegues con más fuerza.</p></details>
+            <details><summary>¿Va a inventar experiencia que no tengo?</summary><p>No. La regla central es no inventar empleadores, cargos, títulos, certificaciones, años ni métricas. Toma tu experiencia real y la reescribe con más claridad.</p></details>
+            <details><summary>¿Tengo que suscribirme?</summary><p>No. El primer análisis es gratis y los planes son de pago único. Compras análisis adicionales solo si te sirve.</p></details>
           </div>
         </div>
       </section>
 
       <section className="final">
         <div className="wrap">
-          <h2>Antes de mandar otro CV al silencio, revisa si encaja.</h2>
-          <p>El primer análisis es gratis. Si te sirve, compras créditos. Sin suscripción.</p>
-          <LandingCta location="final">Analiza tu primer CV gratis &rarr;</LandingCta>
-          <div className="microtrust" style={{ marginTop: 24 }}><span>Sin tarjeta</span><span>3 minutos</span><span>Español ⇄ inglés</span></div>
+          <h2>No mandes otro CV a ciegas.</h2>
+          <p>Sube tu CV, pega la vacante y mira qué cambiar antes de aplicar.</p>
+          <LandingCta location="final">Analizar mi CV gratis</LandingCta>
+          <div className="microtrust" style={{ marginTop: 24 }}><span>Sin tarjeta</span><span>Sin inventar</span><span>PDF / DOCX / TXT</span></div>
         </div>
       </section>
 
       <footer>
         <div className="wrap">
-          <div className="col" style={{ maxWidth: 260 }}><div className="logo" style={{ marginBottom: 12 }}><b>R</b> RevisaMiCV</div><p style={{ fontSize: '.84rem' }}>CVs adaptados a vacantes reales, sin inventar experiencia.</p></div>
+          <div className="col" style={{ maxWidth: 270 }}><div className="logo" style={{ marginBottom: 12 }}><b>R</b> Revisa mi CV</div><p>CVs adaptados a vacantes reales, sin inventar experiencia.</p></div>
           <div className="col"><h4>Producto</h4><ul><li><a href="#como">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><Link href="/dashboard">Dashboard</Link></li></ul></div>
-          <div className="col"><h4>Recursos</h4><ul><li><Link href="/blog">Blog</Link></li><li><Link href="/recursos/adaptar-cv-a-vacante">Adaptar tu CV a una vacante</Link></li><li><Link href="/recursos/optimizar-cv-ats">Optimizar tu CV para ATS</Link></li><li><Link href="/recursos/cv-en-ingles-para-remoto">CV en inglés para remoto</Link></li></ul></div>
-          <div className="col"><h4>Legal</h4><ul><li><Link href="/privacidad">Privacidad</Link></li><li><Link href="/terminos">Términos</Link></li><li><Link href="/soporte">Soporte</Link></li></ul></div>
-          <div className="copy">© 2026 RevisaMiCV. Hecho para que esta vez sí te vean.</div>
+          <div className="col"><h4>Recursos</h4><ul><li><Link href="/blog">Blog</Link></li><li><Link href="/recursos/adaptar-cv-a-vacante">Guía para tu CV</Link></li><li><Link href="/recursos/optimizar-cv-ats">Cómo pasar el ATS</Link></li></ul></div>
+          <div className="col"><h4>Legal</h4><ul><li><Link href="/privacidad">Privacidad</Link></li><li><Link href="/terminos">Términos</Link></li><li><Link href="/soporte">Contacto</Link></li></ul></div>
+          <div className="copy">© 2026 RevisaMiCV. Hecho para revisar antes de aplicar.</div>
         </div>
       </footer>
     </>
