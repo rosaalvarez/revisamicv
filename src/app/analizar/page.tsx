@@ -9,12 +9,16 @@ import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescript
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
+import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
 import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
   question: string
   options?: string[]
   freeTextLabel?: string
+  requirement_id?: string
+  requirement_text?: string
+  current_status?: string
 }
 
 type ProcessResult = {
@@ -25,6 +29,9 @@ type ProcessResult = {
   revisedCompatibilityScore?: number
   revisionScoreExplanation?: string
   matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
+  requirements_table?: any[]
+  original_match_results?: any[]
+  adapted_match_results?: any[]
   fitVerdict?: string
   positioningAngle?: string
   applicationDecision?: 'optimize' | 'optimize_with_caution' | 'needs_clarification' | 'not_recommended'
@@ -66,7 +73,7 @@ const decisionCopy = {
   not_recommended: {
     label: 'Evidencia insuficiente con lo visible',
     title: 'La vacante pide evidencia que tu CV todavía no muestra',
-    tone: 'border-red-200 bg-red-50 text-red-950',
+    tone: 'border-orange-200 bg-orange-50 text-orange-950',
   },
 } as const
 
@@ -141,6 +148,9 @@ function normalizeClarificationPrompts(value: ProcessResult['clarificationQuesti
           question,
           options: options.length ? options : fallbackClarificationOptions,
           freeTextLabel: item.freeTextLabel || 'Otro: escribe tu caso',
+          requirement_id: item.requirement_id,
+          requirement_text: item.requirement_text,
+          current_status: item.current_status,
         } : null
       }
       return null
@@ -205,9 +215,9 @@ function getScoreTone(score?: number) {
     return {
       label: 'Buena oportunidad',
       action: 'Conviene aplicar después de reforzar keywords y brechas menores.',
-      bg: 'bg-orange-100',
-      text: 'text-[var(--color-primary-deep)]',
-      bar: 'bg-[var(--color-primary)]',
+      bg: 'bg-green-100',
+      text: 'text-green-800',
+      bar: 'bg-green-500',
     }
   }
 
@@ -224,9 +234,9 @@ function getScoreTone(score?: number) {
   return {
     label: 'Aplicar con cuidado',
     action: 'La vacante parece lejana. Evita inventar experiencia y evalúa otra opción.',
-    bg: 'bg-red-100',
-    text: 'text-red-800',
-    bar: 'bg-red-500',
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    bar: 'bg-orange-500',
   }
 }
 
@@ -299,6 +309,83 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
             </div>
           )
         })}
+      </div>
+    </section>
+  )
+}
+
+function renderScoreBreakdown(scoreBreakdown?: ProcessResult['score_breakdown']) {
+  const rows = buildScoreBreakdownRows(scoreBreakdown)
+  if (!rows.length) return null
+
+  return (
+    <section className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-5 shadow-sm text-left">
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-primary-deep)]">Desglose del score</p>
+        <h3 className="text-xl font-bold text-slate-950">Sub-scores del documento</h3>
+        <p className="text-sm text-slate-600 mt-1">Mide qué tan bien el CV demuestra cada grupo de requisitos. Si una categoría no aplica, no la mostramos.</p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {rows.map((item: any) => {
+          const tone = getScoreTone(item.score)
+          return (
+            <div key={item.key} className="rounded-xl bg-white border border-[var(--color-line)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-slate-900 text-sm">{item.label}</p>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.bg} ${tone.text}`}>{item.score}/100</span>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${item.score}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function renderKeyRequirements(result: ProcessResult) {
+  const rows = buildKeyRequirementRows(result.requirements_table, result.adapted_match_results || result.original_match_results, 6)
+  if (!rows.length) return null
+
+  const badgeClass: Record<string, string> = {
+    match: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    partial: 'bg-amber-50 text-amber-800 border-amber-200',
+    gap: 'bg-slate-50 text-slate-700 border-slate-200',
+  }
+  const statusLabel: Record<string, string> = { match: 'Visible', partial: 'Parcial', gap: 'No visible' }
+  const typeBadgeClass: Record<string, string> = {
+    must_have: 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]',
+    nice_to_have: 'bg-white text-[var(--color-secondary-deep)] border-[var(--color-secondary)]',
+  }
+  const typeLabel: Record<string, string> = { must_have: 'Obligatorio', nice_to_have: 'Deseable' }
+
+  return (
+    <section className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-sm text-left">
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-secondary-deep)]">Requisitos clave</p>
+        <h3 className="text-xl font-bold text-slate-950">Qué pide la vacante y qué muestra el CV</h3>
+        <p className="text-sm text-slate-600 mt-1">Esto juzga el documento, no a ti. Si tu experiencia existe pero no aparece, la puedes agregar en el siguiente paso.</p>
+      </div>
+      <div className="space-y-3">
+        {rows.map((row: any) => (
+          <div key={row.id} className="rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${typeBadgeClass[row.type] || typeBadgeClass.nice_to_have}`}>{typeLabel[row.type] || row.type_label || 'Deseable'}</span>
+                </div>
+                <p className="font-bold text-[var(--color-ink)]">{row.requirement}</p>
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{sanitizeDocumentFraming(row.copy)}</p>
+              </div>
+              <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-bold ${badgeClass[row.status] || badgeClass.gap}`}>{statusLabel[row.status] || row.status}</span>
+            </div>
+            {row.quote ? <blockquote className="mt-3 rounded-lg border-l-4 border-[var(--color-primary)] bg-white px-3 py-2 text-sm leading-6 text-slate-700">{row.quote}</blockquote> : null}
+            {row.evidence_source === 'user_declared' ? <p className="mt-2 text-xs font-semibold text-[var(--color-secondary-deep)]">Evidencia agregada por ti en “Tu experiencia”.</p> : null}
+            {row.note && !row.quote ? <p className="mt-2 text-xs text-slate-500">{sanitizeDocumentFraming(row.note)}</p> : null}
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -547,14 +634,15 @@ function getScoreVerdict(score?: number) {
   if (score === undefined) return 'Compatibilidad estimada para esta vacante'
   if (score >= 80) return 'Encaje fuerte para esta vacante'
   if (score >= 60) return 'Buen potencial, conviene afinar evidencia'
-  if (score >= 40) return 'Hay señales útiles, falta contexto'
-  return 'Falta evidencia visible antes de aplicar'
+  if (score >= 40) return 'El documento tiene señales útiles, falta contexto'
+  return 'Falta evidencia visible en el CV antes de aplicar'
 }
 
 function ResultHero({ result }: { result: ProcessResult; cv: any }) {
-  const originalScore = normalizeScore(result.compatibilityScore)
+  const originalScore = normalizeScore(result.original_score)
+  const adaptedScore = normalizeScore(result.adapted_score ?? result.compatibilityScore)
   const revisedScore = normalizeScore(result.revisedCompatibilityScore)
-  const score = revisedScore ?? originalScore
+  const score = revisedScore ?? adaptedScore ?? originalScore
   const scoreValue = score ?? 0
   const strengths = (result.strengths?.length ? result.strengths : ['Tu experiencia tiene señales que se pueden presentar con más fuerza para esta vacante.']).slice(0, 3)
   const keywords = result.keywordsToInclude?.slice(0, 8) || []
@@ -843,10 +931,11 @@ export default function SignupPage() {
   const cvForActions = editableCv || result?.optimizedCV
   const canDownloadCv = hasDownloadableCv(cvForActions)
   const evidenceStep = result ? getEvidenceStepState(result) : null
+  const phase2GapPrompts = result ? buildGapRecoveryQuestions(result.requirements_table, result.adapted_match_results || result.original_match_results) as ClarificationPrompt[] : []
   const activeClarificationPrompts = manualClarificationPrompts.length
     ? manualClarificationPrompts
-    : normalizeClarificationPrompts(result?.clarificationQuestions)
-  const shouldRenderEvidenceQuestions = !!result && activeClarificationPrompts.length > 0 && (manualClarificationPrompts.length > 0 || shouldShowEvidenceQuestions(result))
+    : (phase2GapPrompts.length ? phase2GapPrompts : normalizeClarificationPrompts(result?.clarificationQuestions))
+  const shouldRenderEvidenceQuestions = !!result && activeClarificationPrompts.length > 0 && (manualClarificationPrompts.length > 0 || phase2GapPrompts.length > 0 || shouldShowEvidenceQuestions(result))
   const hasContextAnswers = Object.values(clarificationAnswers).some((answer) => Boolean(answer?.option || answer?.detail?.trim()))
   const contextComplete = !shouldRenderEvidenceQuestions || revisionChanges.length > 0
   const resultWizardSteps = result ? getResultWizardSteps(result, { canDownloadCv, contextComplete }) : []
@@ -1111,9 +1200,7 @@ export default function SignupPage() {
   }
 
   const submitClarificationAnswers = async () => {
-    const questions = manualClarificationPrompts.length
-      ? manualClarificationPrompts
-      : normalizeClarificationPrompts(result?.clarificationQuestions)
+    const questions = activeClarificationPrompts
     if (!questions.length) return
 
     const normalizedAnswers = questions.reduce((acc, _question, index) => {
@@ -1130,7 +1217,7 @@ export default function SignupPage() {
     })
 
     if (missing >= 0) {
-      setClarificationError(`En la pregunta ${missing + 1}, elige una opción y escribe una frase concreta con lo que sí sabes/hiciste. Así la IA no inventa.`)
+      setClarificationError(`En la pregunta ${missing + 1}, elige una opción y escribe una frase concreta con experiencia real que el CV pueda agregar. Así la IA no inventa.`)
       return
     }
 
@@ -1138,10 +1225,16 @@ export default function SignupPage() {
     setManualClarificationPrompts([])
     setActiveResultStep('cv')
     setCopySuccess('Estoy aplicando tus respuestas. Te muestro el CV ajustado en unos segundos.')
-    await applyRevisionInstruction(buildClarificationInstruction(questions, normalizedAnswers))
+    const userDeclaredEvidence = normalizeUserDeclarations(questions.map((question, index) => ({
+      requirement_id: question.requirement_id,
+      requirement_text: question.requirement_text || question.question,
+      option: normalizedAnswers[index]?.option,
+      detail: normalizedAnswers[index]?.detail,
+    })))
+    await applyRevisionInstruction(buildClarificationInstruction(questions, normalizedAnswers), userDeclaredEvidence)
   }
 
-  const applyRevisionInstruction = async (instructionOverride?: string) => {
+  const applyRevisionInstruction = async (instructionOverride?: string, userDeclaredEvidence: any[] = []) => {
     const cvToRevise = editableCv || result?.optimizedCV
     const instruction = (instructionOverride || revisionInstruction).trim()
     if (!cvToRevise) return setError('Primero genera un CV adaptado')
@@ -1181,8 +1274,12 @@ export default function SignupPage() {
           revisionInstruction: instruction,
           outputLanguage,
           jobDescription,
-          currentCompatibilityScore: result?.revisedCompatibilityScore ?? result?.compatibilityScore,
+          currentCompatibilityScore: result?.revisedCompatibilityScore ?? result?.adapted_score ?? result?.compatibilityScore,
           matchBreakdown: result?.matchBreakdown,
+          requirementsTable: result?.requirements_table,
+          originalMatchResults: result?.original_match_results,
+          adaptedMatchResults: result?.adapted_match_results,
+          userDeclaredEvidence,
           gaps: result?.gaps,
           keywordsToInclude: result?.keywordsToInclude,
           honestyWarnings: result?.honestyWarnings,
@@ -1198,7 +1295,9 @@ export default function SignupPage() {
       setResult((current) => current ? {
         ...current,
         optimizedCV: data.optimizedCV,
-        ...(revisedScore !== undefined ? { revisedCompatibilityScore: revisedScore } : {}),
+        ...(revisedScore !== undefined ? { revisedCompatibilityScore: revisedScore, adapted_score: data.adapted_score ?? revisedScore } : {}),
+        ...(Array.isArray(data.adapted_match_results) ? { adapted_match_results: data.adapted_match_results } : {}),
+        ...(data.score_breakdown ? { score_breakdown: data.score_breakdown } : {}),
         ...(typeof data.revisionScoreExplanation === 'string' ? { revisionScoreExplanation: data.revisionScoreExplanation } : {}),
       } : current)
       const addedSkills = getAddedSkills(beforeCv, data.optimizedCV)
@@ -1446,6 +1545,8 @@ export default function SignupPage() {
             {activeResultStep === 'evidence' ? (
               <section className="space-y-7">
                 <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
+                {renderScoreBreakdown(result.score_breakdown)}
+                {renderKeyRequirements(result)}
                 <div className="flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
                   <a href={dashboardHref} className="text-sm font-semibold text-[var(--color-ink-soft)] underline underline-offset-4 hover:text-[var(--color-ink)]">Guardar en mi dashboard</a>
                   <button
@@ -1463,8 +1564,8 @@ export default function SignupPage() {
               <section className="space-y-5">
                 <div className="text-center">
                   <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Tu experiencia</p>
-                  <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">¿Algo de esto sí lo tienes, pero no está en tu CV?</h1>
-                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos nada. Si lo viviste y no aparece, lo agregas y lo reescribimos en el lenguaje de la vacante. Si no aplica, sáltalo.</p>
+                  <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">¿Algo de esto existe, pero no está en tu CV?</h1>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos nada. Si esa experiencia existe y no aparece, la agregamos y reescribimos el CV en el lenguaje de la vacante. Si no aplica, sáltalo.</p>
                 </div>
 
                 {shouldRenderEvidenceQuestions ? (
@@ -1487,7 +1588,7 @@ export default function SignupPage() {
                                   onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option, detail: noOption ? '' : answer.detail } }))}
                                   className={`rounded-lg border px-4 py-2 text-sm font-bold transition ${answer.option === option ? (noOption ? 'border-[var(--color-line)] bg-[var(--color-paper-2)] text-[var(--color-ink-soft)]' : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white') : 'border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary)]'}`}
                                 >
-                                  {noOption ? 'No aplica' : optionIndex === 0 ? 'Sí, tengo esto → agregar' : option}
+                                  {noOption ? 'No tengo' : option}
                                 </button>
                               )
                             })}

@@ -5,6 +5,8 @@ import { validateEmail } from '@/lib/input-validation'
 import { getUserTokenState } from '@/lib/token-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { parseJsonCompletion } from '@/lib/json-completion'
+import { applyUserDeclaredEvidenceUpgrades, buildUserDeclaredRevisionInstruction, computeDeterministicScore } from '@/lib/matching-engine'
+import { normalizeUserDeclarations } from '@/lib/result-phase2'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
@@ -27,6 +29,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const optimizedCV = body?.optimizedCV
     const revisionInstruction = String(body?.revisionInstruction || '').trim()
+    const userDeclaredEvidence = normalizeUserDeclarations(body?.userDeclaredEvidence)
+    const declaredInstruction = buildUserDeclaredRevisionInstruction(userDeclaredEvidence)
+    const effectiveInstruction = [revisionInstruction, declaredInstruction].filter(Boolean).join('\n\n')
     const email = String(body?.email || '').trim().toLowerCase()
     const outputLanguage = normalizeOutputLanguage(body?.outputLanguage)
 
@@ -79,11 +84,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!revisionInstruction) {
+    if (!effectiveInstruction) {
       return NextResponse.json({ error: 'revisionInstruction is required' }, { status: 400 })
     }
 
-    if (revisionInstruction.length > MAX_INSTRUCTION_LENGTH) {
+    if (effectiveInstruction.length > MAX_INSTRUCTION_LENGTH * 2) {
       return NextResponse.json(
         {
           error: 'revisionInstruction is too long',
@@ -94,7 +99,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userPrompt = JSON.stringify({
-      revisionInstruction,
+      revisionInstruction: effectiveInstruction,
       outputLanguage,
       currentOptimizedCV: optimizedCV,
       analysisContext: {
@@ -134,10 +139,27 @@ export async function POST(req: NextRequest) {
     }
 
     const revisedScore = normalizeScore(parsed.revisedCompatibilityScore)
+    let upgradedMatches = null as any
+    let deterministicScore = revisedScore
+    let deterministicBreakdown = null as any
+    if (userDeclaredEvidence.length && Array.isArray(body?.requirementsTable)) {
+      const upgraded = applyUserDeclaredEvidenceUpgrades(
+        body.requirementsTable,
+        Array.isArray(body?.adaptedMatchResults) ? body.adaptedMatchResults : (Array.isArray(body?.originalMatchResults) ? body.originalMatchResults : []),
+        userDeclaredEvidence
+      )
+      upgradedMatches = upgraded.matches
+      const recalculated = computeDeterministicScore(body.requirementsTable, upgradedMatches)
+      deterministicScore = recalculated.score
+      deterministicBreakdown = recalculated.score_breakdown
+    }
 
     return NextResponse.json({
       optimizedCV: revisedCv,
-      revisedCompatibilityScore: revisedScore,
+      revisedCompatibilityScore: deterministicScore,
+      adapted_score: deterministicScore,
+      ...(upgradedMatches ? { adapted_match_results: upgradedMatches } : {}),
+      ...(deterministicBreakdown ? { score_breakdown: deterministicBreakdown } : {}),
       revisionScoreExplanation: typeof parsed.revisionScoreExplanation === 'string' ? parsed.revisionScoreExplanation : '',
       revisionNotes: Array.isArray(parsed.revisionNotes) ? parsed.revisionNotes : [],
       blockedChanges: Array.isArray(parsed.blockedChanges) ? parsed.blockedChanges : [],

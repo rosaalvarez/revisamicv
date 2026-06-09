@@ -1,5 +1,6 @@
 import { parseJsonCompletion } from './json-completion.js'
 import { hasMeaningfulCvContent } from './pdf-generator.js'
+import { normalizeUserDeclarations } from './result-phase2.js'
 
 export const MATCHING_WEIGHT_CONFIG = Object.freeze({
   must_have: 3,
@@ -366,6 +367,42 @@ export function validateOptimizedCvOutput(cv) {
   if (!hasSkills) missing.push('skills')
 
   return missing.length ? { valid: false, reason: `missing_sections:${missing.join(',')}` } : { valid: true, reason: 'ok' }
+}
+
+export function applyUserDeclaredEvidenceUpgrades(requirements, matches, declarations) {
+  const normalizedRequirements = normalizeRequirementWeights(requirements)
+  const declarationById = new Map(normalizeUserDeclarations(declarations).map((item) => [item.requirement_id, item]))
+  const originalById = new Map(asArray(matches).map((match) => [String(match?.requirement_id || ''), match]))
+
+  return {
+    declarations: Array.from(declarationById.values()),
+    matches: normalizedRequirements.map((requirement) => {
+      const original = normalizeMatch(originalById.get(requirement.id), requirement)
+      original.requirement_id = requirement.id
+      const declaration = declarationById.get(requirement.id)
+      if (!declaration) return original
+
+      const currentRank = STATUS_RANK[original.status] ?? 0
+      const declaredRank = /^\s*s[ií]/i.test(declaration.option || '') ? 2 : 1
+      const upgradedRank = Math.max(currentRank, declaredRank)
+      return {
+        ...original,
+        status: RANK_STATUS[upgradedRank],
+        evidence: declaration.detail,
+        evidence_source: 'user_declared',
+        note: 'Experiencia declarada por la persona usuaria en el paso Tu experiencia.',
+      }
+    }),
+  }
+}
+
+export function buildUserDeclaredRevisionInstruction(declarations = []) {
+  const normalized = normalizeUserDeclarations(declarations)
+  if (!normalized.length) return ''
+  const lines = normalized.map((item, index) => (
+    `${index + 1}. Requirement: ${item.requirement_text || item.requirement_id}\nUser-declared evidence: ${item.detail}`
+  ))
+  return `Use this user-declared evidence to revise the CV for the target vacancy. It was declared by the person after seeing gaps in the document. Add it only as supported experience, keep it truthful, and do not add employers, dates, certifications, metrics, or tools that are not stated. Write all framing as document evidence: "tu CV no muestra" / "el CV puede agregar", never "no cumples" or "no tienes".\n\n${lines.join('\n\n')}`
 }
 
 export async function generateValidatedOptimizedCv({ cvText, jobDescription, outputLanguage, createJsonCompletion, buildOptimizerSystemPrompt, parseGeneratedJson = parseJsonCompletion }) {
