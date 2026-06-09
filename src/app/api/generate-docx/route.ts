@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server'
 import { generateCvDocxBuffer, sanitizeDocxFilename } from '@/lib/docx-generator'
+import { hasMeaningfulCvContent } from '@/lib/pdf-generator'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
   try {
     const payload = await req.json()
-    if (!payload?.optimizedCV) {
-      return Response.json({ error: 'optimizedCV is required' }, { status: 400 })
+    if (!payload?.optimizedCV || !hasMeaningfulCvContent(payload.optimizedCV)) {
+      return Response.json({ error: 'CV content is empty or incomplete. Please answer the clarification questions before downloading.' }, { status: 400 })
     }
 
     const docxBuffer = await generateCvDocxBuffer(payload)

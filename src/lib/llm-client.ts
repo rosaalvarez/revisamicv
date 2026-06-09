@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 
 type JsonCompletionOptions = {
-  task?: 'cv_generation' | 'cv_revision'
+  task?: 'cv_generation' | 'cv_revision' | 'requirements_extraction' | 'evidence_matching'
   temperature?: number
   maxTokens?: number
 }

@@ -6,7 +6,7 @@ import { extractDocumentText } from '@/lib/document-extraction'
 import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
-import { parseJsonCompletion } from '@/lib/json-completion'
+import { runMatchingEngineV2 } from '@/lib/matching-engine'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
 import { createAuthToken, createMagicDashboardLink } from '@/lib/auth-token'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
@@ -118,25 +118,32 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const userPrompt = `Real CV text:\n\n${cvText.substring(0, 10000)}\n\n---\n\nTarget job vacancy:\n\n${jobDescription.substring(0, 6000)}\n\n---\n\nSelected final CV language: ${outputLanguage}`
-
-    const completion = await createJsonCompletion(
-      buildOptimizerSystemPrompt(outputLanguage),
-      userPrompt,
-      { task: 'cv_generation', temperature: 0.25, maxTokens: 6000 }
-    )
-
-    const rawText = completion.text || '{"fitVerdict":"Error generating CV. Please try again."}'
-
     let parsed: any
+    let compatibilityScore = 0
+    let band: ReturnType<typeof getCompatibilityBand>
     try {
-      parsed = parseJsonCompletion(rawText)
-    } catch {
-      parsed = { rawText, optimizedCV: rawText }
+      parsed = await runMatchingEngineV2({
+        cvText,
+        jobDescription,
+        outputLanguage,
+        createJsonCompletion,
+        buildOptimizerSystemPrompt,
+      })
+      compatibilityScore = Number(parsed.adapted_score ?? parsed.compatibilityScore ?? 0)
+      band = getCompatibilityBand(compatibilityScore)
+    } catch (err: any) {
+      if (err?.code === 'generated_cv_invalid' || err?.message === 'generated_cv_invalid') {
+        return NextResponse.json(
+          {
+            error: 'generated_cv_invalid',
+            message: 'No pude generar un CV completo y seguro con esta información. No se consumió ningún crédito. Intenta pegar una versión más completa del CV o de la vacante.',
+            tokens_remaining: tokenCheck.tokens_remaining,
+          },
+          { status: 502 }
+        )
+      }
+      throw err
     }
-
-    const compatibilityScore = Number(parsed.compatibilityScore ?? 0)
-    const band = getCompatibilityBand(compatibilityScore)
 
     let finalTokenState = tokenCheck
     try {
@@ -165,6 +172,13 @@ export async function POST(req: NextRequest) {
         optimizedCv: parsed.optimizedCV || parsed,
         compatibilityScore,
         outputLanguage,
+        requirementsTable: parsed.requirements_table,
+        originalMatchResults: parsed.original_match_results,
+        adaptedMatchResults: parsed.adapted_match_results,
+        originalScore: parsed.original_score,
+        adaptedScore: parsed.adapted_score,
+        scoreBreakdown: parsed.score_breakdown,
+        llmModel: parsed.llm_model,
       })
     } catch (err: any) {
       console.error('History save error:', err?.message || err)

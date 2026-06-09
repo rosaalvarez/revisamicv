@@ -19,6 +19,9 @@ type ClarificationPrompt = {
 
 type ProcessResult = {
   compatibilityScore?: number
+  original_score?: number
+  adapted_score?: number
+  score_breakdown?: Record<string, number | null>
   revisedCompatibilityScore?: number
   revisionScoreExplanation?: string
   matchBreakdown?: Record<string, { score?: number; summary?: string } | number | string>
@@ -370,9 +373,9 @@ function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void)
 }
 
 function renderOptimizationSummary(result: ProcessResult, cv: any) {
-  const score = normalizeScore(result.compatibilityScore)
-  const baseScore = score ? Math.max(35, Math.min(score - 18, Math.round(score * 0.62))) : undefined
-  const scoreLift = score && baseScore ? score - baseScore : undefined
+  const score = normalizeScore(result.adapted_score ?? result.compatibilityScore)
+  const baseScore = normalizeScore(result.original_score)
+  const scoreLift = score !== undefined && baseScore !== undefined ? score - baseScore : undefined
   const targetTitle = typeof cv === 'object' ? (cv?.targetTitle || cv?.headline) : undefined
   const topKeywords = result.keywordsToInclude?.slice(0, 7) || []
   const gaps = result.gaps?.slice(0, 3) || []
@@ -438,7 +441,7 @@ function renderOptimizationSummary(result: ProcessResult, cv: any) {
           </div>
           {score !== undefined && baseScore !== undefined && (
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-              <div className="flex items-center justify-between text-sm"><span>CV base estimado</span><strong>~{baseScore}/100</strong></div>
+              <div className="flex items-center justify-between text-sm"><span>CV base medido</span><strong>{baseScore}/100</strong></div>
               <div className="mt-2 h-2 rounded-full bg-white/15"><div className="h-full rounded-full bg-white/50" style={{ width: `${baseScore}%` }} /></div>
               <div className="mt-4 flex items-center justify-between text-sm"><span>Con RevisaMiCV</span><strong className="text-emerald-300">{score}/100</strong></div>
               <div className="mt-2 h-2 rounded-full bg-white/15"><div className="h-full rounded-full bg-emerald-300" style={{ width: `${score}%` }} /></div>
@@ -634,8 +637,10 @@ function FindingsSection({ result }: { result: ProcessResult }) {
 }
 
 function ChangeSection({ result, cv }: { result: ProcessResult; cv: any }) {
-  const score = normalizeScore(result.revisedCompatibilityScore ?? result.compatibilityScore)
-  const baseScore = score ? Math.max(35, Math.min(score - 18, Math.round(score * 0.65))) : undefined
+  const originalScore = normalizeScore(result.original_score)
+  const adaptedScore = normalizeScore(result.adapted_score ?? result.compatibilityScore)
+  const score = normalizeScore(result.revisedCompatibilityScore ?? adaptedScore)
+  const baseScore = originalScore
   const adapted = getCvPreviewBullets(cv, 3)
   const original = ['El CV original contaba responsabilidades de forma general.', 'Varias keywords de la vacante no estaban visibles.', 'La evidencia estaba dispersa o poco conectada con el cargo.']
   return (

@@ -14,6 +14,7 @@ import {
   getTargetTitle,
   normalizeStringArray,
 } from './cv-formatters.js'
+import { hasMeaningfulCvContent } from './pdf-generator.js'
 
 function textParagraph(text, options = {}) {
   return new Paragraph({
@@ -58,6 +59,9 @@ function listParagraphs(items) {
 
 export async function generateCvDocxBuffer(payload) {
   const cv = payload?.optimizedCV || payload?.cv || payload || {}
+  if (!hasMeaningfulCvContent(cv)) {
+    throw new Error('CV content is empty or incomplete. Ask the user for clarification before generating a DOCX.')
+  }
   const language = payload?.outputLanguage === 'spanish' ? 'spanish' : 'english'
   const labels = getCvLabels(language)
 

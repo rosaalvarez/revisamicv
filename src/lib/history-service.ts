@@ -8,6 +8,13 @@ type SaveCvHistoryInput = {
   optimizedCv: any
   compatibilityScore: number
   outputLanguage: 'english' | 'spanish'
+  requirementsTable?: any
+  originalMatchResults?: any
+  adaptedMatchResults?: any
+  originalScore?: number
+  adaptedScore?: number
+  scoreBreakdown?: any
+  llmModel?: string
 }
 
 const MAX_ORIGINAL_TEXT = 2500
@@ -44,6 +51,13 @@ export async function saveCvHistory(
       compatibility_score: input.compatibilityScore,
       output_language: input.outputLanguage,
       tokens_used: 1,
+      requirements_table: input.requirementsTable || null,
+      original_match_results: input.originalMatchResults || null,
+      adapted_match_results: input.adaptedMatchResults || null,
+      original_score: input.originalScore ?? null,
+      adapted_score: input.adaptedScore ?? input.compatibilityScore,
+      score_breakdown: input.scoreBreakdown || null,
+      llm_model: input.llmModel || null,
     })
     .select('id, created_at')
     .single()

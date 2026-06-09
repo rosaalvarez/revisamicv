@@ -23,6 +23,13 @@ CREATE TABLE IF NOT EXISTS public.cv_history (
   compatibility_score INTEGER,
   output_language TEXT CHECK (output_language IN ('english', 'spanish')),
   tokens_used INTEGER NOT NULL DEFAULT 1,
+  requirements_table JSONB,
+  original_match_results JSONB,
+  adapted_match_results JSONB,
+  original_score INTEGER,
+  adapted_score INTEGER,
+  score_breakdown JSONB,
+  llm_model TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -68,6 +75,13 @@ ALTER TABLE public.users VALIDATE CONSTRAINT users_tokens_nonnegative;
 ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS optimized_cv JSONB;
 ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS compatibility_score INTEGER;
 ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS output_language TEXT;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS requirements_table JSONB;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS original_match_results JSONB;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS adapted_match_results JSONB;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS original_score INTEGER;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS adapted_score INTEGER;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS score_breakdown JSONB;
+ALTER TABLE public.cv_history ADD COLUMN IF NOT EXISTS llm_model TEXT;
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- INDEXES

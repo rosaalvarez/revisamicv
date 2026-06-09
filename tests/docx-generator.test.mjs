@@ -7,6 +7,13 @@ test('sanitizeDocxFilename creates safe docx names', () => {
   assert.equal(sanitizeDocxFilename('Ana Pérez / CV'), 'ana-perez-cv.docx')
 })
 
+test('generateCvDocxBuffer blocks empty CV content instead of producing an empty DOCX', async () => {
+  await assert.rejects(
+    () => generateCvDocxBuffer({ optimizedCV: {}, outputLanguage: 'spanish' }),
+    /empty or incomplete/i
+  )
+})
+
 test('generateCvDocxBuffer returns a docx zip buffer', async () => {
   const buffer = await generateCvDocxBuffer({
     optimizedCV: {
