@@ -283,12 +283,29 @@ export function computeDeterministicScore(requirements, matches) {
   }
 }
 
-export function applyStatusFloor(originalMatches, adaptedMatches) {
+export function applyStatusFloor(originalMatches, adaptedMatches, options = {}) {
+  const originalCvText = options?.originalCvText || ''
   const adaptedById = new Map(asArray(adaptedMatches).map((match) => [match.requirement_id, match]))
   return asArray(originalMatches).map((original) => {
     const adapted = adaptedById.get(original.requirement_id) || original
     const originalRank = STATUS_RANK[original.status] ?? 0
     const adaptedRank = STATUS_RANK[adapted.status] ?? 0
+
+    // Safety guard: Phase 1 has no user-declared gap recovery yet. If the
+    // original CV had a true gap, the generated CV cannot upgrade it using a
+    // newly invented phrase. Upgrades from gap are allowed only when the adapted
+    // evidence is also grounded in the original CV text; Phase 2 can later allow
+    // evidence_source='user_declared'.
+    if (originalRank === 0 && adaptedRank > 0 && originalCvText && !containsEvidenceQuote(originalCvText, adapted.evidence)) {
+      return {
+        ...original,
+        status: 'gap',
+        evidence: null,
+        evidence_source: 'cv',
+        note: original.note || 'No se encontró evidencia en el CV original para subir este requisito.',
+      }
+    }
+
     if (adaptedRank >= originalRank) return adapted
     return { ...original, note: original.note || adapted.note || '' }
   }).map((match) => ({ ...match, status: RANK_STATUS[STATUS_RANK[match.status] ?? 0] }))
@@ -351,7 +368,7 @@ export async function runMatchingEngineV2({ cvText, jobDescription, outputLangua
   const generated = await generateValidatedOptimizedCv({ cvText, jobDescription, outputLanguage, createJsonCompletion, buildOptimizerSystemPrompt })
   const adaptedCvText = cvToText(generated.optimizedCV)
   const adaptedMatchRaw = await runEvidenceMatchingWithValidation({ cvText: adaptedCvText, requirements, outputLanguage, createJsonCompletion })
-  const adaptedMatches = applyStatusFloor(originalMatch.matches, adaptedMatchRaw.matches)
+  const adaptedMatches = applyStatusFloor(originalMatch.matches, adaptedMatchRaw.matches, { originalCvText: cvText })
   const adaptedScore = computeDeterministicScore(requirements, adaptedMatches)
 
   return {

@@ -124,6 +124,25 @@ test('applyStatusFloor guarantees adapted matching cannot lower original score',
   assert.ok(adaptedScore >= originalScore)
 })
 
+test('applyStatusFloor blocks invented upgrades from original gaps unless grounded in original CV text', () => {
+  const original = [
+    { requirement_id: 'r1', status: 'gap', evidence: null, evidence_source: 'cv', note: 'No SaaS evidence' },
+    { requirement_id: 'r2', status: 'partial', evidence: 'Organicé cronogramas', evidence_source: 'cv', note: 'partial' },
+  ]
+  const adaptedRaw = [
+    { requirement_id: 'r1', status: 'match', evidence: 'Implementación SaaS', evidence_source: 'cv', note: 'invented' },
+    { requirement_id: 'r2', status: 'match', evidence: 'Gestión de cronogramas', evidence_source: 'cv', note: 'clearer wording' },
+  ]
+
+  const floored = applyStatusFloor(original, adaptedRaw, {
+    originalCvText: 'Organicé cronogramas de trabajo y seguimiento de pendientes con diferentes áreas.',
+  })
+
+  assert.equal(floored.find((item) => item.requirement_id === 'r1')?.status, 'gap')
+  assert.equal(floored.find((item) => item.requirement_id === 'r1')?.evidence, null)
+  assert.equal(floored.find((item) => item.requirement_id === 'r2')?.status, 'match')
+})
+
 test('adapted score invariant holds on 3 sample CV/vacancy pairs', () => {
   const samples = [
     {
