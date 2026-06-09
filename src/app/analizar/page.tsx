@@ -766,26 +766,34 @@ function renderOptimizedCV(cv: any) {
   )
 }
 
-function ResultWizardNav({ steps, activeStep, onStepChange }: { steps: any[]; activeStep: string; onStepChange: (step: string) => void }) {
+function FlowStepper({ activeStage, completedStages = [], onStageChange }: { activeStage: 'cv-base' | 'vacancy' | 'diagnosis' | 'ready'; completedStages?: string[]; onStageChange?: (stage: 'cv-base' | 'vacancy' | 'diagnosis' | 'ready') => void }) {
+  const stages = [
+    { id: 'cv-base', number: 1, label: 'CV base', title: 'Sube tu CV' },
+    { id: 'vacancy', number: 2, label: 'Vacante', title: 'Pega la oferta' },
+    { id: 'diagnosis', number: 3, label: 'Diagnóstico', title: 'Tu ajuste' },
+    { id: 'ready', number: 4, label: 'CV listo', title: 'Descarga' },
+  ] as const
+
   return (
     <section className="rounded-[22px] border border-[var(--color-line)] bg-white p-4 shadow-sm">
-      <div className="grid gap-3 md:grid-cols-3">
-        {steps.map((step) => {
-          const isActive = activeStep === step.id
-          const isDisabled = Boolean(step.disabled)
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {stages.map((stage) => {
+          const isActive = activeStage === stage.id
+          const isCompleted = completedStages.includes(stage.id)
+          const isClickable = Boolean(onStageChange) && (isActive || isCompleted)
           return (
             <button
-              key={step.id}
+              key={stage.id}
               type="button"
-              disabled={isDisabled}
-              onClick={() => !isDisabled && onStepChange(step.id)}
-              className={`rounded-2xl border p-4 text-left transition ${isActive ? 'border-[var(--color-primary)] bg-orange-50 shadow-sm' : step.status === 'completed' ? 'border-[rgba(15,181,160,.28)] bg-[rgba(15,181,160,.06)]' : 'border-[var(--color-line)] bg-[var(--color-paper-2)]'} ${isDisabled ? 'cursor-not-allowed opacity-55' : 'hover:border-[var(--color-primary)]'}`}
+              disabled={!isClickable}
+              onClick={() => isClickable && onStageChange?.(stage.id)}
+              className={`rounded-2xl border p-4 text-left transition ${isActive ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 shadow-sm' : isCompleted ? 'border-[rgba(14,140,92,.28)] bg-[rgba(14,140,92,.06)]' : 'border-[var(--color-line)] bg-[var(--color-paper-2)]'} ${isClickable ? 'hover:border-[var(--color-primary)]' : 'cursor-default opacity-75'}`}
             >
               <div className="flex items-center gap-3">
-                <span className={`grid h-8 w-8 place-items-center rounded-full text-xs font-bold ${isActive ? 'bg-[var(--color-primary)] text-[var(--color-ink)]' : step.status === 'completed' ? 'bg-[var(--color-secondary)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`}>{step.number}</span>
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold ${isActive ? 'bg-[var(--color-primary)] text-white' : isCompleted ? 'bg-[var(--color-secondary)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`}>{stage.number}</span>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">{step.label}</p>
-                  <p className="font-bold text-[var(--color-ink)]">{step.title}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--color-ink-soft)]">{stage.label}</p>
+                  <p className="font-bold text-[var(--color-ink)]">{stage.title}</p>
                 </div>
               </div>
             </button>
@@ -824,6 +832,7 @@ export default function SignupPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const jobFileRef = useRef<HTMLInputElement>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [setupStep, setSetupStep] = useState<'cv-base' | 'vacancy'>('cv-base')
   const [activeResultStep, setActiveResultStep] = useState<'evidence' | 'context' | 'cv'>('evidence')
   const normalizedEmailForLinks = email.trim().toLowerCase()
   const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
@@ -927,6 +936,23 @@ export default function SignupPage() {
     const cleaned = value.replace(/\s+/g, '').slice(0, 254)
     setEmail(cleaned)
     if (cleaned.trim()) window.localStorage.setItem('revisamicv_email', cleaned.trim().toLowerCase())
+  }
+
+  const goToVacancyStep = () => {
+    const emailError = validateEmail(email)
+    if (emailError) {
+      trackEvent('analysis_validation_error', { field: 'email' })
+      setError(emailError)
+      return
+    }
+    const fileError = validateCvFile(file)
+    if (fileError) {
+      trackEvent('analysis_validation_error', { field: 'cv_file', extension: getFileExtensionForAnalytics(file?.name), size: getFileSizeBucket(file?.size) })
+      setError(fileError)
+      return
+    }
+    setError('')
+    setSetupStep('vacancy')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1206,7 +1232,7 @@ export default function SignupPage() {
 
       <div className="mx-auto max-w-5xl px-5 pb-12">
         <div className="py-10 text-center md:py-12">
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-secondary-deep)]">{result ? 'Resultado de tu análisis' : 'Paso 1 de 2 · Tu análisis'}</p>
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-secondary-deep)]">{result ? 'Resultado de tu análisis' : setupStep === 'cv-base' ? 'Paso 1 de 4 · CV base' : 'Paso 2 de 4 · Vacante'}</p>
           <h1 className="mx-auto mt-3 max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight md:text-5xl">
             {result ? 'Tu CV ya está cruzado contra esta vacante.' : 'Analiza tu CV contra esta vacante.'}
           </h1>
@@ -1218,140 +1244,182 @@ export default function SignupPage() {
         </div>
 
         {!result ? (
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            <div className="mx-auto mb-8 grid max-w-xl grid-cols-3 text-center">
-              {[['1','Tu CV'], ['2','La vacante'], ['3','Resultado']].map(([num, label], index) => (
-                <div key={label} className="relative flex flex-col items-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  {index < 2 && <span className="absolute left-1/2 top-4 h-0.5 w-full bg-[var(--color-line)]" />}
-                  <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border-2 ${index < 2 ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white' : 'border-[var(--color-line)] bg-[var(--color-paper)] text-[var(--color-silence)]'}`}>{num}</span>
-                  <span className={index < 2 ? 'text-[var(--color-ink)]' : ''}>{label}</span>
-                </div>
-              ))}
-            </div>
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
+            <FlowStepper
+              activeStage={setupStep}
+              completedStages={setupStep === 'vacancy' ? ['cv-base'] : []}
+              onStageChange={(stage) => {
+                if (stage === 'cv-base') setSetupStep('cv-base')
+                if (stage === 'vacancy' && file && email.trim()) setSetupStep('vacancy')
+              }}
+            />
 
-            <section className="rounded-2xl border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)] md:p-6">
-              <label className="text-sm font-bold text-[var(--color-ink)]">Tu email</label>
-              <input
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                maxLength={254}
-                value={email}
-                onChange={(e) => setAndRememberEmail(e.target.value)}
-                placeholder="tu@email.com"
-                className="mt-2 w-full rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-orange-100"
-                required
-              />
-              <p className="mt-2 text-xs text-[var(--color-ink-soft)]">Lo usamos para tu prueba gratis, guardar créditos y recuperar tus resultados.</p>
-            </section>
+            {setupStep === 'cv-base' ? (
+              <section className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
+                <div className="grid gap-0 md:grid-cols-[1fr_220px]">
+                  <div className="p-6 md:p-8">
+                    <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-primary)]">Paso 1 · CV base</p>
+                    <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight text-[var(--color-ink)]">Sube tu CV base</h2>
+                    <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">Usa el CV que ya tienes. No tiene que estar perfecto: lo comparamos con la vacante y luego te ayudamos a mejorarlo sin inventar experiencia.</p>
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <section className="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-ink)] text-xs font-bold text-[var(--color-primary)]">1</span>
-                  <h2 className="font-display text-2xl font-semibold">Tu CV</h2>
-                </div>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  className="cursor-pointer rounded-xl border-2 border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 py-10 text-center transition hover:border-[var(--color-primary)] hover:bg-orange-50"
-                >
-                  <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-orange-100 text-[var(--color-primary-deep)]">
-                    <UploadIcon className="h-6 w-6" />
+                    <div className="mt-6 rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">
+                      <label className="text-sm font-bold text-[var(--color-ink)]">Tu email</label>
+                      <input
+                        type="text"
+                        inputMode="email"
+                        autoComplete="email"
+                        maxLength={254}
+                        value={email}
+                        onChange={(e) => setAndRememberEmail(e.target.value)}
+                        placeholder="tu@email.com"
+                        className="mt-2 w-full rounded-xl border border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10"
+                        required
+                      />
+                      <p className="mt-2 text-xs text-[var(--color-ink-soft)]">Lo usamos para guardar tu prueba gratis, créditos y recuperar tus resultados.</p>
+                    </div>
+
+                    <div
+                      onClick={() => fileRef.current?.click()}
+                      className="mt-5 cursor-pointer rounded-2xl border-2 border-dashed border-[var(--color-line)] bg-white px-5 py-12 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5"
+                    >
+                      <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                        <UploadIcon className="h-7 w-7" />
+                      </div>
+                      {file ? (
+                        <>
+                          <p className="font-bold text-[var(--color-primary)]">{file.name}</p>
+                          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Puedes hacer clic para cambiar el archivo.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-bold text-[var(--color-ink)]">Arrastra tu CV o haz clic para subirlo</p>
+                          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">PDF, Word .docx o TXT. En español o inglés.</p>
+                        </>
+                      )}
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".pdf,.docx,.txt"
+                        onChange={(e) => {
+                          const selected = e.target.files?.[0] || null
+                          setFile(selected)
+                          if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                        }}
+                        className="hidden"
+                      />
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                      <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">PDF</span>
+                      <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">Word .docx</span>
+                      <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">TXT</span>
+                    </div>
                   </div>
-                  {file ? (
-                    <p className="font-bold text-[var(--color-primary-deep)]">{file.name}</p>
-                  ) : (
-                    <>
-                      <p className="font-bold">Arrastra tu CV o haz clic para subirlo</p>
-                      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Tal como lo tienes hoy. En español o en inglés.</p>
-                    </>
-                  )}
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pdf,.docx,.txt"
-                    onChange={(e) => {
-                      const selected = e.target.files?.[0] || null
-                      setFile(selected)
-                      if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
-                    }}
-                    className="hidden"
-                  />
+
+                  <aside className="border-t border-[var(--color-line)] bg-[var(--color-primary)]/5 p-6 md:border-l md:border-t-0 md:p-8">
+                    <div className="rounded-2xl border border-[var(--color-primary)]/20 bg-white p-5">
+                      <p className="text-2xl">🛡️</p>
+                      <h3 className="mt-3 font-bold text-[var(--color-ink)]">Tu experiencia se respeta</h3>
+                      <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">No agregamos cargos, empresas, fechas, certificaciones ni métricas que no puedas respaldar.</p>
+                    </div>
+                  </aside>
                 </div>
-                <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">PDF</span>
-                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">Word .docx</span>
-                  <span className="rounded-md border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1">TXT</span>
+
+                <div className="flex flex-col gap-3 border-t border-[var(--color-line)] bg-[var(--color-paper-2)] p-5 text-center md:flex-row md:items-center md:justify-between md:text-left">
+                  <p className="text-sm text-[var(--color-ink-soft)]">Primero cargamos tu CV. En el siguiente paso pegas la vacante real.</p>
+                  <button type="button" onClick={goToVacancyStep} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Continuar →</button>
                 </div>
               </section>
+            ) : (
+              <section className="mx-auto max-w-3xl overflow-hidden rounded-3xl border border-[var(--color-line)] bg-white shadow-[var(--shadow-soft)]">
+                <div className="p-6 md:p-8">
+                  <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-primary)]">Paso 2 · Vacante real</p>
+                  <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight text-[var(--color-ink)]">Pega la vacante real</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">Cada oferta pide cosas distintas. Pega la descripción completa o sube el archivo de la vacante para detectar qué necesita leer esa empresa.</p>
 
-              <section className="rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)]">
-                <div className="mb-4 flex items-center gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-ink)] text-xs font-bold text-[var(--color-primary)]">2</span>
-                  <h2 className="font-display text-2xl font-semibold">La vacante</h2>
-                </div>
-                <textarea
-                  value={jobDescription}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setJobDescription(value)
-                    window.localStorage.setItem('revisamicv_job_description', value)
-                  }}
-                  rows={9}
-                  placeholder="Pega aquí la vacante completa: responsabilidades, requisitos, salario si aparece, skills y contexto del cargo. No la resumas."
-                  className="w-full resize-y rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#A8A294] focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-orange-100"
-                  required={!jobFile}
-                />
-                <div className="mt-3 rounded-xl border border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] p-3">
-                  <input
-                    ref={jobFileRef}
-                    type="file"
-                    accept=".pdf,.docx,.txt"
+                  <textarea
+                    value={jobDescription}
                     onChange={(e) => {
-                      const selected = e.target.files?.[0] || null
-                      setJobFile(selected)
-                      if (selected) trackEvent('job_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                      const value = e.target.value
+                      setJobDescription(value)
+                      window.localStorage.setItem('revisamicv_job_description', value)
                     }}
-                    className="hidden"
+                    rows={11}
+                    placeholder="Pega aquí la vacante completa: responsabilidades, requisitos, salario si aparece, skills y contexto del cargo. No la resumas."
+                    className="mt-6 w-full resize-y rounded-2xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-5 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#A8A294] focus:border-[var(--color-primary)] focus:bg-white focus:ring-4 focus:ring-[var(--color-primary)]/10"
+                    required={!jobFile}
                   />
-                  <button
-                    type="button"
-                    onClick={() => jobFileRef.current?.click()}
-                    className="w-full rounded-lg border border-[var(--color-line)] bg-white px-4 py-3 text-left text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]"
-                  >
-                    {jobFile ? `Vacante adjunta: ${jobFile.name}` : 'O también sube la vacante en PDF, Word o TXT'}
-                  </button>
-                  {jobFile && (
-                    <button type="button" onClick={() => setJobFile(null)} className="mt-2 text-xs font-bold text-[var(--color-primary-deep)]">Quitar archivo de vacante</button>
-                  )}
-                </div>
-                <p className={`mt-2 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-amber-700' : 'text-[var(--color-ink-soft)]'}`}>
-                  {jobDescription.trim().length} caracteres escritos. Necesitamos mínimo {MIN_JOB_DESCRIPTION_CHARS} si no adjuntas archivo; máximo 12.000. Puedes pegar mucho más de 120 caracteres.
-                </p>
-              </section>            </div>
 
-            <section className="flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-white p-5 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-bold">Idioma del CV adaptado</p>
-                <p className="text-sm text-[var(--color-ink-soft)]">El diagnóstico y la versión descargable salen en este idioma.</p>
-              </div>
-              <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] p-1">
-                {languageOptions.map((option) => (
+                  <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] p-3">
+                    <input
+                      ref={jobFileRef}
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      onChange={(e) => {
+                        const selected = e.target.files?.[0] || null
+                        setJobFile(selected)
+                        if (selected) trackEvent('job_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
+                      }}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => jobFileRef.current?.click()}
+                      className="w-full rounded-xl border border-[var(--color-line)] bg-white px-4 py-3 text-left text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]"
+                    >
+                      {jobFile ? `Vacante adjunta: ${jobFile.name}` : 'O también sube la vacante en PDF, Word o TXT'}
+                    </button>
+                    {jobFile && (
+                      <button type="button" onClick={() => setJobFile(null)} className="mt-2 text-xs font-bold text-[var(--color-primary-deep)]">Quitar archivo de vacante</button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-[var(--color-line)] bg-white p-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-bold text-[var(--color-ink)]">Idioma del CV adaptado</p>
+                      <p className="text-sm text-[var(--color-ink-soft)]">El diagnóstico y la versión descargable salen en este idioma.</p>
+                    </div>
+                    <div className="inline-flex rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] p-1">
+                      {languageOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setOutputLanguage(option.value)
+                            trackEvent('language_selected', { language: option.value })
+                            window.localStorage.setItem('revisamicv_output_language', option.value)
+                          }}
+                          className={`rounded-full px-5 py-2 text-sm font-bold transition ${outputLanguage === option.value ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
+                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ CV cargado</span>
+                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ Sin inventar experiencia</span>
+                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ PDF, DOCX y TXT</span>
+                  </div>
+
+                  <p className={`mt-3 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-amber-700' : 'text-[var(--color-ink-soft)]'}`}>
+                    {jobDescription.trim().length} caracteres escritos. Necesitamos mínimo {MIN_JOB_DESCRIPTION_CHARS} si no adjuntas archivo; máximo 12.000. Puedes pegar mucho más de 120 caracteres.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 border-t border-[var(--color-line)] bg-[var(--color-paper-2)] p-5 text-center md:flex-row md:items-center md:justify-between md:text-left">
+                  <button type="button" onClick={() => setSetupStep('cv-base')} className="text-sm font-semibold text-[var(--color-ink-soft)] underline underline-offset-4 hover:text-[var(--color-ink)]">← Volver al CV</button>
                   <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      setOutputLanguage(option.value)
-                      trackEvent('language_selected', { language: option.value })
-                      window.localStorage.setItem('revisamicv_output_language', option.value)
-                    }}
-                    className={`rounded-full px-5 py-2 text-sm font-bold transition ${outputLanguage === option.value ? 'bg-[var(--color-primary)] text-white' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'}`}
+                    type="submit"
+                    disabled={loading}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-7 text-sm font-bold text-white shadow-[var(--shadow-cta)] transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-deep)] disabled:opacity-50"
                   >
-                    {option.label}
+                    {loading ? <span>{analysisProgressSteps[analysisStepIndex]?.label || 'Analizando compatibilidad...'}</span> : <><SparklesIcon className="h-5 w-5" /> Analizar mi CV →</>}
                   </button>
-                ))}
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
 
             {error && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
@@ -1366,31 +1434,24 @@ export default function SignupPage() {
               </section>
             )}
 
-            <div className="py-4 text-center">
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-10 text-lg font-bold text-[var(--color-ink)] shadow-[var(--shadow-cta)] transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-50"
-              >
-                {loading ? <span>{analysisProgressSteps[analysisStepIndex]?.label || 'Analizando compatibilidad...'}</span> : <><SparklesIcon className="h-5 w-5" /> Analizar compatibilidad →</>}
-              </button>
-              <div className="mt-4 flex flex-wrap justify-center gap-4 text-sm text-[var(--color-ink-soft)]">
-                <span>✓ Gratis</span><span>✓ Sin tarjeta</span><span>✓ ~3 minutos</span>
-              </div>
-              <p className="mt-2 text-sm text-[var(--color-ink-soft)]">No inventamos experiencia. Tú editas todo antes de descargar.</p>
-            </div>
           </form>        ) : (
           <div className="mx-auto max-w-[760px] space-y-8">
-            <ResultWizardNav
-              steps={resultWizardSteps}
-              activeStep={activeResultStep}
-              onStepChange={(step) => {
-                if (step === 'cv' && !canOpenCvStep) {
-                  setError('Antes de descargar, afina tu evidencia para ajustar sin inventar.')
-                  return
+            <FlowStepper
+              activeStage={activeResultStep === 'cv' ? 'ready' : 'diagnosis'}
+              completedStages={activeResultStep === 'cv' ? ['cv-base', 'vacancy', 'diagnosis'] : ['cv-base', 'vacancy']}
+              onStageChange={(stage) => {
+                if (stage === 'diagnosis') {
+                  setError('')
+                  setActiveResultStep(shouldRenderEvidenceQuestions ? 'context' : 'evidence')
                 }
-                setError('')
-                setActiveResultStep(step as 'evidence' | 'context' | 'cv')
+                if (stage === 'ready') {
+                  if (!canOpenCvStep) {
+                    setError('Antes de descargar, afina tu evidencia para ajustar sin inventar.')
+                    return
+                  }
+                  setError('')
+                  setActiveResultStep('cv')
+                }
               }}
             />
 
