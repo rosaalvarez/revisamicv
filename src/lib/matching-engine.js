@@ -13,6 +13,19 @@ const VALID_STATUSES = new Set(['match', 'partial', 'gap'])
 const STATUS_VALUE = { gap: 0, partial: 0.5, match: 1 }
 const STATUS_RANK = { gap: 0, partial: 1, match: 2 }
 const RANK_STATUS = ['gap', 'partial', 'match']
+const ANCHOR_CATEGORIES = new Set(['hard_skill', 'language', 'education', 'logistics', 'title_seniority'])
+const ANCHOR_STOPWORDS = new Set([
+  'experience', 'hands', 'hand', 'using', 'with', 'ability', 'advanced', 'required', 'client', 'calls',
+  'years', 'year', 'plus', 'strong', 'knowledge', 'skills', 'skill', 'methodology', 'methodologies',
+  'experiencia', 'con', 'para', 'avanzado', 'avanzada', 'requerido', 'requerida', 'habilidad', 'uso',
+])
+const ANCHOR_EQUIVALENTS = {
+  english: ['english', 'ingles', 'inglés'],
+  agile: ['agile', 'agil', 'ágil', 'agiles', 'ágiles'],
+  scrum: ['scrum'],
+  jira: ['jira'],
+  asana: ['asana'],
+}
 const REQUIRED_CV_SECTION_KEYS = ['summary', 'experience']
 const MIN_GENERATED_CV_TEXT_LENGTH = 180
 
@@ -64,6 +77,27 @@ export function containsEvidenceQuote(sourceText, evidence) {
   const needle = normalizeText(evidence)
   if (!needle) return false
   return haystack.includes(needle)
+}
+
+function tokenize(text) {
+  return normalizeText(text).split(/[^a-z0-9]+/).filter(Boolean)
+}
+
+function requirementAnchorTokens(requirement) {
+  const tokens = tokenize(requirement?.text || '')
+    .filter((token) => token.length >= 3 && !ANCHOR_STOPWORDS.has(token) && !/^\d+$/.test(token))
+  return [...new Set(tokens)]
+}
+
+function evidenceSatisfiesRequirementAnchors(requirement, evidence) {
+  if (!ANCHOR_CATEGORIES.has(requirement?.category)) return true
+  const anchors = requirementAnchorTokens(requirement)
+  if (!anchors.length) return true
+  const evidenceText = normalizeText(evidence)
+  return anchors.some((anchor) => {
+    const equivalents = ANCHOR_EQUIVALENTS[anchor] || [anchor]
+    return equivalents.some((term) => evidenceText.includes(normalizeText(term)))
+  })
 }
 
 export function normalizeRequirementWeights(requirements, config = MATCHING_WEIGHT_CONFIG) {
@@ -119,7 +153,7 @@ function validateMatches(matches, requirements, sourceText) {
     match.requirement_id = requirement.id
 
     if (match.status === 'match' || match.status === 'partial') {
-      if (!match.evidence || (match.evidence_source === 'cv' && !containsEvidenceQuote(sourceText, match.evidence))) {
+      if (!match.evidence || (match.evidence_source === 'cv' && !containsEvidenceQuote(sourceText, match.evidence)) || !evidenceSatisfiesRequirementAnchors(requirement, match.evidence)) {
         invalidRequirementIds.push(requirement.id)
         normalized.push({ ...match, invalidEvidence: true })
         continue
@@ -145,7 +179,7 @@ function mergeRetryMatches(firstPass, retryPass, invalidRequirementIds, requirem
     if (!invalidRequirementIds.includes(match.requirement_id)) return removeInvalidMarker(match)
     const requirement = requirements.find((item) => item.id === match.requirement_id)
     const retry = retryById.get(match.requirement_id)
-    if (retry && (retry.status === 'gap' || (retry.evidence && containsEvidenceQuote(sourceText, retry.evidence)))) {
+    if (retry && (retry.status === 'gap' || (retry.evidence && containsEvidenceQuote(sourceText, retry.evidence) && evidenceSatisfiesRequirementAnchors(requirement, retry.evidence)))) {
       return removeInvalidMarker(retry)
     }
     return gapMatch(requirement)

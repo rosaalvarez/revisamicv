@@ -80,6 +80,31 @@ test('runEvidenceMatchingWithValidation re-asks once and downgrades evidence-les
   assert.equal(result.matches.find((item) => item.requirement_id === 'r2')?.status, 'partial')
 })
 
+test('runEvidenceMatchingWithValidation rejects hard-skill evidence that lacks explicit requirement anchors', async () => {
+  const toolRequirement = [{ id: 'r1', text: 'Hands-on experience with Jira or Asana', type: 'must_have', category: 'hard_skill', weight: 3 }]
+  let calls = 0
+  const completion = async () => {
+    calls += 1
+    return {
+      text: JSON.stringify({ matches: [
+        { requirement_id: 'r1', status: 'partial', evidence: 'Usé Trello para seguimiento de tareas', evidence_source: 'cv', note: 'similar tool' },
+      ] }),
+      model: 'fake-model',
+    }
+  }
+
+  const result = await runEvidenceMatchingWithValidation({
+    cvText: 'Usé Trello para seguimiento de tareas.',
+    requirements: toolRequirement,
+    outputLanguage: 'english',
+    createJsonCompletion: completion,
+  })
+
+  assert.equal(calls, 2)
+  assert.equal(result.matches[0].status, 'gap')
+  assert.equal(result.matches[0].evidence, null)
+})
+
 test('runEvidenceMatchingWithValidation downgrades invalid evidence after one failed retry', async () => {
   const completion = async () => ({
     text: JSON.stringify({ matches: [
