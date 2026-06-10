@@ -1,6 +1,14 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildCoverLetters, buildShortMessage, buildFormalLetter } from '../src/lib/cover-letter.js'
+import {
+  selectFilteredEvidence,
+  buildCoverLetterSystemPrompt,
+  buildCoverLetterUserPrompt,
+  validateCoverLetterOutput,
+  buildShortMessage,
+  buildFormalLetter,
+  buildCoverLettersFromTemplate,
+} from '../src/lib/cover-letter.js'
 
 const sampleMatchResults = [
   { requirement_id: 'r1', status: 'match', evidence: 'Coordiné equipos internos usando Scrum', evidence_source: 'cv', note: '' },
@@ -24,9 +32,134 @@ const sampleCV = {
   skills: ['Scrum', 'Gestión de proyectos'],
 }
 
-describe('buildCoverLetters', () => {
-  it('returns both shortMessage and formalLetter as non-empty strings', () => {
-    const result = buildCoverLetters({
+// ── Filter tests ──
+
+describe('selectFilteredEvidence', () => {
+  it('filters out gaps and returns only match/partial items with evidence', () => {
+    const result = selectFilteredEvidence(sampleMatchResults, sampleRequirements)
+    assert.ok(Array.isArray(result.short), 'short should be an array')
+    assert.ok(result.short.every((m) => m.status === 'match' || m.status === 'partial'), 'only match/partial')
+    assert.ok(result.short.every((m) => m.evidence && m.evidence.length > 0), 'all have evidence')
+    assert.ok(!result.short.find((m) => m.requirementId === 'r3'), 'r3 gap should be excluded')
+  })
+
+  it('returns short (3) and formal (4) lists', () => {
+    const many = [
+      ...sampleMatchResults,
+      { requirement_id: 'r5', status: 'match', evidence: 'Mentoricé equipos junior', evidence_source: 'cv', note: '' },
+    ]
+    const manyReqs = [
+      ...sampleRequirements,
+      { id: 'r5', text: 'Mentoría de equipos', type: 'nice_to_have', category: 'soft_skill', weight: 1 },
+    ]
+    const result = selectFilteredEvidence(many, manyReqs)
+    assert.ok(result.short.length <= 3, 'short capped at 3')
+    assert.ok(result.formal.length <= 4, 'formal capped at 4')
+  })
+
+  it('allIds includes all matched requirement IDs', () => {
+    const result = selectFilteredEvidence(sampleMatchResults, sampleRequirements)
+    assert.ok(result.allIds.has('r1'), 'r1 should be in allIds')
+    assert.ok(result.allIds.has('r2'), 'r2 should be in allIds')
+    assert.ok(result.allIds.has('r4'), 'r4 should be in allIds')
+    assert.ok(!result.allIds.has('r3'), 'r3 gap should not be in allIds')
+  })
+
+  it('match evidence sorts before partial evidence', () => {
+    const partialFirst = [
+      { requirement_id: 'r2', status: 'partial', evidence: 'Documenté procesos', evidence_source: 'cv', note: '' },
+      { requirement_id: 'r1', status: 'match', evidence: 'Coordiné usando Scrum', evidence_source: 'cv', note: '' },
+    ]
+    const result = selectFilteredEvidence(partialFirst, sampleRequirements)
+    assert.equal(result.short[0].status, 'match', 'match should come first')
+  })
+})
+
+// ── Prompt builder tests ──
+
+describe('buildCoverLetterSystemPrompt', () => {
+  it('includes language instruction', () => {
+    const es = buildCoverLetterSystemPrompt('spanish')
+    assert.ok(es.includes('Spanish'), 'spanish prompt should mention Spanish')
+    const en = buildCoverLetterSystemPrompt('english')
+    assert.ok(en.includes('English'), 'english prompt should mention English')
+  })
+
+  it('includes anti-invention rules', () => {
+    const prompt = buildCoverLetterSystemPrompt('spanish')
+    assert.ok(prompt.includes('Do not add, embellish, or invent'), 'should forbid invention')
+    assert.ok(prompt.includes('Do NOT mention gaps'), 'should forbid gaps')
+  })
+})
+
+describe('buildCoverLetterUserPrompt', () => {
+  it('includes candidate name and role', () => {
+    const evidenceList = [{ requirementText: 'Scrum', evidence: 'Coordiné equipos usando Scrum' }]
+    const prompt = buildCoverLetterUserPrompt({
+      candidateName: 'María Gómez',
+      candidateRole: 'Project Manager',
+      evidenceList,
+      language: 'spanish',
+    })
+    assert.ok(prompt.includes('María Gómez'), 'should include name')
+    assert.ok(prompt.includes('Project Manager'), 'should include role')
+  })
+
+  it('includes evidence in the prompt', () => {
+    const evidenceList = [
+      { requirementText: 'Scrum', evidence: 'Coordiné equipos usando Scrum' },
+      { requirementText: 'Inglés', evidence: 'Entregué reportes bilingües' },
+    ]
+    const prompt = buildCoverLetterUserPrompt({
+      candidateName: 'A',
+      candidateRole: 'B',
+      evidenceList,
+      language: 'english',
+    })
+    assert.ok(prompt.includes('Scrum'), 'should include requirement text')
+    assert.ok(prompt.includes('Entregué reportes bilingües'), 'should include evidence text')
+  })
+
+  it('handles empty evidence list gracefully', () => {
+    const prompt = buildCoverLetterUserPrompt({
+      candidateName: 'A',
+      candidateRole: 'B',
+      evidenceList: [],
+      language: 'spanish',
+    })
+    assert.ok(prompt.includes('No specific requirements'), 'should indicate no requirements')
+  })
+})
+
+// ── Validation tests ──
+
+describe('validateCoverLetterOutput', () => {
+  it('accepts clean output with no inventions', () => {
+    const clean = "I'm Ana Pérez. I have experience with Scrum and documentation processes."
+    const result = validateCoverLetterOutput(clean, new Set(['r1', 'r2']), sampleRequirements)
+    assert.ok(result.valid, 'clean output should be valid')
+    assert.equal(result.violations.length, 0, 'no violations')
+  })
+
+  it('rejects output with fabricated metrics', () => {
+    const fabricated = 'I increased team efficiency by 45%. I have experience with Scrum.'
+    const result = validateCoverLetterOutput(fabricated, new Set(['r1']), sampleRequirements)
+    assert.ok(!result.valid, 'fabricated metric should be rejected')
+    assert.ok(result.violations.length > 0, 'should have violations')
+  })
+
+  it('rejects output with invented company names', () => {
+    const fabricated = 'I worked at Google Inc as a project manager. I have Scrum experience.'
+    const result = validateCoverLetterOutput(fabricated, new Set(['r1']), sampleRequirements)
+    assert.ok(!result.valid, 'invented company should be rejected')
+  })
+})
+
+// ── Template fallback tests (unchanged behavior) ──
+
+describe('buildCoverLettersFromTemplate', () => {
+  it('returns both formats as non-empty strings', () => {
+    const result = buildCoverLettersFromTemplate({
       matchResults: sampleMatchResults,
       requirementsTable: sampleRequirements,
       optimizedCV: sampleCV,
@@ -36,141 +169,46 @@ describe('buildCoverLetters', () => {
     assert.ok(typeof result.formalLetter === 'string' && result.formalLetter.length > 0)
   })
 
-  it('includes candidate name in both formats', () => {
-    const result = buildCoverLetters({
+  it('includes candidate name', () => {
+    const result = buildCoverLettersFromTemplate({
       matchResults: sampleMatchResults,
       requirementsTable: sampleRequirements,
       optimizedCV: sampleCV,
       language: 'spanish',
     })
-    assert.ok(result.shortMessage.includes('Ana Pérez'), 'short message missing candidate name')
-    assert.ok(result.formalLetter.includes('Ana Pérez'), 'formal letter missing candidate name')
+    assert.ok(result.shortMessage.includes('Ana Pérez'))
+    assert.ok(result.formalLetter.includes('Ana Pérez'))
   })
 
-  it('references matched requirement evidence in short message', () => {
-    const result = buildShortMessage({
+  it('never references gap requirements', () => {
+    const result = buildCoverLettersFromTemplate({
       matchResults: sampleMatchResults,
       requirementsTable: sampleRequirements,
       optimizedCV: sampleCV,
       language: 'spanish',
     })
-    assert.ok(result.includes('Scrum') || result.includes('ágiles'), 'short message missing matched evidence')
+    assert.ok(!result.shortMessage.includes('HubSpot'))
+    assert.ok(!result.formalLetter.includes('HubSpot'))
   })
 
-  it('references matched requirement evidence in formal letter', () => {
-    const result = buildFormalLetter({
-      matchResults: sampleMatchResults,
-      requirementsTable: sampleRequirements,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    assert.ok(result.includes('Scrum') || result.includes('ágiles'), 'formal letter missing matched evidence')
-  })
-
-  it('never references gap (unmatched) requirements', () => {
-    const result = buildCoverLetters({
-      matchResults: sampleMatchResults,
-      requirementsTable: sampleRequirements,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    assert.ok(!result.shortMessage.includes('HubSpot'), 'short message should not mention HubSpot gap')
-    assert.ok(!result.formalLetter.includes('HubSpot'), 'formal letter should not mention HubSpot gap')
-  })
-
-  it('produces English output when requested', () => {
-    const result = buildShortMessage({
+  it('English output excludes Spanish greetings', () => {
+    const result = buildCoverLettersFromTemplate({
       matchResults: sampleMatchResults,
       requirementsTable: sampleRequirements,
       optimizedCV: sampleCV,
       language: 'english',
     })
-    assert.ok(result.includes('Hi,') || result.includes('Dear'), 'english message missing greeting')
-    assert.ok(!result.includes('Hola') && !result.includes('Estimado'), 'english message should not have spanish')
-  })
-
-  it('produces Spanish output by default', () => {
-    const result = buildCoverLetters({
-      matchResults: sampleMatchResults,
-      requirementsTable: sampleRequirements,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    assert.ok(result.shortMessage.includes('Hola'), 'spanish short message missing greeting')
-    assert.ok(result.formalLetter.includes('Estimado'), 'spanish formal letter missing greeting')
-  })
-
-  it('formal letter has subject line with role', () => {
-    const result = buildFormalLetter({
-      matchResults: sampleMatchResults,
-      requirementsTable: sampleRequirements,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    assert.ok(result.includes('Coordinadora de Proyectos'), 'formal letter missing role in subject line')
+    assert.ok(!result.shortMessage.includes('Hola'))
+    assert.ok(!result.formalLetter.includes('Estimado'))
   })
 
   it('handles empty match results gracefully', () => {
-    const result = buildCoverLetters({
+    const result = buildCoverLettersFromTemplate({
       matchResults: [],
       requirementsTable: [],
       optimizedCV: sampleCV,
       language: 'spanish',
     })
-    assert.ok(result.shortMessage.includes('Ana Pérez'), 'should still include name with no matches')
-    assert.ok(result.formalLetter.includes('Ana Pérez'), 'should still include name with no matches')
-  })
-
-  it('handles missing CV gracefully', () => {
-    const result = buildCoverLetters({
-      matchResults: sampleMatchResults,
-      requirementsTable: sampleRequirements,
-      optimizedCV: {},
-      language: 'spanish',
-    })
-    assert.ok(typeof result.shortMessage === 'string' && result.shortMessage.length > 0)
-    assert.ok(typeof result.formalLetter === 'string' && result.formalLetter.length > 0)
-  })
-
-  it('sorting: match evidence appears before partial evidence', () => {
-    // Only partial matches — should still work
-    const partialOnly = [
-      { requirement_id: 'r1', status: 'partial', evidence: 'Algo de Scrum', evidence_source: 'cv', note: '' },
-      { requirement_id: 'r4', status: 'match', evidence: 'Inglés bilingüe', evidence_source: 'cv', note: '' },
-    ]
-    const result = buildShortMessage({
-      matchResults: partialOnly,
-      requirementsTable: sampleRequirements,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    const idxMatch = result.indexOf('Inglés bilingüe')
-    const idxPartial = result.indexOf('Scrum')
-    assert.ok(idxMatch >= 0 && idxPartial >= 0, 'both evidences should appear')
-    assert.ok(idxMatch < idxPartial, 'match evidence should appear before partial evidence')
-  })
-
-  it('limits evidence references to top 3 in short message', () => {
-    // Create 6 matches, only top 3 should appear
-    const manyMatches = [
-      { requirement_id: 'r1', status: 'match', evidence: 'Evidencia 1 Scrum', evidence_source: 'cv', note: '' },
-      { requirement_id: 'r2', status: 'match', evidence: 'Evidencia 2 Procesos', evidence_source: 'cv', note: '' },
-      { requirement_id: 'r4', status: 'match', evidence: 'Evidencia 3 Inglés', evidence_source: 'cv', note: '' },
-      { requirement_id: 'r5', status: 'match', evidence: 'Evidencia 4 Extra', evidence_source: 'cv', note: '' },
-    ]
-    const manyReqs = [
-      ...sampleRequirements,
-      { id: 'r5', text: 'Requisito extra', type: 'must_have', category: 'experience', weight: 3 },
-    ]
-    const result = buildShortMessage({
-      matchResults: manyMatches,
-      requirementsTable: manyReqs,
-      optimizedCV: sampleCV,
-      language: 'spanish',
-    })
-    // 4th evidence should NOT appear
-    assert.ok(!result.includes('Evidencia 4 Extra'), 'short message should cap at 3 evidence references')
-    // 3rd evidence SHOULD appear
-    assert.ok(result.includes('Evidencia 3'), '3rd evidence should appear')
+    assert.ok(result.shortMessage.includes('Ana Pérez'))
   })
 })

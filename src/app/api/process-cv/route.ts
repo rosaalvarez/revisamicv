@@ -7,7 +7,13 @@ import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { runMatchingEngineV2 } from '@/lib/matching-engine'
-import { buildCoverLetters } from '@/lib/cover-letter'
+import {
+  selectFilteredEvidence,
+  buildCoverLetterSystemPrompt,
+  buildCoverLetterUserPrompt,
+  validateCoverLetterOutput,
+  buildCoverLettersFromTemplate,
+} from '@/lib/cover-letter'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
 import { createAuthToken, createMagicDashboardLink } from '@/lib/auth-token'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
@@ -194,12 +200,62 @@ export async function POST(req: NextRequest) {
     const dashboardAuthToken = createAuthToken(normalizedEmail)
     const dashboardUrl = createMagicDashboardLink(normalizedEmail)
 
-    const coverLetters = buildCoverLetters({
-      matchResults: parsed.adapted_match_results || parsed.original_match_results || [],
-      requirementsTable: parsed.requirements_table || [],
-      optimizedCV: parsed.optimizedCV || parsed,
-      language: outputLanguage,
-    })
+    // ── Phase 3: Cover Letter (LLM writer with template fallback) ──
+    const evidence = selectFilteredEvidence(
+      parsed.adapted_match_results || parsed.original_match_results || [],
+      parsed.requirements_table || [],
+    )
+    const candidateName = String(parsed.optimizedCV?.candidateName || parsed.optimizedCV?.name || '').trim()
+    const candidateRole = String(parsed.optimizedCV?.targetTitle || parsed.optimizedCV?.headline || '').trim()
+
+    let coverLetterShort = ''
+    let coverLetterFormal = ''
+
+    if (evidence.short.length > 0 || evidence.formal.length > 0) {
+      try {
+        const llmResult = await createJsonCompletion(
+          buildCoverLetterSystemPrompt(outputLanguage),
+          buildCoverLetterUserPrompt({
+            candidateName,
+            candidateRole,
+            evidenceList: evidence.formal,
+            language: outputLanguage,
+          }),
+          { task: 'cv_revision', temperature: 0.15, maxTokens: 1200 },
+        )
+        const parsedCL = JSON.parse(llmResult.text)
+        coverLetterShort = String(parsedCL.shortMessage || '').trim()
+        coverLetterFormal = String(parsedCL.formalLetter || '').trim()
+
+        // Validate: output must only reference allowed requirements
+        const validation = validateCoverLetterOutput(
+          coverLetterShort + '\n' + coverLetterFormal,
+          evidence.allIds,
+          parsed.requirements_table || [],
+        )
+        if (!validation.valid) {
+          console.warn('Cover letter validation failed — falling back to template:', validation.violations)
+          coverLetterShort = ''
+          coverLetterFormal = ''
+        }
+      } catch (err: any) {
+        console.warn('Cover letter LLM call failed — falling back to template:', err?.message || err)
+        coverLetterShort = ''
+        coverLetterFormal = ''
+      }
+    }
+
+    // Fallback to template if LLM produced nothing
+    if (!coverLetterShort && !coverLetterFormal) {
+      const template = buildCoverLettersFromTemplate({
+        matchResults: parsed.adapted_match_results || parsed.original_match_results || [],
+        requirementsTable: parsed.requirements_table || [],
+        optimizedCV: parsed.optimizedCV || parsed,
+        language: outputLanguage,
+      })
+      coverLetterShort = template.shortMessage
+      coverLetterFormal = template.formalLetter
+    }
 
     return NextResponse.json({
       ...parsed,
@@ -210,8 +266,8 @@ export async function POST(req: NextRequest) {
       email_sent: true,
       auth_token: dashboardAuthToken,
       dashboard_url: dashboardUrl,
-      coverLetterShort: coverLetters.shortMessage,
-      coverLetterFormal: coverLetters.formalLetter,
+      coverLetterShort,
+      coverLetterFormal,
     })
   } catch (error: any) {
     console.error('CV processing error:', error)
