@@ -7,6 +7,7 @@ import { canGenerateCv, consumeCvCredit } from '@/lib/token-service'
 import { saveCvHistory } from '@/lib/history-service'
 import { createJsonCompletion } from '@/lib/llm-client'
 import { runMatchingEngineV2 } from '@/lib/matching-engine'
+import { buildCoverLetters } from '@/lib/cover-letter'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
 import { createAuthToken, createMagicDashboardLink } from '@/lib/auth-token'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
@@ -193,6 +194,13 @@ export async function POST(req: NextRequest) {
     const dashboardAuthToken = createAuthToken(normalizedEmail)
     const dashboardUrl = createMagicDashboardLink(normalizedEmail)
 
+    const coverLetters = buildCoverLetters({
+      matchResults: parsed.adapted_match_results || parsed.original_match_results || [],
+      requirementsTable: parsed.requirements_table || [],
+      optimizedCV: parsed.optimizedCV || parsed,
+      language: outputLanguage,
+    })
+
     return NextResponse.json({
       ...parsed,
       compatibilityScore,
@@ -202,6 +210,8 @@ export async function POST(req: NextRequest) {
       email_sent: true,
       auth_token: dashboardAuthToken,
       dashboard_url: dashboardUrl,
+      coverLetterShort: coverLetters.shortMessage,
+      coverLetterFormal: coverLetters.formalLetter,
     })
   } catch (error: any) {
     console.error('CV processing error:', error)

@@ -43,6 +43,8 @@ type ProcessResult = {
   honestyWarnings?: string[]
   optimizedCV?: any
   coverLetter?: string
+  coverLetterShort?: string
+  coverLetterFormal?: string
   rawText?: string
   tokens_remaining?: number
   auth_token?: string
@@ -924,6 +926,7 @@ export default function SignupPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const jobFileRef = useRef<HTMLInputElement>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [coverLetterFormat, setCoverLetterFormat] = useState<'short' | 'formal'>('short')
   const [setupStep, setSetupStep] = useState<'cv-base' | 'vacancy'>('cv-base')
   const [activeResultStep, setActiveResultStep] = useState<'evidence' | 'context' | 'cv'>('evidence')
   const normalizedEmailForLinks = email.trim().toLowerCase()
@@ -1188,14 +1191,19 @@ export default function SignupPage() {
   }
 
   const copyCoverLetter = async () => {
-    if (!result?.coverLetter) return setError('No hay cover letter para copiar')
+    const text = coverLetterFormat === 'short'
+      ? (result?.coverLetterShort || result?.coverLetter || '')
+      : (result?.coverLetterFormal || result?.coverLetterShort || result?.coverLetter || '')
+    if (!text) return setError('No hay carta de presentación para copiar')
     try {
-      await navigator.clipboard.writeText(result.coverLetter)
-      trackEvent('cover_letter_copied')
-      setCopySuccess('Cover letter copiada. Pégala en el email, LinkedIn o portal de aplicación.')
+      await navigator.clipboard.writeText(text)
+      trackEvent('cover_letter_copied', { format: coverLetterFormat })
+      setCopySuccess(coverLetterFormat === 'short'
+        ? 'Mensaje corto copiado. Pégalo en LinkedIn, chat o portal.'
+        : 'Carta formal copiada. Pégala en el email o formulario de postulación.')
       setError('')
     } catch {
-      setError('No pude copiar la cover letter. Selecciona el texto y cópialo manualmente.')
+      setError('No pude copiar la carta. Selecciona el texto y cópialo manualmente.')
     }
   }
 
@@ -1654,6 +1662,39 @@ export default function SignupPage() {
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
                   )}
                 </div>
+
+                {(result?.coverLetterShort || result?.coverLetterFormal || result?.coverLetter) ? (
+                  <section className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Carta de presentación</p>
+                        <h3 className="font-display text-lg font-semibold text-[var(--color-ink)]">Inclúyela con tu CV</h3>
+                      </div>
+                      <div className="flex gap-1 rounded-lg bg-[var(--color-paper-2)] p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setCoverLetterFormat('short')}
+                          className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${coverLetterFormat === 'short' ? 'bg-white text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)]'}`}
+                        >Mensaje corto</button>
+                        <button
+                          type="button"
+                          onClick={() => setCoverLetterFormat('formal')}
+                          className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${coverLetterFormat === 'formal' ? 'bg-white text-[var(--color-ink)] shadow-sm' : 'text-[var(--color-ink-soft)]'}`}
+                        >Carta formal</button>
+                      </div>
+                    </div>
+                    <div className="mt-3 whitespace-pre-wrap rounded-lg bg-[var(--color-paper-2)] p-4 text-sm leading-6 text-[var(--color-ink)] font-[Hanken_Grotesk]">
+                      {coverLetterFormat === 'short'
+                        ? (result?.coverLetterShort || result?.coverLetter || '')
+                        : (result?.coverLetterFormal || result?.coverLetterShort || result?.coverLetter || '')}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={copyCoverLetter} className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-xs font-bold text-white hover:bg-[var(--color-primary-deep)]">Copiar al portapapeles</button>
+                      <button type="button" onClick={() => { downloadFile('txt'); trackEvent('cover_letter_download', { format: coverLetterFormat }); }} className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-xs font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]">Descargar TXT</button>
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--color-ink-soft)]">{coverLetterFormat === 'short' ? 'Ideal para LinkedIn, chat o portales con campo de texto corto.' : 'Ideal para email formal o formularios que piden carta adjunta.'}</p>
+                  </section>
+                ) : null}
 
                 <details className="overflow-hidden rounded-xl border border-[var(--color-line)] bg-white [&>summary::-webkit-details-marker]:hidden">
                   <summary style={{ listStyle: 'none' }} className="cursor-pointer list-none px-5 py-4 font-semibold text-[var(--color-ink)] [&::-webkit-details-marker]:hidden">Ver qué cambiamos y por qué</summary>
