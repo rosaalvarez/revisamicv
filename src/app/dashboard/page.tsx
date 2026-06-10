@@ -383,7 +383,7 @@ export default function DashboardPage() {
         <header className="flex flex-col gap-5 py-10 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-secondary-deep)]">Mi panel</p>
-            <h1 className="mt-2 font-display text-4xl font-semibold text-[var(--color-ink)] md:text-[2.3rem]">Hola de nuevo{user?.email ? `, ${user.email.split('@')[0]}` : ''}.</h1>
+            <h1 className="mt-2 font-display text-4xl font-semibold text-[var(--color-ink)] md:text-[2.3rem]">Hola de nuevo.</h1>
           </div>
           <a href="/analizar" className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-[var(--color-ink)] shadow-[0_14px_38px_-12px_rgba(245,128,10,.55)] transition hover:-translate-y-0.5">
             Analizar nueva vacante →

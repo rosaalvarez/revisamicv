@@ -8,6 +8,7 @@ type SaveCvHistoryInput = {
   optimizedCv: any
   compatibilityScore: number
   outputLanguage: 'english' | 'spanish'
+  vacancyTitle?: string
   requirementsTable?: any
   originalMatchResults?: any
   adaptedMatchResults?: any

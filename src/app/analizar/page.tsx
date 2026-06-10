@@ -7,7 +7,7 @@ import { UploadIcon, SparklesIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
-import { optimizedCvToPlainText } from '@/lib/cv-formatters'
+import { optimizedCvToPlainText, getCvLabels } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
 import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
 import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
@@ -294,7 +294,8 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
       <div className="grid md:grid-cols-2 gap-3">
         {entries.map((item) => {
           const tone = getScoreTone(item.score)
-          const width = typeof item.score === 'number' ? `${item.score}%` : '0%'
+          const numericScore = typeof item.score === 'number' ? item.score : undefined
+          const barWidth = numericScore !== undefined ? (numericScore === 0 ? '3%' : `${numericScore}%`) : '0%'
 
           return (
             <div key={item.key} className="rounded-xl bg-white border border-[var(--color-line)] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
@@ -304,9 +305,10 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
               </div>
               {item.score !== undefined && (
                 <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className={`h-full rounded-full ${tone.bar}`} style={{ width }} />
+                  <div className={`h-full rounded-full ${tone.bar}`} style={{ width: barWidth }} />
                 </div>
               )}
+              {numericScore !== undefined && numericScore === 0 && <p className="text-xs text-orange-600 mt-1.5 font-medium">Sin evidencia aún</p>}
               {item.summary && <p className="text-xs text-slate-600 mt-2 leading-relaxed">{item.summary}</p>}
             </div>
           )
@@ -654,7 +656,11 @@ function ResultHero({ result }: { result: ProcessResult; cv: any }) {
   return (
     <section className="text-center">
       <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-primary)]">Paso 3 de 4</p>
-      <h1 className="mx-auto mt-2 max-w-[620px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">{score !== undefined ? `Tu CV quedó en ${score}% para esta vacante` : 'Diagnóstico claro de tu CV'}</h1>
+      <h1 className="mx-auto mt-2 max-w-[620px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">{(() => {
+        if (score === undefined) return 'Diagnóstico claro de tu CV'
+        if (scoreValue <= 30) return 'Esta vacante pide un perfil distinto al que tu CV muestra hoy. Veamos qué se puede hacer.'
+        return `Tu CV quedó en ${score}% para esta vacante`
+      })()}</h1>
       <div className="mt-8 flex flex-col items-center">
         <div className="relative h-[200px] w-[200px]">
           <svg width="200" height="200" className="-rotate-90">
@@ -666,7 +672,7 @@ function ResultHero({ result }: { result: ProcessResult; cv: any }) {
             <span className="mt-1 text-xs text-[var(--color-ink-soft)]">/100 · encaje</span>
           </div>
         </div>
-        <p className="mt-4 font-display text-xl font-semibold text-[var(--color-ink)]"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-[var(--color-seen)] align-middle" />{getScoreVerdict(score)}</p>
+        <p className="mt-4 font-display text-xl font-semibold text-[var(--color-ink)]"><span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle ${scoreValue <= 30 ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-seen)]'}`} />{getScoreVerdict(score)}</p>
         {revisedScore !== undefined && originalScore !== undefined && revisedScore !== originalScore ? <p className="mt-2 text-sm text-[var(--color-ink-soft)]">Tu versión original marcaba {originalScore}/100 para esta vacante.</p> : null}
       </div>
 
@@ -778,11 +784,13 @@ function ResultAccordion({ title, summary, defaultOpen = false, children }: { ti
   )
 }
 
-function renderOptimizedCV(cv: any) {
+function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spanish') {
   if (!cv) return null
   if (typeof cv === 'string') {
     return <pre className="whitespace-pre-wrap text-sm text-slate-800 font-sans">{cv}</pre>
   }
+
+  const labels = getCvLabels(outputLanguage)
 
   const contact = typeof cv.contact === 'object' && cv.contact
     ? [cv.contact.email, cv.contact.phone, cv.contact.location, cv.contact.linkedin, cv.contact.portfolio].filter(Boolean).join(' | ')
@@ -799,34 +807,34 @@ function renderOptimizedCV(cv: any) {
       <div className="space-y-5">
         {cv.summary && (
           <div>
-            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Professional Summary</h4>
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{labels.summary}</h4>
             <p className="text-sm text-slate-800 leading-relaxed">{cv.summary}</p>
           </div>
         )}
 
         {(cv.coreCompetencies?.length > 0 || cv.skills?.length > 0) && (
           <div className="border-t border-slate-200 pt-4">
-            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Skills</h4>
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{labels.skills}</h4>
             {renderChipList([...(cv.coreCompetencies || []), ...(cv.skills || [])])}
           </div>
         )}
 
         {cv.technicalSkills?.length > 0 && (
           <div className="border-t border-slate-200 pt-4">
-            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Technical Skills</h4>
+            <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{labels.technicalSkills}</h4>
             {renderChipList(cv.technicalSkills)}
           </div>
         )}
 
         {cv.experience?.length > 0 && (
           <div className="space-y-4 border-t border-slate-200 pt-4">
-            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">Professional Experience</h4>
+            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">{labels.experience}</h4>
             {cv.experience.map((role: any, index: number) => (
               <div key={index}>
                 <p className="font-semibold text-slate-950">{role.title}</p>
                 <p className="text-sm text-slate-600">{[role.company, role.location, role.dates].filter(Boolean).join(' | ')}</p>
-                {role.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">Tech Stack:</span> {role.techStack.join(', ')}</p>}
-                {role.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">Tools:</span> {role.tools.join(', ')}</p>}
+                {role.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">{labels.roleTechStack}:</span> {role.techStack.join(', ')}</p>}
+                {role.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">{labels.roleTools}:</span> {role.tools.join(', ')}</p>}
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
                   {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
                 </ul>
@@ -837,13 +845,13 @@ function renderOptimizedCV(cv: any) {
 
         {((cv.featuredProjects || cv.projects)?.length > 0) && (
           <div className="space-y-4 border-t border-slate-200 pt-4">
-            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">Featured Projects</h4>
+            <h4 className="font-bold text-slate-900 uppercase tracking-wide text-xs">{labels.featuredProjects}</h4>
             {(cv.featuredProjects || cv.projects).map((project: any, index: number) => (
               <div key={index}>
                 <p className="font-semibold text-slate-950">{project.name}</p>
                 <p className="text-sm text-slate-600">{[project.description, project.role, project.dates].filter(Boolean).join(' | ')}</p>
-                {project.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">Tech Stack:</span> {project.techStack.join(', ')}</p>}
-                {project.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">Tools:</span> {project.tools.join(', ')}</p>}
+                {project.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">{labels.roleTechStack}:</span> {project.techStack.join(', ')}</p>}
+                {project.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">{labels.roleTools}:</span> {project.tools.join(', ')}</p>}
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
                   {(project.bullets || project.achievements)?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
                 </ul>
@@ -852,10 +860,10 @@ function renderOptimizedCV(cv: any) {
           </div>
         )}
 
-        {renderSimpleSection('Education', cv.education)}
-        {renderSimpleSection('Certifications', cv.certifications)}
-        {cv.tools?.length > 0 && <div className="border-t border-slate-200 pt-4"><h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">Tools</h4>{renderChipList(cv.tools)}</div>}
-        {renderSimpleSection('Languages', cv.languages)}
+        {renderSimpleSection(labels.education, cv.education)}
+        {renderSimpleSection(labels.certifications, cv.certifications)}
+        {cv.tools?.length > 0 && <div className="border-t border-slate-200 pt-4"><h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{labels.tools}</h4>{renderChipList(cv.tools)}</div>}
+        {renderSimpleSection(labels.languages, cv.languages)}
       </div>
     </section>
   )
@@ -1658,7 +1666,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
-                  {canDownloadCv ? renderOptimizedCV(cvForActions) : (
+                  {canDownloadCv ? renderOptimizedCV(cvForActions, outputLanguage) : (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
                   )}
                 </div>

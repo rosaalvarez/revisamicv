@@ -179,6 +179,7 @@ export async function POST(req: NextRequest) {
         optimizedCv: parsed.optimizedCV || parsed,
         compatibilityScore,
         outputLanguage,
+        vacancyTitle: parsed.vacancy_title,
         requirementsTable: parsed.requirements_table,
         originalMatchResults: parsed.original_match_results,
         adaptedMatchResults: parsed.adapted_match_results,

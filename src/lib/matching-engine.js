@@ -134,7 +134,10 @@ function normalizeMatch(match, requirement) {
   }
 }
 
-function gapMatch(requirement, note = 'No valid CV evidence found for this requirement.') {
+function gapMatch(requirement, language = 'spanish') {
+  const note = language === 'spanish'
+    ? 'El CV no muestra evidencia de este requisito.'
+    : 'No valid CV evidence found for this requirement.'
   return {
     requirement_id: requirement.id,
     status: 'gap',
@@ -144,7 +147,7 @@ function gapMatch(requirement, note = 'No valid CV evidence found for this requi
   }
 }
 
-function validateMatches(matches, requirements, sourceText) {
+function validateMatches(matches, requirements, sourceText, outputLanguage = 'spanish') {
   const incomingById = new Map(asArray(matches).map((match) => [String(match?.requirement_id || ''), match]))
   const normalized = []
   const invalidRequirementIds = []
@@ -174,7 +177,7 @@ function removeInvalidMarker(match) {
   return clean
 }
 
-function mergeRetryMatches(firstPass, retryPass, invalidRequirementIds, requirements, sourceText) {
+function mergeRetryMatches(firstPass, retryPass, invalidRequirementIds, requirements, sourceText, outputLanguage = 'spanish') {
   const retryById = new Map(retryPass.map((match) => [match.requirement_id, match]))
   return firstPass.map((match) => {
     if (!invalidRequirementIds.includes(match.requirement_id)) return removeInvalidMarker(match)
@@ -183,7 +186,7 @@ function mergeRetryMatches(firstPass, retryPass, invalidRequirementIds, requirem
     if (retry && (retry.status === 'gap' || (retry.evidence && containsEvidenceQuote(sourceText, retry.evidence) && evidenceSatisfiesRequirementAnchors(requirement, retry.evidence)))) {
       return removeInvalidMarker(retry)
     }
-    return gapMatch(requirement)
+    return gapMatch(requirement, outputLanguage)
   })
 }
 
@@ -193,6 +196,7 @@ export function buildRequirementExtractionPrompt(outputLanguage = 'spanish') {
 
 Return ONLY valid JSON with this exact shape:
 {
+  "vacancy_title": "string",
   "requirements": [
     {
       "id": "r1",
@@ -237,6 +241,7 @@ Hard rules:
 - status=gap must have evidence=null.
 - Before declaring gap, explicitly search ES↔EN equivalents, word variants, and common synonyms (e.g. "gestión de proyectos" ↔ "project management").
 - evidence_source must be "cv" in this phase. "user_declared" is reserved for later user gap-recovery.
+- Write notes in ${languageName} using document-centric framing: refer to "the CV" (not "your experience" / "tu experiencia" / "su experiencia"). The note describes what the document shows or does not show.
 - Never invent experience, employers, titles, tools, education, languages, metrics, or certifications.`
 }
 
@@ -249,6 +254,7 @@ export async function extractStructuredRequirements({ jobDescription, outputLang
   const parsed = parseJsonCompletion(completion.text || '{}')
   return {
     requirements: normalizeRequirementWeights(parsed.requirements, weightConfig),
+    vacancy_title: typeof parsed.vacancy_title === 'string' ? parsed.vacancy_title.trim() : '',
     llm_model: completion.model,
   }
 }
@@ -269,7 +275,7 @@ export async function runEvidenceMatchingWithValidation({ cvText, requirements, 
     { task: 'evidence_matching', temperature: 0.2, maxTokens: 4500 }
   )
   const firstParsed = parseJsonCompletion(firstCompletion.text || '{}')
-  const first = validateMatches(firstParsed.matches, normalizedRequirements, cvText)
+  const first = validateMatches(firstParsed.matches, normalizedRequirements, cvText, outputLanguage)
 
   if (!first.invalidRequirementIds.length) {
     return { matches: first.matches.map(removeInvalidMarker), llm_model: firstCompletion.model }
@@ -282,10 +288,10 @@ export async function runEvidenceMatchingWithValidation({ cvText, requirements, 
   )
   const retryParsed = parseJsonCompletion(retryCompletion.text || '{}')
   const retryRequirements = normalizedRequirements.filter((req) => first.invalidRequirementIds.includes(req.id))
-  const retry = validateMatches(retryParsed.matches, retryRequirements, cvText)
+  const retry = validateMatches(retryParsed.matches, retryRequirements, cvText, outputLanguage)
 
   return {
-    matches: mergeRetryMatches(first.matches, retry.matches, first.invalidRequirementIds, normalizedRequirements, cvText),
+    matches: mergeRetryMatches(first.matches, retry.matches, first.invalidRequirementIds, normalizedRequirements, cvText, outputLanguage),
     llm_model: retryCompletion.model || firstCompletion.model,
   }
 }
@@ -433,7 +439,7 @@ export async function generateValidatedOptimizedCv({ cvText, jobDescription, out
 }
 
 export async function runMatchingEngineV2({ cvText, jobDescription, outputLanguage, createJsonCompletion, buildOptimizerSystemPrompt }) {
-  const { requirements, llm_model: requirementsModel } = await extractStructuredRequirements({ jobDescription, outputLanguage, createJsonCompletion })
+  const { requirements, vacancy_title, llm_model: requirementsModel } = await extractStructuredRequirements({ jobDescription, outputLanguage, createJsonCompletion })
   const originalMatch = await runEvidenceMatchingWithValidation({ cvText, requirements, outputLanguage, createJsonCompletion })
   const originalScore = computeDeterministicScore(requirements, originalMatch.matches)
   const generated = await generateValidatedOptimizedCv({ cvText, jobDescription, outputLanguage, createJsonCompletion, buildOptimizerSystemPrompt })
@@ -445,6 +451,7 @@ export async function runMatchingEngineV2({ cvText, jobDescription, outputLangua
   return {
     ...generated.parsed,
     optimizedCV: generated.optimizedCV,
+    vacancy_title,
     compatibilityScore: adaptedScore.score,
     original_score: originalScore.score,
     adapted_score: adaptedScore.score,
