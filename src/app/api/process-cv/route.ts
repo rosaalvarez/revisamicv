@@ -246,8 +246,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Fallback to template if LLM produced nothing
-    if (!coverLetterShort && !coverLetterFormal) {
+    // Fallback to template if LLM produced nothing — only when evidence exists
+    if (!coverLetterShort && !coverLetterFormal && evidence.allIds.size > 0) {
       const template = buildCoverLettersFromTemplate({
         matchResults: parsed.adapted_match_results || parsed.original_match_results || [],
         requirementsTable: parsed.requirements_table || [],
