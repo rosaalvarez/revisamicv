@@ -59,7 +59,7 @@ export function LegalShell({
             <div className="mt-5 space-y-4 text-sm leading-6 text-[var(--color-ink-soft)]">
               <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-[var(--color-seen)]" /><span>No vendemos tu CV ni tus datos personales.</span></div>
               <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-[var(--color-seen)]" /><span>No inventamos experiencia, cargos, estudios ni métricas.</span></div>
-              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-[var(--color-seen)]" /><span>Si un análisis falla por error técnico, no debería consumirse tu crédito.</span></div>
+              <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-[var(--color-seen)]" /><span>Si un análisis falla por error técnico, no se consume tu crédito.</span></div>
               <div className="flex gap-3"><CheckIcon className="mt-1 h-4 w-4 shrink-0 text-[var(--color-seen)]" /><span>Tus créditos quedan asociados al email usado en Stripe.</span></div>
             </div>
             <div className="mt-6 rounded-[16px] border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">

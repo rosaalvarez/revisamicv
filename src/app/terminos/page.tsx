@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import { LegalSection, LegalShell } from '@/components/LegalShell'
+
+export const metadata: Metadata = {
+  title: 'Términos de uso',
+  description: 'Términos de uso de RevisaMiCV: análisis por vacante, créditos, descargas, pagos, soporte y regla anti-invención.',
+  alternates: { canonical: '/terminos' },
+}
 
 export default function TermsPage() {
   return (

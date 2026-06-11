@@ -82,7 +82,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: resource.title,
       description: resource.description,
       url,
-      siteName: 'RevisaMiCV.lat',
+      siteName: 'RevisaMiCV',
+      images: [{ url: '/og.png', width: 1200, height: 630, alt: 'RevisaMiCV — Score de compatibilidad y CV adaptado' }],
       locale: 'es_CO',
       type: 'article',
     },
@@ -90,6 +91,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       card: 'summary_large_image',
       title: resource.title,
       description: resource.description,
+      images: ['/og.png'],
     },
   }
 }
@@ -106,7 +108,7 @@ export default async function ResourcePage({ params }: { params: Promise<{ slug:
     description: resource.description,
     inLanguage: 'es-CO',
     mainEntityOfPage: `${appUrl}/recursos/${resource.slug}`,
-    publisher: { '@type': 'Organization', name: 'RevisaMiCV.lat' },
+    publisher: { '@type': 'Organization', name: 'RevisaMiCV' },
   }
 
   return (

@@ -10,16 +10,16 @@ const plans = [
     name: 'Básico',
     blurb: 'Para revisar varias postulaciones sin pagar una suscripción.',
     price: '$5',
-    per: 'Pago único · 5 análisis · $1 por CV',
+    per: 'Pago único · 5 análisis · $1 por vacante',
     features: ['5 análisis adicionales', 'Score CV vs vacante /100', 'Brechas y fortalezas', 'Keywords recomendadas', 'CV adaptado PDF / DOCX / TXT'],
     featured: false,
   },
   {
     key: 'pro',
     name: 'Pro',
-    blurb: 'Para aplicar a más vacantes con mejor costo por CV.',
+    blurb: 'Para aplicar a más vacantes con mejor costo por vacante.',
     price: '$12',
-    per: 'Pago único · 15 análisis · $0.80 por CV',
+    per: 'Pago único · 15 análisis · $0.80 por vacante',
     features: ['Todo lo del plan Básico', '15 análisis en tu cuenta', 'Historial en tu dashboard', 'Úsalo con 15 vacantes distintas', 'Créditos sin vencimiento'],
     featured: true,
   },
@@ -28,7 +28,7 @@ const plans = [
     name: 'Premium',
     blurb: 'Para una búsqueda activa con muchas postulaciones.',
     price: '$19',
-    per: 'Pago único · 30 análisis · $0.63 por CV',
+    per: 'Pago único · 30 análisis · $0.63 por vacante',
     features: ['Todo lo del plan Pro', '30 análisis en tu cuenta', 'Historial completo', 'Úsalo con 30 vacantes distintas', 'Créditos sin vencimiento'],
     featured: false,
   },
@@ -47,7 +47,7 @@ export default function HomePage() {
     <>
       <nav className="site-nav">
         <div className="wrap">
-          <Link href="/" className="logo"><b>R</b> Revisa mi CV</Link>
+          <Link href="/" className="logo"><b>R</b> RevisaMiCV</Link>
           <div className="navlinks">
             <Link href="/analizar">Analizar</Link>
             <Link href="/blog">Blog</Link>
@@ -66,17 +66,17 @@ export default function HomePage() {
           <h1>Antes de enviar otro CV, asegúrate de que diga lo que esa vacante está buscando.</h1>
           <p className="sub">Sube tu CV, pega la oferta y recibe un análisis claro: qué coincide, qué falta y cómo ajustarlo para que tenga más opciones de pasar el primer filtro.</p>
 
-          <div className="hero-search" aria-label="Resumen del flujo de análisis">
+          <div className="hero-search" aria-label="Resumen de los pasos antes de empezar el análisis">
             <div className="hero-seg">
-              <div className="lbl">Tu CV</div>
-              <div className="val">Sube tu PDF, Word o TXT</div>
+              <div className="lbl">Paso 1</div>
+              <div className="val">Subirás tu CV en la siguiente pantalla</div>
             </div>
             <div className="hero-divider" />
             <div className="hero-seg">
-              <div className="lbl">La vacante</div>
-              <div className="val">Pega el texto de la oferta</div>
+              <div className="lbl">Paso 2</div>
+              <div className="val">Pegarás la vacante antes de analizar</div>
             </div>
-            <LandingCta location="hero_search">Analizar</LandingCta>
+            <LandingCta location="hero_search">Empezar análisis</LandingCta>
           </div>
 
           <p className="freenote"><b>Primer análisis gratis.</b> Sin tarjeta. Diagnóstico claro en español o inglés.</p>
@@ -116,7 +116,7 @@ export default function HomePage() {
                   <div className="label"><span /> El punto crítico</div>
                   <blockquote>El silencio no siempre significa que no sirvas. A veces significa que tu CV no está diciendo lo que la vacante necesita leer.</blockquote>
                 </div>
-                <p>Por eso Revisa mi CV cruza tu hoja de vida con la oferta real: para mostrar tu porcentaje de ajuste, las palabras que faltan, lo que sí juega a tu favor y cómo mejorar el CV antes de enviarlo.</p>
+                <p>Por eso RevisaMiCV cruza tu hoja de vida con la oferta real: para mostrar tu porcentaje de ajuste, las palabras que faltan, lo que sí juega a tu favor y cómo mejorar el CV antes de enviarlo.</p>
               </div>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function HomePage() {
 
       <footer>
         <div className="wrap">
-          <div className="col" style={{ maxWidth: 270 }}><div className="logo" style={{ marginBottom: 12 }}><b>R</b> Revisa mi CV</div><p>CVs adaptados a vacantes reales, sin inventar experiencia.</p></div>
+          <div className="col" style={{ maxWidth: 270 }}><div className="logo" style={{ marginBottom: 12 }}><b>R</b> RevisaMiCV</div><p>CVs adaptados a vacantes reales, sin inventar experiencia.</p></div>
           <div className="col"><h4>Producto</h4><ul><li><a href="#como">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><Link href="/dashboard">Mi panel</Link></li></ul></div>
           <div className="col"><h4>Recursos</h4><ul><li><Link href="/blog">Blog</Link></li><li><Link href="/recursos/adaptar-cv-a-vacante">Guía para tu CV</Link></li><li><Link href="/recursos/optimizar-cv-ats">Cómo pasar el ATS</Link></li></ul></div>
           <div className="col"><h4>Legal</h4><ul><li><Link href="/privacidad">Privacidad</Link></li><li><Link href="/terminos">Términos</Link></li><li><Link href="/soporte">Contacto</Link></li></ul></div>

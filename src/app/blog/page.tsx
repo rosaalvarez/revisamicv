@@ -6,15 +6,22 @@ const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').tri
 
 export const metadata: Metadata = {
   title: 'Blog de CV, ATS y búsqueda laboral',
-  description: 'Guías prácticas para adaptar tu CV a vacantes, mejorar tu compatibilidad ATS y aplicar mejor a trabajos remotos o locales.',
+  description: 'Guías prácticas para aplicar mejor a cada vacante: CV, ATS, keywords y ajustes honestos según la oferta real.',
   alternates: { canonical: '/blog' },
   openGraph: {
-    title: 'Blog de RevisaMiCV.lat',
-    description: 'Guías prácticas de CV, ATS y búsqueda laboral.',
+    title: 'Blog de RevisaMiCV',
+    description: 'Guías prácticas para aplicar mejor a cada vacante.',
     url: `${appUrl}/blog`,
-    siteName: 'RevisaMiCV.lat',
+    siteName: 'RevisaMiCV',
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'RevisaMiCV — Score de compatibilidad y CV adaptado' }],
     locale: 'es_CO',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Blog de RevisaMiCV',
+    description: 'Guías prácticas para aplicar mejor a cada vacante.',
+    images: ['/og.png'],
   },
 }
 
@@ -22,7 +29,7 @@ export default function BlogIndexPage() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
-    name: 'Blog de RevisaMiCV.lat',
+    name: 'Blog de RevisaMiCV',
     url: `${appUrl}/blog`,
     blogPost: blogPosts.map((post) => ({
       '@type': 'BlogPosting',
@@ -43,7 +50,7 @@ export default function BlogIndexPage() {
         <section className="hero">
           <p className="eyebrow">Blog</p>
           <h1>Guías prácticas para que tu CV le hable a cada vacante.</h1>
-          <p>Contenido pensado para indexar búsquedas reales: ATS, CV en inglés, adaptación por vacante, score de compatibilidad y errores comunes al aplicar.</p>
+          <p>Guías prácticas para aplicar mejor a cada vacante.</p>
         </section>
         <section className="grid">
           {blogPosts.map((post) => (

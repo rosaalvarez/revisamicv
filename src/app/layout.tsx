@@ -11,8 +11,8 @@ const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').tri
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: 'RevisaMiCV.lat — Adapta tu CV a cada vacante con score ATS',
-    template: '%s | RevisaMiCV.lat',
+    default: 'RevisaMiCV — Adapta tu CV a cada vacante con score ATS',
+    template: '%s | RevisaMiCV',
   },
   description: 'Optimiza tu CV para una vacante específica: score de compatibilidad, keywords ATS, brechas y CV adaptado descargable en PDF, DOCX o TXT, en inglés o español, sin inventar experiencia.',
   keywords: [
@@ -39,16 +39,16 @@ export const metadata: Metadata = {
     shortcut: ['/favicon.ico'],
   },
   openGraph: {
-    title: 'RevisaMiCV.lat — ¿Qué tan compatible eres con esta vacante?',
+    title: '¿Qué tan compatible es tu CV con esa vacante?',
     description: 'Sube tu CV, pega una vacante y recibe score, brechas, keywords ATS y CV adaptado descargable en PDF, DOCX o TXT.',
     url: appUrl,
-    siteName: 'RevisaMiCV.lat',
+    siteName: 'RevisaMiCV',
     images: [
       {
         url: '/og.png',
         width: 1200,
         height: 630,
-        alt: 'RevisaMiCV.lat — Score de compatibilidad y CV adaptado',
+        alt: 'RevisaMiCV — Score de compatibilidad y CV adaptado',
       },
     ],
     locale: 'es_CO',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RevisaMiCV.lat — Score ATS + CV adaptado',
+    title: '¿Qué tan compatible es tu CV con esa vacante?',
     description: 'Optimiza tu CV para una vacante específica y descarga una versión adaptada sin inventar experiencia.',
     images: ['/og.png'],
   },

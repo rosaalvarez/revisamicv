@@ -46,7 +46,7 @@ function scoreChipClass(score: number) {
 
 function pricePerCv(price: number, count: number) {
   if (!count) return ''
-  return `$${(price / count).toFixed(2).replace('.00', '')} por CV`
+  return `$${(price / count).toFixed(2).replace('.00', '')} por vacante`
 }
 
 
@@ -376,7 +376,7 @@ export default function DashboardPage() {
             <a href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:border-[var(--color-primary)]">
               <UserIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Mi panel</span>
-              <b className="text-[var(--color-secondary-deep)]">{user ? `${user.tokens}` : '—'}</b>
+              {user && <b className="text-[var(--color-secondary-deep)]">{user.tokens}</b>}
             </a>
           </div>
         </div>
@@ -395,10 +395,17 @@ export default function DashboardPage() {
 
         <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-baseline gap-4">
-              <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user ? user.tokens : '—'}</div>
-              <div className="text-sm text-[var(--color-ink-soft)]">análisis<b className="block font-display text-lg font-semibold text-[var(--color-ink)]">disponibles</b></div>
-            </div>
+            {user ? (
+              <div className="flex items-baseline gap-4">
+                <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user.tokens}</div>
+                <div className="text-sm text-[var(--color-ink-soft)]">análisis<b className="block font-display text-lg font-semibold text-[var(--color-ink)]">disponibles</b></div>
+              </div>
+            ) : (
+              <div>
+                <p className="font-display text-2xl font-semibold text-[var(--color-ink)]">Entra con tu email</p>
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Verás tus créditos y análisis guardados.</p>
+              </div>
+            )}
             <p className="max-w-xs text-sm text-[var(--color-ink-soft)]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
             <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Comprar más créditos</button>
           </div>

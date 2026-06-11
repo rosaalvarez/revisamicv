@@ -1,11 +1,18 @@
+import type { Metadata } from 'next'
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL, LegalSection, LegalShell } from '@/components/LegalShell'
+
+export const metadata: Metadata = {
+  title: 'Soporte de RevisaMiCV',
+  description: 'Soporte de RevisaMiCV para pagos, créditos, errores técnicos, eliminación de datos y recuperación de análisis. Si el análisis falla por error técnico, no se consume tu crédito.',
+  alternates: { canonical: '/soporte' },
+}
 
 export default function SupportPage() {
   return (
     <LegalShell
       eyebrow="Soporte"
       title="Si pagaste, subiste un CV o algo falló, aquí está el camino claro."
-      intro="La prioridad es que no pierdas créditos ni tiempo. Escríbenos con el email correcto y revisamos tu caso."
+      intro="La prioridad es que no pierdas créditos ni tiempo. Si el análisis falla por error técnico, no se consume tu crédito. Escríbenos con el email correcto y revisamos tu caso."
     >
       <LegalSection title="Canal principal">
         <p>Por ahora el soporte se atiende por email. Escríbenos a {SUPPORT_EMAIL}. Incluye el email usado en RevisaMiCV y, si compraste créditos, el mismo email usado en Stripe.</p>
@@ -20,7 +27,7 @@ export default function SupportPage() {
         <p>Primero entra al dashboard y escribe exactamente el mismo email usado al pagar en Stripe. Si los créditos siguen sin aparecer, envíanos ese email y revisamos la acreditación manualmente.</p>
       </LegalSection>
       <LegalSection title="Si el análisis falla">
-        <p>Indica qué archivo usaste, qué vacante pegaste y qué mensaje de error viste. Si fue un error técnico verificable, revisamos que no pierdas el crédito.</p>
+        <p>Indica qué archivo usaste, qué vacante pegaste y qué mensaje de error viste. Si fue un error técnico verificable, no se consume tu crédito y revisamos el caso.</p>
       </LegalSection>
       <LegalSection title="Si quieres eliminar tus datos">
         <p>Escríbenos con el email usado en RevisaMiCV y solicita eliminación de historial/datos. Te confirmaremos cuando se complete.</p>
