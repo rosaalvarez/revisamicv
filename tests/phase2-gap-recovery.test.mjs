@@ -47,7 +47,7 @@ test('buildKeyRequirementRows uses evidence quotes and document-only framing', (
   assert.doesNotMatch(rows.map((row) => `${row.copy} ${row.note}`).join(' '), /no cumples|no tienes|te falta/i)
 })
 
-test('buildGapRecoveryQuestions creates Tu experiencia prompts from gaps only with evidence-source options', () => {
+test('buildGapRecoveryQuestions creates Tu experiencia prompts from gaps only with tap-first options', () => {
   const requirements = [
     { id: 'r1', text: 'SaaS implementation projects', type: 'must_have', category: 'experience', weight: 3 },
     { id: 'r2', text: 'Stakeholder management', type: 'nice_to_have', category: 'soft_skill', weight: 1 },
@@ -61,8 +61,8 @@ test('buildGapRecoveryQuestions creates Tu experiencia prompts from gaps only wi
 
   assert.equal(questions.length, 1)
   assert.equal(questions[0].requirement_id, 'r1')
-  assert.deepEqual(questions[0].options, ['Proyectos personales', 'Freelance', 'Estudios o cursos', 'Voluntariado', 'Parcialmente / en un proyecto puntual', 'No tengo'])
-  assert.match(questions[0].question, /tu CV no muestra/i)
+  assert.deepEqual(questions[0].options, ['Sí, la tengo', 'Tengo algo básico', 'No'])
+  assert.match(questions[0].question, /La vacante pide SaaS implementation projects/i)
   assert.doesNotMatch(questions[0].question, /no cumples|no tienes/i)
 })
 

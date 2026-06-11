@@ -14,6 +14,32 @@ function normalizeStatus(status) {
   return ['match', 'partial', 'gap'].includes(status) ? status : 'gap'
 }
 
+const STATUS_VALUE = { gap: 0, partial: 0.5, match: 1 }
+const DEFAULT_WEIGHT_BY_TYPE = { must_have: 3, nice_to_have: 1 }
+const DEFAULT_WEIGHT_BY_CATEGORY = { title_seniority: 2 }
+
+function getRequirementWeight(requirement = {}) {
+  const numeric = Number(requirement?.weight)
+  if (Number.isFinite(numeric) && numeric > 0) return numeric
+  if (DEFAULT_WEIGHT_BY_CATEGORY[requirement?.category]) return DEFAULT_WEIGHT_BY_CATEGORY[requirement.category]
+  return DEFAULT_WEIGHT_BY_TYPE[requirement?.type] || DEFAULT_WEIGHT_BY_TYPE.nice_to_have
+}
+
+function computeProjectedScore(requirements = [], matches = [], flippedRequirementId = '') {
+  const normalizedRequirements = Array.isArray(requirements) ? requirements : []
+  const matchById = new Map((Array.isArray(matches) ? matches : []).map((match) => [String(match?.requirement_id || ''), match]))
+  const denominator = normalizedRequirements.reduce((sum, requirement) => sum + getRequirementWeight(requirement), 0)
+  if (!denominator) return undefined
+  const numerator = normalizedRequirements.reduce((sum, requirement) => {
+    const id = String(requirement?.id || '')
+    const weight = getRequirementWeight(requirement)
+    const currentStatus = normalizeStatus(matchById.get(id)?.status)
+    const projectedStatus = id === String(flippedRequirementId || '') ? 'match' : currentStatus
+    return sum + weight * (STATUS_VALUE[projectedStatus] ?? 0)
+  }, 0)
+  return Math.max(0, Math.min(100, Math.round((100 * numerator) / denominator)))
+}
+
 function getTone(score) {
   if (score >= 85) return 'strong'
   if (score >= 70) return 'good'
@@ -94,6 +120,10 @@ function isNegativeAnswer(value = '') {
   return /^\s*(no|no tengo|no aplica|ninguno|ninguna|n\/a)\b/i.test(String(value || ''))
 }
 
+export function getQuestionProjectedLift(requirements = [], matches = [], requirementId = '') {
+  return computeProjectedScore(requirements, matches, requirementId)
+}
+
 export function buildGapRecoveryQuestions(requirements = [], matches = [], limit = 5) {
   const rows = buildKeyRequirementRows(requirements, matches, Number.MAX_SAFE_INTEGER)
   return rows
@@ -102,10 +132,11 @@ export function buildGapRecoveryQuestions(requirements = [], matches = [], limit
     .map((row) => ({
       requirement_id: row.id,
       requirement_text: row.requirement,
-      question: `Tu CV no muestra claramente: ${row.requirement}. ¿Hay experiencia real relacionada que puedas respaldar?`,
-      options: ['Proyectos personales', 'Freelance', 'Estudios o cursos', 'Voluntariado', 'Parcialmente / en un proyecto puntual', 'No tengo'],
-      freeTextLabel: 'Describe solo lo real: proyecto, herramienta, curso, responsabilidad, tiempo, resultado o contexto verificable.',
+      question: `La vacante pide ${row.requirement}. ¿Tienes experiencia real con esto?`,
+      options: ['Sí, la tengo', 'Tengo algo básico', 'No'],
+      freeTextLabel: 'Agrega una línea opcional: proyecto, herramienta, curso, responsabilidad, tiempo, resultado o contexto verificable.',
       current_status: row.status,
+      projected_lift: computeProjectedScore(requirements, matches, row.id),
     }))
 }
 
