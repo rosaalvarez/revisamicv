@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRightIcon, CheckIcon, ShieldCheckIcon } from '@/components/icons'
+import { ArrowRightIcon, CheckIcon, ShieldCheckIcon, UserIcon } from '@/components/icons'
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_URL } from '@/lib/support'
 export { SUPPORT_EMAIL, SUPPORT_EMAIL_URL }
 
@@ -26,9 +26,12 @@ export function LegalShell({
             </div>
           </Link>
           <nav className="flex flex-wrap items-center gap-2 text-sm font-medium text-[var(--color-ink-soft)]">
-            <Link href="/analizar" className="rounded-full px-4 py-2 hover:bg-[var(--color-paper-2)]">Analizar gratis</Link>
-            <Link href="/dashboard" className="rounded-full px-4 py-2 hover:bg-[var(--color-paper-2)]">Dashboard</Link>
-            <a href={SUPPORT_EMAIL_URL} className="nav-cta">Soporte</a>
+            <Link href="/analizar" className="rounded-full px-4 py-2 hover:bg-[var(--color-paper-2)]">Analizar</Link>
+            <Link href="/blog" className="rounded-full px-4 py-2 hover:bg-[var(--color-paper-2)]">Blog</Link>
+            <Link href="/#precios" className="rounded-full px-4 py-2 hover:bg-[var(--color-paper-2)]">Precios</Link>
+            <Link href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-4 py-2 font-semibold text-[var(--color-ink)] hover:border-[var(--color-primary)]">
+              <UserIcon className="h-4 w-4" /> Mi panel
+            </Link>
           </nav>
         </header>
 

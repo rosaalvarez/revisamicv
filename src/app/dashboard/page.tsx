@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 import { trackEvent } from '@/lib/analytics'
+import { UserIcon } from '@/components/icons'
 
 type UserState = {
   email: string
@@ -368,13 +369,15 @@ export default function DashboardPage() {
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">R</span>
             RevisaMiCV
           </a>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)]">
-              Créditos: <b className="text-[var(--color-secondary-deep)]">{user ? `${user.tokens} análisis` : '—'}</b>
-            </span>
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-block)] text-xs font-bold text-white">
-              {(user?.email || email || 'A').trim().charAt(0).toUpperCase() || 'A'}
-            </div>
+          <div className="flex items-center gap-3 text-sm">
+            <a href="/analizar" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Analizar</a>
+            <a href="/blog" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Blog</a>
+            <a href="/#precios" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Precios</a>
+            <a href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:border-[var(--color-primary)]">
+              <UserIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Mi panel</span>
+              <b className="text-[var(--color-secondary-deep)]">{user ? `${user.tokens}` : '—'}</b>
+            </a>
           </div>
         </div>
       </nav>

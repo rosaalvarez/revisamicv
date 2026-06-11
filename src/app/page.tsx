@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { UserIcon } from '@/components/icons'
 import { trackEvent } from '@/lib/analytics'
 
 const plans = [
@@ -48,12 +49,14 @@ export default function HomePage() {
         <div className="wrap">
           <Link href="/" className="logo"><b>R</b> Revisa mi CV</Link>
           <div className="navlinks">
-            <a href="#como">Cómo funciona</a>
-            <a href="#precios">Precios</a>
+            <Link href="/analizar">Analizar</Link>
             <Link href="/blog">Blog</Link>
-            <Link href="/dashboard">Dashboard</Link>
+            <a href="#precios">Precios</a>
           </div>
-          <LandingCta location="nav" className="nav-cta">Revisar mi CV gratis</LandingCta>
+          <Link href="/dashboard" aria-label="Mi panel" className="nav-account">
+            <UserIcon className="h-4 w-4" />
+            <span>Mi panel</span>
+          </Link>
         </div>
       </nav>
 
@@ -235,7 +238,7 @@ export default function HomePage() {
       <footer>
         <div className="wrap">
           <div className="col" style={{ maxWidth: 270 }}><div className="logo" style={{ marginBottom: 12 }}><b>R</b> Revisa mi CV</div><p>CVs adaptados a vacantes reales, sin inventar experiencia.</p></div>
-          <div className="col"><h4>Producto</h4><ul><li><a href="#como">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><Link href="/dashboard">Dashboard</Link></li></ul></div>
+          <div className="col"><h4>Producto</h4><ul><li><a href="#como">Cómo funciona</a></li><li><a href="#precios">Precios</a></li><li><Link href="/dashboard">Mi panel</Link></li></ul></div>
           <div className="col"><h4>Recursos</h4><ul><li><Link href="/blog">Blog</Link></li><li><Link href="/recursos/adaptar-cv-a-vacante">Guía para tu CV</Link></li><li><Link href="/recursos/optimizar-cv-ats">Cómo pasar el ATS</Link></li></ul></div>
           <div className="col"><h4>Legal</h4><ul><li><Link href="/privacidad">Privacidad</Link></li><li><Link href="/terminos">Términos</Link></li><li><Link href="/soporte">Contacto</Link></li></ul></div>
           <div className="copy">© 2026 RevisaMiCV. Hecho para revisar antes de aplicar.</div>
