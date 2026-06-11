@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { UploadIcon, SparklesIcon, ShieldCheckIcon, CheckIcon, ArrowRightIcon, AlertCircleIcon, TrendingUpIcon } from '@/components/icons'
+import { UploadIcon, SparklesIcon, ShieldCheckIcon, CheckIcon, ArrowRightIcon, AlertCircleIcon, TrendingUpIcon, UserIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
@@ -1397,8 +1397,13 @@ export default function SignupPage() {
             RevisaMiCV
           </a>
           <div className="flex items-center gap-3 text-sm">
-            <span className="hidden items-center gap-2 rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex"><CheckIcon className="h-3.5 w-3.5" /> Análisis de CV</span>
-            <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Dashboard</a>
+            <a href="/analizar" className="font-semibold text-[var(--color-ink)]">Analizar</a>
+            <a href="/blog" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Blog</a>
+            <a href="/#precios" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Precios</a>
+            <a href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-semibold text-[var(--color-ink-soft)] hover:border-[var(--color-primary)] hover:text-[var(--color-ink)]">
+              <UserIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Mi panel</span>
+            </a>
           </div>
         </div>
       </nav>

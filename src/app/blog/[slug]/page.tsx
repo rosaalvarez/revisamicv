@@ -22,7 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: post.title,
       description: post.description,
       url: `${appUrl}/blog/${post.slug}`,
-      siteName: 'RevisaMiCV.lat',
+      siteName: 'RevisaMiCV',
+      images: [{ url: '/og.png', width: 1200, height: 630, alt: 'RevisaMiCV — Score de compatibilidad y CV adaptado' }],
       locale: 'es_CO',
       type: 'article',
       publishedTime: post.date,
@@ -31,6 +32,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       card: 'summary_large_image',
       title: post.title,
       description: post.description,
+      images: ['/og.png'],
     },
   }
 }
@@ -49,7 +51,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     dateModified: post.date,
     inLanguage: 'es-CO',
     mainEntityOfPage: `${appUrl}/blog/${post.slug}`,
-    publisher: { '@type': 'Organization', name: 'RevisaMiCV.lat', url: appUrl },
+    publisher: { '@type': 'Organization', name: 'RevisaMiCV', url: appUrl },
     keywords: post.keywords.join(', '),
   }
 

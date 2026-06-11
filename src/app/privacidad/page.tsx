@@ -1,4 +1,11 @@
+import type { Metadata } from 'next'
 import { LegalSection, LegalShell } from '@/components/LegalShell'
+
+export const metadata: Metadata = {
+  title: 'Política de privacidad',
+  description: 'Política de privacidad de RevisaMiCV: qué datos usamos, cómo procesamos tu CV y vacante, pagos, historial y eliminación de datos.',
+  alternates: { canonical: '/privacidad' },
+}
 
 export default function PrivacyPage() {
   return (

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { TOKEN_PACKS } from '@/lib/token-rules'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 import { trackEvent } from '@/lib/analytics'
+import { UserIcon } from '@/components/icons'
 
 type UserState = {
   email: string
@@ -45,7 +46,7 @@ function scoreChipClass(score: number) {
 
 function pricePerCv(price: number, count: number) {
   if (!count) return ''
-  return `$${(price / count).toFixed(2).replace('.00', '')} por CV`
+  return `$${(price / count).toFixed(2).replace('.00', '')} por vacante`
 }
 
 
@@ -368,13 +369,15 @@ export default function DashboardPage() {
             <span className="grid h-7 w-7 place-items-center rounded-lg bg-[var(--color-primary)] text-sm font-bold text-white">R</span>
             RevisaMiCV
           </a>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)]">
-              Créditos: <b className="text-[var(--color-secondary-deep)]">{user ? `${user.tokens} análisis` : '—'}</b>
-            </span>
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-block)] text-xs font-bold text-white">
-              {(user?.email || email || 'A').trim().charAt(0).toUpperCase() || 'A'}
-            </div>
+          <div className="flex items-center gap-3 text-sm">
+            <a href="/analizar" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Analizar</a>
+            <a href="/blog" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Blog</a>
+            <a href="/#precios" className="hidden font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] sm:inline-flex">Precios</a>
+            <a href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:border-[var(--color-primary)]">
+              <UserIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Mi panel</span>
+              {user && <b className="text-[var(--color-secondary-deep)]">{user.tokens}</b>}
+            </a>
           </div>
         </div>
       </nav>
@@ -392,10 +395,17 @@ export default function DashboardPage() {
 
         <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-baseline gap-4">
-              <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user ? user.tokens : '—'}</div>
-              <div className="text-sm text-[var(--color-ink-soft)]">análisis<b className="block font-display text-lg font-semibold text-[var(--color-ink)]">disponibles</b></div>
-            </div>
+            {user ? (
+              <div className="flex items-baseline gap-4">
+                <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user.tokens}</div>
+                <div className="text-sm text-[var(--color-ink-soft)]">análisis<b className="block font-display text-lg font-semibold text-[var(--color-ink)]">disponibles</b></div>
+              </div>
+            ) : (
+              <div>
+                <p className="font-display text-2xl font-semibold text-[var(--color-ink)]">Entra con tu email</p>
+                <p className="mt-1 text-sm text-[var(--color-ink-soft)]">Verás tus créditos y análisis guardados.</p>
+              </div>
+            )}
             <p className="max-w-xs text-sm text-[var(--color-ink-soft)]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
             <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Comprar más créditos</button>
           </div>
