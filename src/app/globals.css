@@ -74,6 +74,7 @@ button,input,textarea,select{font-family:inherit}
 button{cursor:pointer}
 ul{margin:0;padding:0}
 p,h1,h2,h3,h4{margin:0}
+mark{background:#D9FBE8;color:#0A633F;padding:1px 3px;border-radius:4px;font-weight:700}
 .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 
 /* Shared buttons */

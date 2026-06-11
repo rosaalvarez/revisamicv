@@ -3,13 +3,13 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { UploadIcon, SparklesIcon } from '@/components/icons'
+import { UploadIcon, SparklesIcon, ShieldCheckIcon, CheckIcon, ArrowRightIcon, AlertCircleIcon, TrendingUpIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText, getCvLabels } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
-import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
+import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, getQuestionProjectedLift, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
 import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 
 type ClarificationPrompt = {
@@ -19,6 +19,7 @@ type ClarificationPrompt = {
   requirement_id?: string
   requirement_text?: string
   current_status?: string
+  projected_lift?: number
 }
 
 type ProcessResult = {
@@ -97,7 +98,8 @@ const revisionProgressSteps = [
   { pct: 94, label: 'Generando el CV final. Si faltan datos, te haré preguntas concretas.' },
 ]
 
-const fallbackClarificationOptions = ['Sí, usa esta experiencia que ya aparece en mi CV', 'Sí, tengo más contexto real para agregar', 'Parcialmente o en un proyecto puntual', 'No tengo esa experiencia']
+const fallbackClarificationOptions = ['Sí, la tengo', 'Tengo algo básico', 'No']
+const evidenceSourceOptions = ['Proyectos personales', 'Freelance', 'Empleo anterior', 'Estudios o cursos', 'Voluntariado']
 
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
@@ -161,10 +163,10 @@ function normalizeClarificationPrompts(value: ProcessResult['clarificationQuesti
     .slice(0, 4) as ClarificationPrompt[]
 }
 
-function buildClarificationInstruction(prompts: ClarificationPrompt[], answers: Record<number, { option: string; detail: string }>) {
+function buildClarificationInstruction(prompts: ClarificationPrompt[], answers: Record<number, { option: string; detail: string; source?: string }>) {
   const lines = prompts.map((prompt, index) => {
     const answer = answers[index]
-    return `${index + 1}. Pregunta: ${prompt.question}\nOpción seleccionada: ${answer?.option || 'Sin seleccionar'}\nDetalle del usuario: ${answer?.detail || 'Sin detalle adicional'}`
+    return `${index + 1}. Pregunta: ${prompt.question}\nOpción seleccionada: ${answer?.option || 'Sin seleccionar'}\nFuente de evidencia: ${answer?.source || 'Sin fuente'}\nDetalle del usuario: ${answer?.detail || 'Sin detalle adicional'}`
   })
 
   return `Usa estas respuestas de aclaración para ajustar el CV a la vacante. Agrega solo skills, enfoque o evidencia que estén soportados por las respuestas del usuario. Si una respuesta dice no, no estoy segura o no da evidencia suficiente, no inventes; deja una nota de seguridad.\n\n${lines.join('\n\n')}`
@@ -235,7 +237,7 @@ function getScoreTone(score?: number) {
 
   return {
     label: 'Aplicar con cuidado',
-    action: 'La vacante parece lejana. Evita inventar experiencia y evalúa otra opción.',
+    action: 'La vacante pide evidencia que todavía no está visible. Responde solo con experiencia real o deja esas brechas sin agregar.',
     bg: 'bg-orange-100',
     text: 'text-orange-800',
     bar: 'bg-orange-500',
@@ -318,6 +320,30 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
   )
 }
 
+function getScoreLift(result?: ProcessResult | null) {
+  const before = normalizeScore(result?.original_score ?? result?.compatibilityScore)
+  const after = normalizeScore(result?.revisedCompatibilityScore ?? result?.adapted_score ?? result?.compatibilityScore)
+  if (before === undefined || after === undefined) return undefined
+  return Math.max(0, after - before)
+}
+
+function getProjectedEvidenceLift(result?: ProcessResult | null) {
+  const base = normalizeScore(result?.adapted_score ?? result?.compatibilityScore ?? result?.original_score)
+  if (base === undefined) return undefined
+  const gapCount = buildGapRecoveryQuestions(result?.requirements_table, result?.adapted_match_results || result?.original_match_results).length
+  if (!gapCount) return undefined
+  return Math.min(100, base + Math.min(12, gapCount * 4))
+}
+
+function HighlightedText({ text, keywords = [] }: { text?: string; keywords?: string[] }) {
+  const clean = String(text || '')
+  const relevant = uniqueCleanList(keywords).filter((keyword) => keyword.length >= 3).slice(0, 8)
+  if (!clean || !relevant.length) return <>{clean}</>
+  const escaped = relevant.map((keyword) => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const pattern = new RegExp(`(${escaped.join('|')})`, 'gi')
+  return <>{clean.split(pattern).map((part, index) => relevant.some((keyword) => keyword.toLowerCase() === part.toLowerCase()) ? <mark key={`${part}-${index}`}>{part}</mark> : part)}</>
+}
+
 function renderScoreBreakdown(scoreBreakdown?: ProcessResult['score_breakdown']) {
   const rows = buildScoreBreakdownRows(scoreBreakdown)
   if (!rows.length) return null
@@ -347,6 +373,11 @@ function renderScoreBreakdown(scoreBreakdown?: ProcessResult['score_breakdown'])
       </div>
     </section>
   )
+}
+
+function capitalizeRequirementTitle(value: string) {
+  const clean = String(value || '').trim()
+  return clean ? `${clean.charAt(0).toUpperCase()}${clean.slice(1)}` : clean
 }
 
 function renderKeyRequirements(result: ProcessResult) {
@@ -380,7 +411,7 @@ function renderKeyRequirements(result: ProcessResult) {
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${typeBadgeClass[row.type] || typeBadgeClass.nice_to_have}`}>{typeLabel[row.type] || row.type_label || 'Deseable'}</span>
                 </div>
-                <p className="font-bold text-[var(--color-ink)]">{row.requirement}</p>
+                <p className="font-bold text-[var(--color-ink)]">{capitalizeRequirementTitle(row.requirement)}</p>
                 <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{sanitizeDocumentFraming(row.copy)}</p>
               </div>
               <span className={`w-fit rounded-full border px-2.5 py-1 text-xs font-bold ${badgeClass[row.status] || badgeClass.gap}`}>{statusLabel[row.status] || row.status}</span>
@@ -447,7 +478,7 @@ function renderDecisionGate(result: ProcessResult, onOpenQuestions?: () => void)
               </li>
             ))}
           </ol>
-          <p className="mt-3 text-xs opacity-75">Si estas respuestas no existen en tu experiencia real, es mejor probar otra vacante más alineada.</p>
+          <p className="mt-3 text-xs opacity-75">Si estas respuestas no existen en tu experiencia real, déjalas sin agregar. El CV debe quedar defendible en entrevista.</p>
           {onOpenQuestions && (
             <button
               type="button"
@@ -703,6 +734,25 @@ function ResultHero({ result }: { result: ProcessResult; cv: any }) {
   )
 }
 
+function GapTriagePlan({ result, questionCount }: { result: ProcessResult; questionCount: number }) {
+  const score = normalizeScore(result.revisedCompatibilityScore ?? result.adapted_score ?? result.compatibilityScore)
+  if (score === undefined || score >= 50) return null
+  const firstGaps = result.gaps?.slice(0, 2) || []
+  return (
+    <section className="rounded-2xl border border-orange-200 bg-orange-50 p-5 text-left shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-700">Plan para subir</p>
+      <h3 className="mt-1 text-xl font-bold text-orange-950">Antes de descargar, revisemos la evidencia crítica.</h3>
+      <p className="mt-2 text-sm leading-6 text-orange-900">Con score menor a 50, no conviene forzar el CV. Primero confirmamos si existe experiencia real que todavía no aparece; si no existe, dejamos la brecha sin inventar.</p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-xl bg-white/80 p-3 text-sm text-orange-950"><strong>1. Detectar brechas</strong><br />Vemos qué requisitos pesan más.</div>
+        <div className="rounded-xl bg-white/80 p-3 text-sm text-orange-950"><strong>2. Confirmar evidencia</strong><br />{questionCount || 'Unas'} preguntas, una por una.</div>
+        <div className="rounded-xl bg-white/80 p-3 text-sm text-orange-950"><strong>3. Ajustar sin inventar</strong><br />Solo agregamos lo que puedas defender.</div>
+      </div>
+      {firstGaps.length ? <p className="mt-3 text-xs leading-5 text-orange-800">Brechas visibles: {firstGaps.join(' · ')}</p> : null}
+    </section>
+  )
+}
+
 function FindingsSection({ result }: { result: ProcessResult }) {
   const strengths = (result.strengths?.length ? result.strengths : ['Tu experiencia tiene señales que se pueden presentar con más fuerza para esta vacante.']).slice(0, 3)
   const gaps = (result.gaps?.length ? result.gaps : ['Faltaban palabras o evidencia explícita que la vacante espera leer.']).slice(0, 3)
@@ -784,7 +834,7 @@ function ResultAccordion({ title, summary, defaultOpen = false, children }: { ti
   )
 }
 
-function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spanish') {
+function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spanish', keywords: string[] = []) {
   if (!cv) return null
   if (typeof cv === 'string') {
     return <pre className="whitespace-pre-wrap text-sm text-slate-800 font-sans">{cv}</pre>
@@ -808,7 +858,7 @@ function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spa
         {cv.summary && (
           <div>
             <h4 className="font-bold text-slate-900 mb-2 uppercase tracking-wide text-xs">{labels.summary}</h4>
-            <p className="text-sm text-slate-800 leading-relaxed">{cv.summary}</p>
+            <p className="text-sm text-slate-800 leading-relaxed"><HighlightedText text={cv.summary} keywords={keywords} /></p>
           </div>
         )}
 
@@ -836,7 +886,7 @@ function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spa
                 {role.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">{labels.roleTechStack}:</span> {role.techStack.join(', ')}</p>}
                 {role.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">{labels.roleTools}:</span> {role.tools.join(', ')}</p>}
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
-                  {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
+                  {role.bullets?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}><HighlightedText text={bullet} keywords={keywords} /></li>)}
                 </ul>
               </div>
             ))}
@@ -853,7 +903,7 @@ function renderOptimizedCV(cv: any, outputLanguage: 'english' | 'spanish' = 'spa
                 {project.techStack?.length > 0 && <p className="mt-2 text-xs text-slate-700"><span className="font-bold">{labels.roleTechStack}:</span> {project.techStack.join(', ')}</p>}
                 {project.tools?.length > 0 && <p className="mt-1 text-xs text-slate-700"><span className="font-bold">{labels.roleTools}:</span> {project.tools.join(', ')}</p>}
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-slate-800">
-                  {(project.bullets || project.achievements)?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}>{bullet}</li>)}
+                  {(project.bullets || project.achievements)?.map((bullet: string, bulletIndex: number) => <li key={bulletIndex}><HighlightedText text={bullet} keywords={keywords} /></li>)}
                 </ul>
               </div>
             ))}
@@ -928,9 +978,10 @@ export default function SignupPage() {
   const [revisionNotes, setRevisionNotes] = useState<string[]>([])
   const [blockedChanges, setBlockedChanges] = useState<string[]>([])
   const [manualClarificationPrompts, setManualClarificationPrompts] = useState<ClarificationPrompt[]>([])
-  const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string }>>({})
+  const [clarificationAnswers, setClarificationAnswers] = useState<Record<number, { option: string; detail: string; source?: string }>>({})
   const [copySuccess, setCopySuccess] = useState('')
   const [clarificationError, setClarificationError] = useState('')
+  const [activeClarificationIndex, setActiveClarificationIndex] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const jobFileRef = useRef<HTMLInputElement>(null)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -1220,20 +1271,23 @@ export default function SignupPage() {
     if (!questions.length) return
 
     const normalizedAnswers = questions.reduce((acc, _question, index) => {
-      const answer = clarificationAnswers[index] || { option: '', detail: '' }
-      const detail = answer.detail.trim()
-      acc[index] = { option: answer.option || (detail ? 'Sí, tengo esto' : 'No aplica'), detail }
+      const answer = clarificationAnswers[index] || { option: '', detail: '', source: '' }
+      const source = String(answer.source || '').trim()
+      const detailLine = answer.detail.trim()
+      const detail = [source ? `Fuente: ${source}.` : '', detailLine].filter(Boolean).join(' ')
+      acc[index] = { option: answer.option || (detail ? 'Sí, la tengo' : 'No aplica'), detail, source }
       return acc
-    }, {} as Record<number, { option: string; detail: string }>)
+    }, {} as Record<number, { option: string; detail: string; source?: string }>)
 
     const missing = questions.findIndex((_, index) => {
       const answer = normalizedAnswers[index]
-      const optionNeedsDetail = !/^no\b|no directamente|no tengo|no aplica/i.test(answer.option)
-      return optionNeedsDetail && answer.detail.trim().length < 20
+      const optionNeedsEvidence = !/^no\b|no directamente|no tengo|no aplica/i.test(answer.option)
+      return optionNeedsEvidence && answer.detail.trim().length < 20
     })
 
     if (missing >= 0) {
-      setClarificationError(`En la pregunta ${missing + 1}, elige una opción y escribe una frase concreta con experiencia real que el CV pueda agregar. Así la IA no inventa.`)
+      setClarificationError(`En la pregunta ${missing + 1}, elige una fuente de evidencia o escribe una línea concreta. Así podemos ajustar sin inventar.`)
+      setActiveClarificationIndex(missing)
       return
     }
 
@@ -1343,7 +1397,7 @@ export default function SignupPage() {
             RevisaMiCV
           </a>
           <div className="flex items-center gap-3 text-sm">
-            <span className="hidden rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex">● Análisis de CV</span>
+            <span className="hidden items-center gap-2 rounded-full border border-[rgba(14,140,125,.35)] bg-[rgba(15,181,160,.12)] px-3 py-1.5 font-semibold text-[var(--color-secondary-deep)] md:inline-flex"><CheckIcon className="h-3.5 w-3.5" /> Análisis de CV</span>
             <a href="/dashboard" className="font-semibold text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">Dashboard</a>
           </div>
         </div>
@@ -1390,7 +1444,7 @@ export default function SignupPage() {
                       onClick={() => fileRef.current?.click()}
                       className="mt-5 grid h-[164px] cursor-pointer place-items-center rounded-2xl border-[1.5px] border-dashed border-[#C8D2E1] bg-[linear-gradient(180deg,#FFFFFF,#FBFDFF)] px-5 text-center transition hover:border-[var(--color-primary)]"
                     >
-                      <div className="mx-auto mb-2 text-[38px] leading-none text-[var(--color-primary)]">☁️</div>
+                      <UploadIcon className="mx-auto mb-2 h-[38px] w-[38px] text-[var(--color-primary)]" />
                       {file ? (
                         <>
                           <p className="font-bold text-[var(--color-primary)]">{file.name}</p>
@@ -1423,14 +1477,14 @@ export default function SignupPage() {
                   </div>
 
                   <aside className="rounded-2xl border border-[#CFE0FF] bg-[linear-gradient(180deg,#F8FBFF,#F1F7FF)] p-5 text-sm leading-6 text-[#2A3B5F]">
-                    <p className="mb-3 text-2xl text-[var(--color-primary)]">🛡️</p>
+                    <ShieldCheckIcon className="mb-3 h-7 w-7 text-[var(--color-primary)]" />
                     Tu información se usa solo para analizar tu postulación.
                   </aside>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-[var(--color-line)] bg-white px-6 py-5 text-center md:flex-row md:items-center md:justify-between md:text-left">
-                  <span className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#BDE8D0] bg-[#F2FBF6] px-3 py-2 text-sm font-bold text-[#0C6F49] md:justify-start">🔒 Sin registro</span>
-                  <button type="button" onClick={goToVacancyStep} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Continuar →</button>
+                  <span className="inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#BDE8D0] bg-[#F2FBF6] px-3 py-2 text-sm font-bold text-[#0C6F49] md:justify-start"><ShieldCheckIcon className="h-4 w-4" /> Sin registro</span>
+                  <button type="button" onClick={goToVacancyStep} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Continuar <ArrowRightIcon className="h-4 w-4" /></button>
                 </div>
               </section>
             ) : (
@@ -1445,10 +1499,22 @@ export default function SignupPage() {
                     onChange={(e) => {
                       const value = e.target.value
                       setJobDescription(value)
+                      if (value.trim().length >= MIN_JOB_DESCRIPTION_CHARS || jobFile) setError('')
                       window.localStorage.setItem('revisamicv_job_description', value)
                     }}
                     rows={11}
-                    placeholder="Pega aquí la vacante completa: responsabilidades, requisitos, salario si aparece, skills y contexto del cargo. No la resumas."
+                    placeholder={`Buscamos un/a Especialista en Marketing Digital para liderar campañas pagadas en Meta Ads y Google Ads. Deberá planificar, ejecutar y optimizar campañas que generen resultados medibles.
+
+Responsabilidades:
+• Crear y gestionar campañas en Meta Ads y Google Ads.
+• Analizar métricas y proponer optimizaciones basadas en datos.
+• Trabajar con el equipo de contenido y diseño para testear creatividades.
+• Reportar resultados y ROI de campañas.
+
+Requisitos:
+• 2+ años de experiencia en marketing digital.
+• Manejo de Meta Ads, Google Ads y análisis de métricas.
+• Comunicación clara y capacidad para priorizar.`}
                     className="mt-6 h-[180px] w-full resize-none rounded-[10px] border border-[#BFC9D8] bg-white p-5 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#8B95A5] focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10"
                     required={!jobFile}
                   />
@@ -1461,6 +1527,7 @@ export default function SignupPage() {
                       onChange={(e) => {
                         const selected = e.target.files?.[0] || null
                         setJobFile(selected)
+                        if (selected) setError('')
                         if (selected) trackEvent('job_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
                       }}
                       className="hidden"
@@ -1506,9 +1573,21 @@ export default function SignupPage() {
                     <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ PDF, DOCX y TXT</span>
                   </div>
 
-                  <p className={`mt-3 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-[var(--color-primary-deep)]' : 'text-[var(--color-ink-soft)]'}`}>
-                    {jobDescription.trim().length} caracteres escritos. Necesitamos mínimo {MIN_JOB_DESCRIPTION_CHARS} si no adjuntas archivo; máximo 12.000. Puedes pegar mucho más de 120 caracteres.
+                  <p className={`mt-3 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-red-700' : 'text-[var(--color-ink-soft)]'}`}>
+                    {jobDescription.trim().length} caracteres escritos. Necesitamos mínimo {MIN_JOB_DESCRIPTION_CHARS} si no adjuntas archivo; máximo 12.000.
                   </p>
+                  {!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? (
+                    <div className="mt-3 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-6 text-red-800">
+                      <AlertCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />
+                      <p>Pega al menos {MIN_JOB_DESCRIPTION_CHARS} caracteres o adjunta el archivo de la vacante para continuar.</p>
+                    </div>
+                  ) : null}
+                  {(jobFile || jobDescription.trim().length >= MIN_JOB_DESCRIPTION_CHARS) ? (
+                    <div className="mt-3 flex gap-3 rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm leading-6 text-orange-900">
+                      <AlertCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />
+                      <p>Podemos analizar esta vacante. Mientras más completa sea la descripción, mejor detectamos requisitos y keywords.</p>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-[var(--color-line)] bg-white p-5 text-center md:flex-row md:items-center md:justify-between md:text-left">
@@ -1561,6 +1640,7 @@ export default function SignupPage() {
             {activeResultStep === 'evidence' ? (
               <section className="space-y-7">
                 <ResultHero result={result} cv={editableCv || result.optimizedCV || result.rawText} />
+                <GapTriagePlan result={result} questionCount={activeClarificationPrompts.length} />
                 {renderScoreBreakdown(result.score_breakdown)}
                 {renderKeyRequirements(result)}
                 <div className="flex flex-col items-center justify-between gap-3 pt-2 md:flex-row">
@@ -1584,45 +1664,73 @@ export default function SignupPage() {
                   <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--color-ink-soft)]">No inventamos nada. Si esa experiencia existe y no aparece, la agregamos y reescribimos el CV en el lenguaje de la vacante. Si no aplica, sáltalo.</p>
                 </div>
 
-                {shouldRenderEvidenceQuestions ? (
+                {shouldRenderEvidenceQuestions ? (() => {
+                  const safeQuestionIndex = Math.min(activeClarificationIndex, activeClarificationPrompts.length - 1)
+                  const prompt = activeClarificationPrompts[safeQuestionIndex]
+                  const answer = clarificationAnswers[safeQuestionIndex] || { option: '', detail: '', source: '' }
+                  const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
+                  const isNoApply = /^no\b|no directamente|no tengo|no aplica/i.test(answer.option || '')
+                  const shouldShowEvidenceFields = /^(sí|si|tengo algo básico)/i.test(answer.option || '')
+                  const projectedLift = prompt.projected_lift ?? getQuestionProjectedLift(result.requirements_table, result.adapted_match_results || result.original_match_results, prompt.requirement_id)
+
+                  return (
                   <section className="space-y-4">
-                    {activeClarificationPrompts.map((prompt, index) => {
-                      const answer = clarificationAnswers[index] || { option: '', detail: '' }
-                      const options = prompt.options?.length ? prompt.options : fallbackClarificationOptions
-                      const isNoApply = /^no\b|no directamente|no tengo|no aplica/i.test(answer.option || '')
-                      return (
-                        <div key={prompt.question} className={`rounded-xl border border-[var(--color-line)] bg-white p-5 transition ${isNoApply ? 'opacity-55' : ''}`}>
-                          <h3 className="font-bold text-[var(--color-ink)]">{prompt.question}</h3>
+                    <div className={`rounded-xl border border-[var(--color-line)] bg-white p-5 transition ${isNoApply ? 'opacity-75' : ''}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Pregunta {safeQuestionIndex + 1} de {activeClarificationPrompts.length}</p>
+                          <h3 className="mt-1 font-bold text-[var(--color-ink)]">{prompt.question}</h3>
                           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">La vacante lo pide y tu CV no lo muestra claro.</p>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {options.map((option, optionIndex) => {
-                              const noOption = /^no\b|no directamente|no tengo|no aplica/i.test(option)
-                              return (
-                                <button
-                                  key={`${prompt.question}-${optionIndex}`}
-                                  type="button"
-                                  onClick={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option, detail: noOption ? '' : answer.detail } }))}
-                                  className={`rounded-lg border px-4 py-2 text-sm font-bold transition ${answer.option === option ? (noOption ? 'border-[var(--color-line)] bg-[var(--color-paper-2)] text-[var(--color-ink-soft)]' : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white') : 'border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary)]'}`}
-                                >
-                                  {noOption ? 'No tengo' : option}
-                                </button>
-                              )
-                            })}
-                          </div>
-                          <div className="mt-4">
-                            <textarea
-                              value={answer.detail}
-                              onFocus={() => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option: answer.option || 'Sí, tengo esto' } }))}
-                              onChange={(e) => setClarificationAnswers((current) => ({ ...current, [index]: { ...answer, option: answer.option || 'Sí, tengo esto', detail: e.target.value } }))}
-                              rows={4}
-                              placeholder={prompt.freeTextLabel || 'Ej: En mi proyecto X medía retención y activación; usé Mixpanel durante 6 meses y mejoré el seguimiento del funnel.'}
-                              className="w-full resize-y rounded-xl border border-[var(--color-line)] bg-[var(--color-paper)] p-3 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-orange-100"
-                            />
-                            {answer.detail.trim().length > 0 && answer.detail.trim().length < 20 ? <p className="mt-2 text-xs font-semibold text-amber-700">Escribe al menos una frase concreta para ajustar sin inventar.</p> : null}
-                          </div>
                         </div>
-                      )
-                    })}
+                        {projectedLift !== undefined ? (
+                          <div className="inline-flex items-center gap-2 rounded-[14px] border border-[#BDE8D0] bg-[#EAF8F0] px-3 py-2 text-xs font-extrabold text-[#0E8C5C]">
+                            <TrendingUpIcon className="h-4 w-4" /> Si confirmas esta evidencia, podría subir a {projectedLift}%.
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {options.map((option, optionIndex) => {
+                          const noOption = /^no\b|no directamente|no tengo|no aplica/i.test(option)
+                          return (
+                            <button
+                              key={`${prompt.question}-${optionIndex}`}
+                              type="button"
+                              onClick={() => setClarificationAnswers((current) => ({ ...current, [safeQuestionIndex]: { ...answer, option, source: noOption ? '' : answer.source, detail: noOption ? '' : answer.detail } }))}
+                              className={`rounded-lg border px-4 py-2 text-sm font-bold transition ${answer.option === option ? (noOption ? 'border-[var(--color-line)] bg-[var(--color-paper-2)] text-[var(--color-ink-soft)]' : 'border-[var(--color-primary)] bg-[var(--color-primary)] text-white') : 'border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary)]'}`}
+                            >
+                              {option}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {shouldShowEvidenceFields ? (
+                        <div className="mt-4 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] p-4">
+                          <p className="text-sm font-bold text-[var(--color-ink)]">¿De dónde sale esa evidencia?</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {evidenceSourceOptions.map((source) => (
+                              <button
+                                key={source}
+                                type="button"
+                                onClick={() => setClarificationAnswers((current) => ({ ...current, [safeQuestionIndex]: { ...answer, option: answer.option || 'Sí, la tengo', source } }))}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${answer.source === source ? 'border-[var(--color-secondary)] bg-[#E7F4F1] text-[var(--color-secondary-deep)]' : 'border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] hover:border-[var(--color-secondary)]'}`}
+                              >
+                                {source}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            value={answer.detail}
+                            onChange={(e) => setClarificationAnswers((current) => ({ ...current, [safeQuestionIndex]: { ...answer, option: answer.option || 'Sí, la tengo', detail: e.target.value } }))}
+                            placeholder={prompt.freeTextLabel || 'Una línea opcional con contexto real.'}
+                            className="mt-3 w-full rounded-lg border border-[var(--color-line)] bg-white px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-orange-100"
+                          />
+                          <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">Opcional: una línea corta basta. No agregamos nada que no confirmes.</p>
+                        </div>
+                      ) : null}
+                    </div>
+
                     {clarificationError && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{clarificationError}</p>}
                     {revisionLoading ? (
                       <div className="rounded-xl border border-orange-100 bg-orange-50 p-4">
@@ -1631,7 +1739,8 @@ export default function SignupPage() {
                       </div>
                     ) : null}
                   </section>
-                ) : (
+                  )
+                })() : (
                   <section className="rounded-xl border border-[var(--color-line)] bg-white p-5 text-center">
                     <p className="font-bold text-[var(--color-ink)]">Tu CV ya muestra suficiente evidencia visible.</p>
                     <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">Puedes pasar directo a revisar y descargar. Este paso queda disponible por si recuerdas algo real que quieras agregar luego.</p>
@@ -1643,7 +1752,17 @@ export default function SignupPage() {
                   <div className="flex flex-wrap justify-center gap-3">
                     <button type="button" onClick={() => setActiveResultStep('cv')} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)]">Mi CV ya está completo →</button>
                     {shouldRenderEvidenceQuestions ? (
-                      <button type="button" onClick={submitClarificationAnswers} disabled={revisionLoading} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)] disabled:opacity-50">{revisionLoading ? 'Generando...' : 'Generar mi CV adaptado →'}</button>
+                      <button type="button" onClick={() => setActiveClarificationIndex((current) => Math.min(current + 1, activeClarificationPrompts.length - 1))} disabled={revisionLoading || activeClarificationIndex >= activeClarificationPrompts.length - 1} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)] disabled:opacity-50">Saltar esta pregunta</button>
+                    ) : null}
+                    {shouldRenderEvidenceQuestions ? (
+                      <button type="button" onClick={() => {
+                        if (activeClarificationIndex < activeClarificationPrompts.length - 1) {
+                          setClarificationError('')
+                          setActiveClarificationIndex(activeClarificationIndex + 1)
+                        } else {
+                          submitClarificationAnswers()
+                        }
+                      }} disabled={revisionLoading} className="rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)] disabled:opacity-50">{revisionLoading ? 'Generando...' : (activeClarificationIndex < activeClarificationPrompts.length - 1 ? 'Agregar y continuar' : 'Agregar y generar CV')}</button>
                     ) : null}
                   </div>
                 </div>
@@ -1656,6 +1775,11 @@ export default function SignupPage() {
                 <div className="text-center">
                   <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-secondary-deep)]">Tu CV adaptado</p>
                   <h1 className="mx-auto mt-2 max-w-[600px] text-balance font-display text-[clamp(1.5rem,4.4vw,2rem)] font-semibold leading-[1.16] text-[var(--color-ink)]">Listo. Revisa y descarga tu CV para esta vacante.</h1>
+                  {getScoreLift(result) !== undefined && getScoreLift(result)! > 0 ? (
+                    <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-[14px] border border-[#BDE8D0] bg-[#EAF8F0] px-4 py-3 text-sm font-extrabold text-[#0E8C5C]">
+                      <CheckIcon className="h-4 w-4" /> Subió {getScoreLift(result)} puntos con evidencia real
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-3">
@@ -1666,7 +1790,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
-                  {canDownloadCv ? renderOptimizedCV(cvForActions, outputLanguage) : (
+                  {canDownloadCv ? renderOptimizedCV(cvForActions, outputLanguage, result.keywordsToInclude || []) : (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
                   )}
                 </div>

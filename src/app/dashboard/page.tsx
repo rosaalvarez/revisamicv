@@ -390,17 +390,17 @@ export default function DashboardPage() {
           </a>
         </header>
 
-        <section className="rounded-[18px] bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[0_24px_60px_-30px_rgba(14,63,58,.6)]">
+        <section className="rounded-[18px] border border-[var(--color-line)] bg-white p-7 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <div className="flex items-baseline gap-4">
               <div className="font-display text-5xl font-bold leading-none text-[var(--color-primary)]">{user ? user.tokens : '—'}</div>
-              <div className="text-sm text-[#CFE3DE]">análisis<b className="block font-display text-lg font-semibold text-white">disponibles</b></div>
+              <div className="text-sm text-[var(--color-ink-soft)]">análisis<b className="block font-display text-lg font-semibold text-[var(--color-ink)]">disponibles</b></div>
             </div>
-            <p className="max-w-xs text-sm text-[#8FA9A4]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
-            <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-[var(--color-ink)] transition hover:bg-white">Comprar más créditos</button>
+            <p className="max-w-xs text-sm text-[var(--color-ink-soft)]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
+            <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Comprar más créditos</button>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-[1fr_auto_auto]">
+          <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-3 border-t border-[var(--color-line)] pt-5 md:grid-cols-[1fr_auto_auto]">
             <input
               type="email"
               value={email}
@@ -410,19 +410,19 @@ export default function DashboardPage() {
                 if (nextEmail.trim()) window.localStorage.setItem('revisamicv_email', nextEmail.trim().toLowerCase())
               }}
               placeholder="tu@email.com"
-              className="min-h-12 rounded-xl border border-white/10 bg-white px-4 text-sm text-[var(--color-ink)] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-orange-200"
+              className="min-h-12 rounded-xl border border-[var(--color-line)] bg-white px-4 text-sm text-[var(--color-ink)] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-[var(--color-primary)]/20"
               required
             />
-            <button type="submit" disabled={loading} className="min-h-12 rounded-xl border border-white/10 bg-white px-5 text-sm font-bold text-[var(--color-ink)] transition hover:bg-orange-50 disabled:opacity-60">
+            <button type="submit" disabled={loading} className="min-h-12 rounded-xl border border-[var(--color-line)] bg-[var(--color-paper-2)] px-5 text-sm font-bold text-[var(--color-ink)] transition hover:border-[var(--color-primary)] disabled:opacity-60">
               {loading ? 'Cargando...' : authToken ? 'Actualizar panel' : 'Enviar enlace seguro'}
             </button>
             {checkoutIntent && selectedPack && (
               <button type="button" onClick={() => openCheckout(selectedPack)} className="min-h-12 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-ink)]">Confirmar compra</button>
             )}
           </form>
-          {notice && <p className="mt-4 rounded-xl border border-white/10 bg-white/10 p-3 text-sm text-[#CFE3DE]">{notice}</p>}
-          {linkSent && <p className="mt-2 text-xs leading-5 text-[#CFE3DE]/80">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
-          {error && <p className="mt-4 rounded-xl border border-red-300/30 bg-red-400/10 p-3 text-sm text-red-100">{error}</p>}
+          {notice && <p className="mt-4 rounded-xl border border-[#CFE0FF] bg-[#F3F8FF] p-3 text-sm text-[#38527A]">{notice}</p>}
+          {linkSent && <p className="mt-2 text-xs leading-5 text-[var(--color-ink-soft)]">Por privacidad no mostramos tu historial solo con el email. Entra desde el enlace que llegó a tu correo.</p>}
+          {error && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         </section>
 
         <section id="historial" className="pt-10">

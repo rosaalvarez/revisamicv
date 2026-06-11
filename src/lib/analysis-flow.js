@@ -7,7 +7,7 @@ const EVIDENCE_BANDS = [
     shortLabel: 'Insuficiente',
     title: 'Esta vacante parece lejana a lo que tu CV muestra hoy.',
     description: 'Necesitamos más contexto real antes de adaptar sin inventar.',
-    color: 'bg-red-500',
+    color: 'bg-orange-500',
   },
   {
     level: 'weak',
@@ -96,7 +96,7 @@ export function shouldShowEvidenceQuestions(result) {
   const questions = normalizeQuestions(result?.clarificationQuestions)
   const decision = result?.applicationDecision
   if (questions.length && QUESTION_DECISIONS.has(decision)) return true
-  return scoreOf(result) < 60 && decision !== 'optimize'
+  return scoreOf(result) < 50 && decision !== 'optimize'
 }
 
 export function getResultWizardSteps(result, options = {}) {
