@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
     verifyAuthToken(auth_token, email)
 
-    const history = await listCvHistory(supabaseAdmin, email)
-    return NextResponse.json({ history })
+    const historyResult = await listCvHistory(supabaseAdmin, email)
+    return NextResponse.json(historyResult)
   } catch (error: any) {
     console.error('History lookup error:', error?.message || error)
     if (String(error?.message || '').toLowerCase().includes('auth token')) {

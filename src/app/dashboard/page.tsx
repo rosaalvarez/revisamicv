@@ -5,6 +5,7 @@ import { TOKEN_PACKS } from '@/lib/token-rules'
 import { getFriendlyApiError, validateEmail } from '@/lib/input-validation'
 import { trackEvent } from '@/lib/analytics'
 import { UserIcon } from '@/components/icons'
+import { buildDashboardDeltaLabel, getSmartPackDefault } from '@/lib/conversion-triggers'
 
 type UserState = {
   email: string
@@ -17,8 +18,11 @@ type HistoryItem = {
   id: number | string
   created_at: string
   compatibility_score: number | null
+  original_score?: number | null
+  adapted_score?: number | null
   output_language: 'english' | 'spanish'
   optimized_cv: any
+  vacancy_title?: string | null
   job_preview: string
 }
 
@@ -34,7 +38,9 @@ function firstPackKey() {
   return Object.keys(PACKS)[0] || ''
 }
 
-function preferredPackKey() {
+function preferredPackKey(lifetimeAnalyses = 0) {
+  const smartDefault = getSmartPackDefault(lifetimeAnalyses)
+  if (PACKS[smartDefault]) return smartDefault
   return PACKS.pro ? 'pro' : firstPackKey()
 }
 
@@ -65,7 +71,9 @@ function extractLabel(text: string, label: string) {
   return match?.[1]?.trim().replace(/[.,;:]+$/, '') || ''
 }
 
-function getAnalysisTitle(jobPreview: string) {
+function getAnalysisTitle(itemOrPreview: HistoryItem | string) {
+  if (typeof itemOrPreview !== 'string' && itemOrPreview.vacancy_title) return itemOrPreview.vacancy_title
+  const jobPreview = typeof itemOrPreview === 'string' ? itemOrPreview : itemOrPreview.job_preview
   const clean = stripJobMarkdown(jobPreview)
   if (!clean) return 'Vacante analizada'
 
@@ -100,6 +108,7 @@ export default function DashboardPage() {
   const [pdfLoadingId, setPdfLoadingId] = useState<string | number | null>(null)
   const [user, setUser] = useState<UserState | null>(null)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [lifetimeAnalyses, setLifetimeAnalyses] = useState(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedPack, setSelectedPack] = useState<string>('')
@@ -222,6 +231,9 @@ export default function DashboardPage() {
       setAuthToken(tokenToUse)
       setUser(userData)
       setHistory(historyData.history || [])
+      setLifetimeAnalyses(Number(historyData.lifetime_analyses || historyData.history?.length || 0))
+      if (historyData.latest_cv_text) window.localStorage.setItem('revisamicv_latest_cv_text', historyData.latest_cv_text)
+      if (typeof historyData.lifetime_analyses === 'number') window.localStorage.setItem('revisamicv_lifetime_analyses', String(historyData.lifetime_analyses))
       trackEvent('dashboard_account_loaded', {
         tokens: typeof userData.tokens === 'number' ? userData.tokens : -1,
         has_free_cv: Boolean(userData.has_free_cv),
@@ -407,7 +419,7 @@ export default function DashboardPage() {
               </div>
             )}
             <p className="max-w-xs text-sm text-[var(--color-ink-soft)]">Cada análisis compara tu CV contra 1 vacante y genera un CV adaptado. No vencen.</p>
-            <button type="button" onClick={() => openCheckout(preferredPackKey())} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Comprar más créditos</button>
+            <button type="button" onClick={() => openCheckout(preferredPackKey(lifetimeAnalyses || history.length))} className="rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-primary-deep)]">Comprar más créditos</button>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="mt-6 grid gap-3 border-t border-[var(--color-line)] pt-5 md:grid-cols-[1fr_auto_auto]">
@@ -457,10 +469,10 @@ export default function DashboardPage() {
                 return (
                   <div key={item.id} className="grid gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-b-0 md:grid-cols-[1fr_auto_auto] md:items-center">
                     <div className="font-semibold text-[var(--color-ink)]">
-                      {getAnalysisTitle(item.job_preview)}
+                      {getAnalysisTitle(item)}
                       <span className="mt-1 block text-xs font-normal text-[var(--color-ink-soft)]">{getAnalysisMeta(item)}</span>
                     </div>
-                    <div className={`w-fit rounded-full px-3 py-1 font-display text-base font-bold ${scoreChipClass(score)}`}>{item.compatibility_score ?? '—'}</div>
+                    <div className={`w-fit rounded-full px-3 py-1 font-display text-base font-bold ${scoreChipClass(score)}`}>{buildDashboardDeltaLabel(item)}</div>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => handleDownloadPdf(item)} disabled={pdfLoadingId === item.id} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)] disabled:opacity-50">{pdfLoadingId === item.id ? 'Generando...' : 'Descargar'}</button>
                       <a href="/analizar" className="rounded-lg border border-[var(--color-line)] px-3 py-2 text-xs font-semibold text-[var(--color-ink)]">Reusar</a>
@@ -473,21 +485,27 @@ export default function DashboardPage() {
         </section>
 
         <section id="comprar" className="pt-10">
-          <div className="mb-5 flex items-baseline justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-1">
             <h2 className="font-display text-2xl font-semibold text-[var(--color-ink)]">Comprar créditos</h2>
+            <p className="text-sm text-[var(--color-ink-soft)]">Cada análisis es una vacante distinta. Tus créditos no vencen.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {packEntries.map(([pack, p]) => (
-              <div key={pack} className={`relative flex flex-col rounded-2xl border bg-white p-6 ${p.popular ? 'border-[var(--color-primary)] shadow-[0_22px_56px_-28px_rgba(245,128,10,.5)]' : 'border-[var(--color-line)]'}`}>
-                {p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink)]">Más elegido</span>}
+            {packEntries.map(([pack, p]) => {
+              const isSmartSelected = selectedPack === pack
+              const highlighted = isSmartSelected || p.popular
+              return (
+              <div key={pack} className={`relative flex flex-col rounded-2xl border bg-white p-6 ${highlighted ? 'border-[var(--color-primary)] shadow-[0_22px_56px_-28px_rgba(45,107,224,.5)]' : 'border-[var(--color-line)]'}`}>
+                {isSmartSelected && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Recomendado para ti</span>}
+                {!isSmartSelected && p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Más elegido</span>}
                 <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{p.name}</h3>
                 <p className="mt-2 font-display text-4xl font-bold text-[var(--color-ink)]">${p.priceUSD}<small className="ml-1 text-sm font-medium text-[var(--color-ink-soft)]">USD</small></p>
                 <p className="mb-5 mt-1 text-sm text-[var(--color-ink-soft)]">{p.cvCount} análisis · {pricePerCv(p.priceUSD, p.cvCount)}</p>
-                <button type="button" onClick={() => openCheckout(pack)} className={`mt-auto rounded-xl px-4 py-3 text-sm font-bold ${p.popular ? 'bg-[var(--color-primary)] text-[var(--color-ink)]' : 'border border-[var(--color-ink)] text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]'}`}>
+                <button type="button" onClick={() => openCheckout(pack)} className={`mt-auto rounded-xl px-4 py-3 text-sm font-bold ${highlighted ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-ink)] text-[var(--color-ink)] hover:bg-[var(--color-paper-2)]'}`}>
                   Comprar {p.name}
                 </button>
               </div>
-            ))}
+              )
+            })}
           </div>
         </section>
 
