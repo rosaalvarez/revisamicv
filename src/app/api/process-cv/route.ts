@@ -15,6 +15,7 @@ import {
   buildCoverLettersFromTemplate,
 } from '@/lib/cover-letter'
 import { sendAnalysisReadyEmail } from '@/lib/email-service'
+import { startAnalysisEmailSequence } from '@/lib/analysis-email-sequence-service'
 import { createAuthToken, createMagicDashboardLink } from '@/lib/auth-token'
 import { enforceRateLimits, getClientIp, rateLimitResponse } from '@/lib/rate-limit'
 
@@ -171,8 +172,9 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    let historyRecord: any = null
     try {
-      await saveCvHistory(supabaseAdmin, {
+      historyRecord = await saveCvHistory(supabaseAdmin, {
         email,
         cvText,
         jobDescription,
@@ -193,7 +195,18 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await sendAnalysisReadyEmail(email.trim().toLowerCase(), compatibilityScore)
+      if (historyRecord?.id) {
+        await startAnalysisEmailSequence(supabaseAdmin, {
+          email: normalizedEmail,
+          analysisId: historyRecord.id,
+          vacancyTitle: parsed.vacancy_title || parsed.optimizedCV?.targetTitle || parsed.optimizedCV?.headline,
+          originalScore: parsed.original_score,
+          adaptedScore: parsed.adapted_score ?? compatibilityScore,
+          language: outputLanguage,
+        })
+      } else {
+        await sendAnalysisReadyEmail(email.trim().toLowerCase(), compatibilityScore)
+      }
     } catch (err: any) {
       console.error('Analysis email error:', err?.message || err)
     }
@@ -269,6 +282,7 @@ export async function POST(req: NextRequest) {
       dashboard_url: dashboardUrl,
       coverLetterShort,
       coverLetterFormal,
+      saved_cv_text: cvText.slice(0, 2500),
     })
   } catch (error: any) {
     console.error('CV processing error:', error)

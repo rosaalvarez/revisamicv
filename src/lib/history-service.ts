@@ -52,6 +52,7 @@ export async function saveCvHistory(
       compatibility_score: input.compatibilityScore,
       output_language: input.outputLanguage,
       tokens_used: 1,
+      vacancy_title: input.vacancyTitle || null,
       requirements_table: input.requirementsTable || null,
       original_match_results: input.originalMatchResults || null,
       adapted_match_results: input.adaptedMatchResults || null,
@@ -81,23 +82,32 @@ export async function listCvHistory(
     .maybeSingle()
 
   if (userError) throw userError
-  if (!user?.id) return []
+  if (!user?.id) return { history: [], latest_cv_text: '', lifetime_analyses: 0 }
 
   const { data, error } = await supabase
     .from('cv_history')
-    .select('id, created_at, job_description, optimized_cv, compatibility_score, output_language')
+    .select('id, created_at, job_description, original_text, optimized_cv, compatibility_score, output_language, vacancy_title, original_score, adapted_score')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT)
 
   if (error) throw error
 
-  return (data || []).map((item: any) => ({
+  const history = (data || []).map((item: any) => ({
     id: item.id,
     created_at: item.created_at,
     compatibility_score: item.compatibility_score,
+    original_score: item.original_score,
+    adapted_score: item.adapted_score,
     output_language: item.output_language,
     optimized_cv: item.optimized_cv,
+    vacancy_title: item.vacancy_title,
     job_preview: String(item.job_description || '').replace(/\s+/g, ' ').slice(0, 180),
   }))
+
+  return {
+    history,
+    latest_cv_text: String(data?.[0]?.original_text || ''),
+    lifetime_analyses: data?.length || 0,
+  }
 }

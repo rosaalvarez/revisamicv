@@ -11,6 +11,7 @@ import { optimizedCvToPlainText, getCvLabels } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
 import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, getQuestionProjectedLift, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
 import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
+import { getSmartPackDefault, incrementStoredAnalysisCount, shouldShowLastCreditNotice } from '@/lib/conversion-triggers'
 
 type ClarificationPrompt = {
   question: string
@@ -48,8 +49,10 @@ type ProcessResult = {
   coverLetterFormal?: string
   rawText?: string
   tokens_remaining?: number
+  saved_cv_text?: string
   auth_token?: string
   dashboard_url?: string
+  vacancy_title?: string
 }
 
 const languageOptions = [
@@ -318,6 +321,11 @@ function renderMatchBreakdown(breakdown?: ProcessResult['matchBreakdown']) {
       </div>
     </section>
   )
+}
+
+function getResultVacancyTitle(result?: ProcessResult | null, fallback = '') {
+  const explicit = String(result?.vacancy_title || result?.optimizedCV?.targetTitle || result?.optimizedCV?.headline || fallback || '').trim()
+  return explicit || 'esta vacante'
 }
 
 function getScoreLift(result?: ProcessResult | null) {
@@ -961,6 +969,10 @@ export default function SignupPage() {
   const [file, setFile] = useState<File | null>(null)
   const [jobFile, setJobFile] = useState<File | null>(null)
   const [jobDescription, setJobDescription] = useState('')
+  const [savedCvText, setSavedCvText] = useState('')
+  const [useSavedCv, setUseSavedCv] = useState(false)
+  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [downloadedVacancyTitle, setDownloadedVacancyTitle] = useState('')
   const [outputLanguage, setOutputLanguage] = useState<'english' | 'spanish'>('spanish')
   const [loading, setLoading] = useState(false)
   const [analysisProgress, setAnalysisProgress] = useState(0)
@@ -1002,14 +1014,27 @@ export default function SignupPage() {
   const contextComplete = !shouldRenderEvidenceQuestions || revisionChanges.length > 0
   const resultWizardSteps = result ? getResultWizardSteps(result, { canDownloadCv, contextComplete }) : []
   const canOpenCvStep = contextComplete
+  const cvProvided = Boolean(file || (useSavedCv && savedCvText.trim().length >= 200))
+  const showLastCreditNotice = shouldShowLastCreditNotice({ credits: userCredits, moment: 'analysis_start' })
+  const lifetimeAnalyses = typeof window === 'undefined' ? 0 : Number(window.localStorage.getItem('revisamicv_lifetime_analyses') || 0)
+  const anotherVacancyHref = result?.tokens_remaining === 0
+    ? `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}&pack=${getSmartPackDefault(lifetimeAnalyses)}#comprar`
+    : '/analizar'
 
   useEffect(() => {
     const savedEmail = window.localStorage.getItem('revisamicv_email')
     const savedJob = window.localStorage.getItem('revisamicv_job_description')
     const savedLanguage = window.localStorage.getItem('revisamicv_output_language') as 'english' | 'spanish' | null
+    const storedCvText = window.localStorage.getItem('revisamicv_latest_cv_text') || ''
+    const storedCredits = window.localStorage.getItem('revisamicv_tokens_remaining')
     const lastDraftKey = window.localStorage.getItem('revisamicv:last-analysis-draft-key')
     if (savedEmail) setEmail(savedEmail)
     if (savedJob) setJobDescription(savedJob)
+    if (storedCvText.trim().length >= 200) {
+      setSavedCvText(storedCvText)
+      setUseSavedCv(true)
+    }
+    if (storedCredits !== null) setUserCredits(Number(storedCredits))
     if (savedLanguage === 'english' || savedLanguage === 'spanish') setOutputLanguage(savedLanguage)
     if (lastDraftKey) {
       try {
@@ -1100,7 +1125,7 @@ export default function SignupPage() {
       setError(emailError)
       return
     }
-    const fileError = validateCvFile(file)
+    const fileError = cvProvided ? '' : validateCvFile(file)
     if (fileError) {
       trackEvent('analysis_validation_error', { field: 'cv_file', extension: getFileExtensionForAnalytics(file?.name), size: getFileSizeBucket(file?.size) })
       setError(fileError)
@@ -1118,12 +1143,12 @@ export default function SignupPage() {
       return setError(emailError)
     }
 
-    const fileError = validateCvFile(file)
+    const fileError = cvProvided ? '' : validateCvFile(file)
     if (fileError) {
       trackEvent('analysis_validation_error', { field: 'cv_file', extension: getFileExtensionForAnalytics(file?.name), size: getFileSizeBucket(file?.size) })
       return setError(fileError)
     }
-    const selectedFile = file as File
+    const selectedFile = file as File | null
 
     const jobError = jobFile ? '' : validateJobDescription(jobDescription)
     if (jobError) {
@@ -1133,8 +1158,8 @@ export default function SignupPage() {
 
     trackEvent('analysis_started', {
       language: outputLanguage,
-      extension: getFileExtensionForAnalytics(selectedFile.name),
-      size: getFileSizeBucket(selectedFile.size),
+      extension: selectedFile ? getFileExtensionForAnalytics(selectedFile.name) : 'saved_cv',
+      size: selectedFile ? getFileSizeBucket(selectedFile.size) : 'saved_cv',
       job_chars_bucket: jobDescription.length < 1000 ? '<1k' : jobDescription.length < 4000 ? '1-4k' : '4k+',
       job_file: jobFile ? getFileExtensionForAnalytics(jobFile.name) : 'none',
     })
@@ -1145,20 +1170,43 @@ export default function SignupPage() {
     setError('')
 
     try {
-      const formData = new FormData()
-      formData.append('email', email.trim().toLowerCase())
-      formData.append('cv', selectedFile)
-      formData.append('jobDescription', jobDescription)
-      if (jobFile) formData.append('jobFile', jobFile)
-      formData.append('outputLanguage', outputLanguage)
-
-      const res = await fetch('/api/process-cv', { method: 'POST', body: formData })
+      let res: Response
+      if (selectedFile) {
+        const uploadFile = selectedFile as File
+        const formData = new FormData()
+        formData.append('email', email.trim().toLowerCase())
+        formData.append('cv', uploadFile)
+        formData.append('jobDescription', jobDescription)
+        if (jobFile) formData.append('jobFile', jobFile)
+        formData.append('outputLanguage', outputLanguage)
+        res = await fetch('/api/process-cv', { method: 'POST', body: formData })
+      } else {
+        res = await fetch('/api/process-cv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            cv_text: savedCvText,
+            job_description: jobDescription,
+            outputLanguage,
+          }),
+        })
+      }
       const data = await res.json()
 
       if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
       setAnalysisProgress(100)
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       if (data.auth_token) window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
+      if (typeof data.tokens_remaining === 'number') {
+        setUserCredits(data.tokens_remaining)
+        window.localStorage.setItem('revisamicv_tokens_remaining', String(data.tokens_remaining))
+      }
+      if (typeof data.saved_cv_text === 'string' && data.saved_cv_text.trim().length >= 200) {
+        setSavedCvText(data.saved_cv_text)
+        window.localStorage.setItem('revisamicv_latest_cv_text', data.saved_cv_text)
+      }
+      incrementStoredAnalysisCount(window.localStorage)
       window.localStorage.setItem('revisamicv_output_language', outputLanguage)
       trackEvent('analysis_completed', {
         language: outputLanguage,
@@ -1227,6 +1275,7 @@ export default function SignupPage() {
       link.remove()
       URL.revokeObjectURL(url)
       trackEvent('download_completed', { format })
+      setDownloadedVacancyTitle(getResultVacancyTitle(result, jobDescription))
     } catch (err: any) {
       trackEvent('download_failed', { format, message: String(err.message || '').slice(0, 80) })
       setError(err.message)
@@ -1417,7 +1466,7 @@ export default function SignupPage() {
               completedStages={setupStep === 'vacancy' ? ['cv-base'] : []}
               onStageChange={(stage) => {
                 if (stage === 'cv-base') setSetupStep('cv-base')
-                if (stage === 'vacancy' && file && email.trim()) setSetupStep('vacancy')
+                if (stage === 'vacancy' && cvProvided && email.trim()) setSetupStep('vacancy')
               }}
             />
 
@@ -1445,6 +1494,18 @@ export default function SignupPage() {
                       <p className="mt-2 text-xs text-[var(--color-ink-soft)]">Lo usamos para guardar tu prueba gratis, créditos y recuperar tus resultados.</p>
                     </div>
 
+                    {savedCvText ? (
+                      <div className="mt-5 rounded-2xl border border-[#CFE0FF] bg-[#F6FAFF] p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-[var(--color-ink)]">Tu CV base ya está guardado</p>
+                            <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">Puedes saltar la subida y usar el último CV que analizaste. Si quieres, también puedes subir uno nuevo.</p>
+                          </div>
+                          <button type="button" onClick={() => { setUseSavedCv(true); setFile(null); setError('') }} className={`rounded-xl px-4 py-2 text-sm font-bold ${useSavedCv ? 'bg-[var(--color-primary)] text-white' : 'border border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-primary)]'}`}>Usar mi CV guardado</button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div
                       onClick={() => fileRef.current?.click()}
                       className="mt-5 grid h-[164px] cursor-pointer place-items-center rounded-2xl border-[1.5px] border-dashed border-[#C8D2E1] bg-[linear-gradient(180deg,#FFFFFF,#FBFDFF)] px-5 text-center transition hover:border-[var(--color-primary)]"
@@ -1468,6 +1529,7 @@ export default function SignupPage() {
                         onChange={(e) => {
                           const selected = e.target.files?.[0] || null
                           setFile(selected)
+                          if (selected) setUseSavedCv(false)
                           if (selected) trackEvent('cv_file_selected', { extension: getFileExtensionForAnalytics(selected.name), size: getFileSizeBucket(selected.size) })
                         }}
                         className="hidden"
@@ -1498,6 +1560,9 @@ export default function SignupPage() {
                   <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--color-primary)]">Paso 2 · Vacante real</p>
                   <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight text-[var(--color-ink)]">Pega la vacante real</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-ink-soft)]">Cada oferta pide cosas distintas. Pega la descripción completa o sube el archivo de la vacante para detectar qué necesita leer esa empresa.</p>
+                  {showLastCreditNotice ? (
+                    <div className="mt-4 rounded-xl border border-[#CFE0FF] bg-[#F6FAFF] p-3 text-sm font-semibold text-[#2A3B5F]">Este es tu último análisis disponible.</div>
+                  ) : null}
 
                   <textarea
                     value={jobDescription}
@@ -1523,6 +1588,7 @@ Requisitos:
                     className="mt-6 h-[180px] w-full resize-none rounded-[10px] border border-[#BFC9D8] bg-white p-5 text-sm leading-6 text-[var(--color-ink)] outline-none transition placeholder:text-[#8B95A5] focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10"
                     required={!jobFile}
                   />
+                  <p className="mt-2 text-xs font-semibold text-[var(--color-ink-soft)]">Una vacante puede recibir cientos de CVs. El tuyo tiene segundos para decir lo correcto.</p>
 
                   <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-[var(--color-paper-2)] p-3">
                     <input
@@ -1799,6 +1865,18 @@ Requisitos:
                     <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
                   )}
                 </div>
+
+                {downloadedVacancyTitle ? (
+                  <section className="mx-auto max-w-[620px] rounded-2xl border border-[#CFE0FF] bg-[#F6FAFF] p-5 text-center shadow-sm">
+                    <p className="text-sm font-semibold leading-6 text-[var(--color-ink)]">Tu CV quedó adaptado para {downloadedVacancyTitle}. Tu CV base ya está guardado — el próximo análisis toma 2 minutos.</p>
+                    <a href={anotherVacancyHref} className="mt-4 inline-flex rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)]">Analizar otra vacante →</a>
+                  </section>
+                ) : (
+                  <section className="mx-auto max-w-[620px] rounded-2xl border border-[var(--color-line)] bg-white p-5 text-center shadow-sm">
+                    <p className="text-sm font-semibold leading-6 text-[var(--color-ink)]">Este análisis es para esta vacante. ¿A cuántas más estás aplicando esta semana?</p>
+                    <a href={anotherVacancyHref} className="mt-4 inline-flex rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)]">Analizar otra vacante →</a>
+                  </section>
+                )}
 
                 {(result?.coverLetterShort || result?.coverLetterFormal || result?.coverLetter) ? (
                   <section className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
