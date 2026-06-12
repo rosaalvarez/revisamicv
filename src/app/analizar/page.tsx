@@ -1080,7 +1080,7 @@ export default function SignupPage() {
           if (draft.outputLanguage === 'english' || draft.outputLanguage === 'spanish') setOutputLanguage(draft.outputLanguage)
           if (draft.clarificationAnswers && typeof draft.clarificationAnswers === 'object') setClarificationAnswers(draft.clarificationAnswers)
           if (draft.activeResultStep === 'evidence' || draft.activeResultStep === 'context' || draft.activeResultStep === 'cv') setActiveResultStep(draft.activeResultStep)
-          setCopySuccess('Recuperé tu análisis anterior. Puedes continuar sin gastar otro crédito.')
+          setCopySuccess('Recuperamos tu análisis anterior. Puedes continuar sin gastar otro crédito.')
         }
       } catch {}
     }
@@ -1105,8 +1105,8 @@ export default function SignupPage() {
           }
           setSetupStep('vacancy')
           setCheckoutMessage(params.get('payment') === 'success'
-            ? 'Pago confirmado. Recuperé tu vacante y tu CV para que sigas en el paso 2.'
-            : 'Recuperé tu borrador. Puedes seguir desde la vacante sin volver a pegarla.')
+            ? 'Pago confirmado. Recuperamos tu vacante y tu CV para que sigas en el paso 2.'
+            : 'Recuperamos tu borrador. Puedes seguir desde la vacante sin volver a pegarla.')
         }
       } catch {}
     }
