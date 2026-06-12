@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RevisaMiCV — Flow v4 · Dos tiempos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cobalt:#2D6BE0; --cobalt-2:#5B8DF0; --cobalt-deep:#1E4FC2;
+  --ink:#0F1830; --muted:#5B6478; --faint:#8A93A8;
+  --bg:#F5F8FE; --card:#FFFFFF;
+  --tint:#EDF3FE; --tint-border:#D8E4FB;
+  --green:#149563; --green-2:#2FBF8A; --green-tint:#E9F7F0; --green-border:#CDEBDC;
+  --amber:#B45309; --amber-tint:#FDF3E7; --amber-border:#F4DFC2;
+  --line:rgba(15,24,48,.09); --line-soft:rgba(15,24,48,.055);
+  --r:16px; --r-lg:24px;
+  --sh-sm:0 1px 2px rgba(15,24,48,.05), 0 4px 14px rgba(15,24,48,.05);
+  --sh-md:0 2px 4px rgba(15,24,48,.04), 0 14px 40px rgba(15,24,48,.09);
+  --sh-glow:0 18px 50px rgba(45,107,224,.18);
+  --grad:linear-gradient(135deg,#2D6BE0 0%,#5B8DF0 100%);
+  --grad-green:linear-gradient(135deg,#149563 0%,#2FBF8A 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Figtree',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:16px;line-height:1.55;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:
+  radial-gradient(900px 420px at 50% -10%, rgba(45,107,224,.10), transparent 60%),
+  radial-gradient(700px 380px at 110% 30%, rgba(91,141,240,.07), transparent 60%);
+  pointer-events:none;z-index:0}
+button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:inherit;color:inherit}
+.wrap{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:0 20px 140px}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(245,248,254,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--line-soft)}
+.topbar-in{max-width:720px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15.5px;letter-spacing:-.01em}
+.brand .logo{width:28px;height:28px;border-radius:9px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:900;box-shadow:0 4px 12px rgba(45,107,224,.35)}
+.sim-tag{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--cobalt);background:var(--tint);border:1px solid var(--tint-border);padding:4px 10px;border-radius:99px}
+.scen-pills{margin-left:auto;display:flex;gap:6px}
+.scen-pill{font-size:12.5px;font-weight:700;padding:6px 13px;border-radius:99px;border:1px solid var(--line);color:var(--muted);background:#fff;transition:all .15s}
+.scen-pill.on{background:var(--ink);border-color:var(--ink);color:#fff}
+
+/* shared */
+.eyebrow{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--cobalt)}
+.eyebrow.green{color:var(--green)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-sm)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:800;font-size:15.5px;padding:15px 28px;border-radius:99px;transition:transform .12s, box-shadow .2s, filter .15s;letter-spacing:-.01em}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 10px 26px rgba(45,107,224,.35)}
+.btn-primary:hover{filter:brightness(1.05);box-shadow:0 14px 32px rgba(45,107,224,.42)}
+.btn-green{background:var(--grad-green);color:#fff;box-shadow:0 10px 26px rgba(20,149,99,.32)}
+.btn-green:hover{filter:brightness(1.05)}
+.btn-ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.screen{display:none;animation:fade .4s ease}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:3px solid rgba(45,107,224,.45);outline-offset:2px;border-radius:10px}
+
+/* intro */
+.intro{padding-top:56px}
+.intro h1{font-size:clamp(30px,6.5vw,42px);font-weight:900;line-height:1.1;letter-spacing:-.025em;margin:12px 0 16px}
+.intro h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro p.lead{color:var(--muted);max-width:56ch;margin-bottom:36px;font-size:16.5px}
+.case-grid{display:grid;gap:14px}
+.case{display:flex;align-items:center;gap:16px;text-align:left;padding:22px 24px;border-radius:var(--r-lg);background:#fff;border:1.5px solid var(--line);box-shadow:var(--sh-sm);transition:all .18s;width:100%}
+.case:hover{border-color:var(--cobalt);box-shadow:var(--sh-glow);transform:translateY(-2px)}
+.case .c-ring{flex-shrink:0;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-size:17px}
+.cr-near{background:var(--green-tint);color:var(--green);border:2px solid var(--green-border)}
+.cr-mid{background:var(--amber-tint);color:var(--amber);border:2px solid var(--amber-border)}
+.cr-far{background:var(--tint);color:var(--cobalt);border:2px solid var(--tint-border)}
+.case .c-name{font-weight:800;font-size:17px;letter-spacing:-.01em}
+.case .c-desc{font-size:14px;color:var(--muted);line-height:1.5;margin-top:2px}
+
+/* input */
+.input-sc{padding-top:48px}
+.input-sc h2{font-size:clamp(24px,5.4vw,30px);font-weight:900;letter-spacing:-.02em;margin:10px 0 8px}
+.input-sc .sub{color:var(--muted);font-size:15.5px;margin-bottom:26px}
+.field-card{padding:24px;margin-bottom:14px}
+.cv-chip{display:flex;align-items:center;gap:14px}
+.cv-chip .ico{width:46px;height:46px;border-radius:14px;background:var(--grad-green);display:grid;place-items:center;color:#fff;flex-shrink:0;box-shadow:0 6px 16px rgba(20,149,99,.3)}
+.cv-chip .t b{display:block;font-size:15.5px;font-weight:800}
+.cv-chip .t span{font-size:13px;color:var(--muted)}
+.cv-chip .swap{margin-left:auto;font-size:13.5px;font-weight:700;color:var(--cobalt)}
+.vac-area{width:100%;border:1.5px solid var(--tint-border);border-radius:var(--r);padding:15px 17px;font-family:inherit;font-size:14.5px;line-height:1.6;color:var(--ink);background:#fff;resize:vertical;min-height:120px}
+.vac-area:focus{outline:none;border-color:var(--cobalt);box-shadow:0 0 0 4px rgba(45,107,224,.1)}
+.field-label{font-weight:800;font-size:15px;margin-bottom:10px;display:block;letter-spacing:-.01em}
+.input-foot{display:flex;justify-content:flex-end;margin-top:24px}
+.trustline{text-align:center;font-size:13px;color:var(--muted);margin-top:20px}
+
+/* working */
+.work{padding-top:96px;text-align:center}
+.gauge-wrap{position:relative;width:190px;height:190px;margin:0 auto 30px}
+.gauge-wrap svg{transform:rotate(-90deg)}
+.g-track{fill:none;stroke:var(--tint);stroke-width:13;stroke-linecap:round}
+.g-fill{fill:none;stroke:url(#gradStroke);stroke-width:13;stroke-linecap:round;transition:stroke-dashoffset .5s cubic-bezier(.4,0,.2,1)}
+.g-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.g-num{font-size:58px;font-weight:900;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.g-sub{font-size:12px;font-weight:700;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.work .orbit{width:74px;height:74px;margin:0 auto 30px;border-radius:50%;border:5px solid var(--tint);border-top-color:var(--cobalt);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.work h2{font-size:22px;font-weight:900;letter-spacing:-.015em;margin-bottom:28px}
+.steps{max-width:390px;margin:0 auto;text-align:left;display:grid;gap:14px}
+.stp{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--muted);opacity:.3;transition:opacity .3s}
+.stp.on{opacity:1;color:var(--ink);font-weight:600}
+.stp .dot{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;display:grid;place-items:center;background:#fff;transition:all .25s}
+.stp.on .dot{border-color:transparent;background:var(--grad-green);box-shadow:0 4px 10px rgba(20,149,99,.3)}
+.stp.on .dot svg{display:block}
+.stp .dot svg{display:none}
+
+/* ===== TIEMPO 1: análisis + preguntas ===== */
+.t1{padding-top:40px}
+.t1-head{text-align:center;margin-bottom:8px}
+.t1-head h2{font-size:clamp(23px,5.4vw,30px);font-weight:900;line-height:1.18;letter-spacing:-.02em;margin:12px auto 6px;max-width:24ch}
+.t1-head .t1-sub{color:var(--muted);font-size:15px;max-width:46ch;margin:0 auto}
+.hero-card{position:relative;padding:34px 28px 30px;margin:24px 0 16px;text-align:center;background:#fff;border-radius:28px;border:1px solid var(--line);box-shadow:var(--sh-md);overflow:hidden}
+.hero-card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 200px at 50% -40%, rgba(45,107,224,.08), transparent 70%);pointer-events:none}
+.delta-label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--muted);margin-top:14px}
+.delta-label .from{color:var(--faint);text-decoration:line-through;text-decoration-thickness:2.5px}
+.delta-label .gain{color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);padding:3px 11px;border-radius:99px}
+.verdict{padding:18px 22px;border-radius:var(--r);font-size:15px;line-height:1.62;margin:0 0 22px;background:#fff;border:1px solid var(--line);box-shadow:var(--sh-sm)}
+.verdict b{font-weight:800}
+
+/* preguntas */
+.qs-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:26px 0 6px}
+.qs-head h3{font-size:18px;font-weight:900;letter-spacing:-.015em}
+.total-pill{font-size:12.5px;font-weight:800;color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);padding:6px 13px;border-radius:99px;white-space:nowrap}
+.qs-sub{font-size:14px;color:var(--muted);margin-bottom:16px}
+.qs-progress{height:6px;border-radius:99px;background:var(--tint);overflow:hidden;margin-bottom:18px}
+.qs-progress i{display:block;height:100%;width:0%;background:var(--grad-green);border-radius:99px;transition:width .4s ease}
+.gap{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:18px;margin-bottom:12px;box-shadow:var(--sh-sm);transition:all .2s;animation:rise .4s ease both}
+.gap.done{border-color:var(--green-border);background:linear-gradient(180deg,#F2FBF7, #fff 70%)}
+.gap.noted{border-color:var(--amber-border);background:linear-gradient(180deg,#FEF8EF, #fff 70%)}
+.gap-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.gap-name{font-weight:800;font-size:15.5px;letter-spacing:-.01em}
+.gap-lift{flex-shrink:0;font-size:12.5px;font-weight:800;color:var(--cobalt);background:var(--tint);border:1px solid var(--tint-border);padding:4px 11px;border-radius:99px;white-space:nowrap}
+.gap-q{font-size:14px;color:var(--muted);margin-top:3px;line-height:1.55}
+.gap-acts{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+.chip{font-size:14px;font-weight:700;padding:10px 18px;border-radius:99px;border:1.5px solid var(--line);background:#fff;transition:all .15s}
+.chip:hover{border-color:var(--cobalt);color:var(--cobalt);transform:translateY(-1px)}
+.acts-step,.src-step,.confirm-step{display:none;margin-top:15px;padding-top:15px;border-top:1px dashed var(--line)}
+.gap.s-acts .acts-step{display:block}
+.gap.s-src .acts-step,.gap.s-src .src-step{display:block}
+.gap.s-confirm .acts-step,.gap.s-confirm .src-step,.gap.s-confirm .confirm-step{display:block}
+.gap.binary.s-confirm .acts-step,.gap.binary.s-confirm .src-step{display:none}
+.step-q{font-size:14.5px;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
+.step-hint{font-size:12.5px;color:var(--muted);margin-bottom:11px}
+.whatis{font-size:12.5px;font-weight:700;color:var(--cobalt);background:none;padding:0;margin-left:6px;text-decoration:underline;text-underline-offset:2px}
+.whatis-box{display:none;font-size:13px;color:var(--ink);background:var(--tint);border:1px solid var(--tint-border);border-radius:12px;padding:11px 14px;margin:8px 0 10px;line-height:1.55}
+.whatis-box.show{display:block}
+.act-grid{display:flex;flex-wrap:wrap;gap:8px}
+.act{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;padding:10px 16px;border-radius:99px;border:1.5px solid var(--line);background:#fff;transition:all .14s}
+.act:hover{border-color:var(--cobalt);transform:translateY(-1px)}
+.act .tick{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;flex-shrink:0;transition:all .15s}
+.act .tick svg{display:none}
+.act.sel{border-color:var(--cobalt);background:var(--tint);color:var(--cobalt);box-shadow:0 3px 10px rgba(45,107,224,.15)}
+.act.sel .tick{background:var(--grad);border-color:transparent}
+.act.sel .tick svg{display:block}
+.src-block{margin-bottom:11px}
+.src-grid{display:flex;flex-wrap:wrap;gap:7px}
+.src{font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:99px;border:1.5px solid var(--line);background:#fff;transition:all .14s}
+.src:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.src.sel{background:var(--ink);border-color:var(--ink);color:#fff}
+.line-preview{background:#fff;border:1.5px solid var(--green-border);border-left:4px solid var(--green);border-radius:12px;padding:13px 15px;font-size:14px;line-height:1.55;margin-bottom:13px;animation:pop .25s ease;box-shadow:var(--sh-sm)}
+.line-preview .lp-label{display:block;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px}
+.confirm-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn-add{background:var(--grad-green);color:#fff;font-size:14px;font-weight:800;padding:12px 22px;border-radius:99px;transition:all .15s;box-shadow:0 8px 20px rgba(20,149,99,.28)}
+.btn-add:hover{filter:brightness(1.05)}
+.btn-add.dis{opacity:.4;pointer-events:none;box-shadow:none}
+.confirm-hint{font-size:12.5px;font-weight:700;color:var(--amber)}
+.lnk{font-size:13px;font-weight:700;color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+.gap-done-row{display:none;margin-top:12px}
+.gap.done .gap-done-row{display:block}
+.gap.done .gap-acts,.gap.done .acts-step,.gap.done .src-step,.gap.done .confirm-step{display:none}
+.done-head{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--green);margin-bottom:8px}
+.done-line{background:#fff;border:1px solid var(--green-border);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.5}
+.done-undo{margin-top:9px}
+.gap-note-row{display:none;margin-top:12px}
+.gap.noted .gap-note-row{display:block}
+.gap.noted .gap-acts,.gap.noted .acts-step,.gap.noted .src-step,.gap.noted .confirm-step{display:none}
+.note-text{font-size:13.5px;line-height:1.6;color:var(--ink)}
+.note-text b{color:var(--amber)}
+.skip-note{font-size:12.5px;color:var(--muted);text-align:center;margin-top:6px}
+
+/* sticky action bar (tiempo 1) */
+.action-bar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:none}
+.action-bar.on{display:block;animation:rise .35s ease}
+.ab-in{max-width:720px;margin:0 auto;padding:13px 20px;display:flex;align-items:center;gap:14px}
+.ab-score{display:flex;align-items:baseline;gap:6px;font-weight:900}
+.ab-score .n{font-size:28px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ab-score .l{font-size:11.5px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.ab-count{font-size:12.5px;color:var(--muted);font-weight:700}
+.ab-cta{margin-left:auto}
+.ab-skip{font-size:13px;font-weight:700;color:var(--muted);text-decoration:underline;text-underline-offset:2px}
+
+/* ===== TIEMPO 2: celebración ===== */
+.t2{padding-top:48px;text-align:center}
+.t2 .crown{width:64px;height:64px;border-radius:50%;background:var(--grad-green);display:grid;place-items:center;margin:0 auto 18px;box-shadow:0 14px 36px rgba(20,149,99,.35);animation:pop .4s ease}
+.t2 h2{font-size:clamp(26px,6vw,34px);font-weight:900;letter-spacing:-.025em;line-height:1.12;margin-bottom:6px}
+.t2 .t2-sub{color:var(--muted);font-size:15.5px;margin-bottom:26px}
+.delta-hero{display:flex;align-items:baseline;justify-content:center;gap:16px;margin:8px 0 6px}
+.dh-from{font-size:34px;font-weight:800;color:var(--faint);text-decoration:line-through;text-decoration-thickness:3.5px}
+.dh-arrow{color:var(--green);transform:translateY(-5px)}
+.dh-to{font-size:clamp(72px,17vw,96px);font-weight:900;letter-spacing:-.05em;line-height:1;background:var(--grad-green);-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+.dh-label{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:22px}
+.chips-summary{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:30px}
+.cs-chip{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700;color:var(--green);background:var(--green-tint);border:1px solid var(--green-border);padding:8px 15px;border-radius:99px;animation:pop .35s ease both}
+.dl-hero{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:34px}
+.dl-secondary{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+.dl-mini{font-size:13.5px;font-weight:700;padding:11px 19px;border-radius:99px;border:1.5px solid var(--line);background:#fff}
+.dl-mini:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.t2 .card{text-align:left}
+.cv-card{padding:26px;margin-bottom:16px}
+.cv-doc{border:1.5px solid var(--tint-border);border-radius:var(--r);padding:24px;font-size:13.5px;line-height:1.62;background:#fff}
+.cv-doc .name{text-align:center;font-size:18px;font-weight:900;letter-spacing:-.01em}
+.cv-doc .meta{text-align:center;font-size:12px;color:var(--muted);margin-bottom:15px}
+.cv-doc h4{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:15px 0 6px;border-top:1px solid var(--line-soft);padding-top:13px;font-weight:800}
+.cv-doc h4:first-of-type{border-top:none;padding-top:0}
+.cv-doc ul{list-style:none}
+.cv-doc li{padding-left:15px;position:relative;margin-bottom:4px}
+.cv-doc li::before{content:"•";position:absolute;left:2px;color:var(--faint)}
+.hl{background:var(--green-tint);border-radius:4px;padding:0 4px;font-weight:700}
+.cv-doc li.new-line{background:var(--green-tint);border-radius:8px;padding:5px 9px 5px 21px;font-weight:600}
+.cv-doc li.new-line::before{left:8px;color:var(--green)}
+/* carta */
+.letter-card{padding:26px;margin-bottom:16px}
+.letter-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.letter-head h3{font-size:16.5px;font-weight:900;letter-spacing:-.01em}
+.seg{display:inline-flex;background:var(--tint);border:1px solid var(--tint-border);border-radius:99px;padding:3px}
+.seg button{font-size:12.5px;font-weight:800;padding:8px 16px;border-radius:99px;color:var(--muted);transition:all .15s}
+.seg button.on{background:#fff;color:var(--cobalt);box-shadow:var(--sh-sm)}
+.letter-body{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:17px 19px;font-size:13.5px;line-height:1.65;color:var(--ink);margin-bottom:13px;white-space:pre-line}
+.letter-acts{display:flex;gap:9px;flex-wrap:wrap}
+.next-block{padding:24px;text-align:center;margin-bottom:14px}
+.next-block p{font-size:15px;margin-bottom:15px;font-weight:600}
+.d-trust{text-align:center;font-size:13px;color:var(--muted);margin-top:8px}
+.d-trust b{color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:14px;font-weight:700;padding:13px 22px;border-radius:99px;opacity:0;pointer-events:none;transition:all .3s;z-index:60;max-width:90vw;text-align:center;box-shadow:0 14px 40px rgba(15,24,48,.3)}
+.toast.show{opacity:1;transform:translateX(-50%)}
+@media(max-width:540px){
+  .scen-pills{width:100%;order:3}
+  .ab-count{display:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gradStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#2D6BE0"/><stop offset="100%" stop-color="#5B8DF0"/>
+</linearGradient>
+<linearGradient id="gradStrokeGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#149563"/><stop offset="100%" stop-color="#2FBF8A"/>
+</linearGradient>
+</defs></svg>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><span class="logo">R</span> RevisaMiCV</div>
+    <span class="sim-tag">Flow v4 · dos tiempos</span>
+    <div class="scen-pills" id="pills" style="display:none">
+      <button class="scen-pill" data-s="near">62</button>
+      <button class="scen-pill" data-s="mid">44</button>
+      <button class="scen-pill" data-s="far">21</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- INTRO -->
+  <section class="screen intro on" id="sc-intro">
+    <span class="eyebrow">Prototipo interactivo</span>
+    <h1>Tu CV, en dos tiempos:<br><span class="grad">la verdad sube puntos.</span></h1>
+    <p class="lead">Tiempo 1: tu análisis llega hecho y las preguntas suben tu encaje en vivo — puros taps. Tiempo 2: tu CV se escribe con todo lo que confirmaste y te espera listo para enviar, con su carta. Elige un caso:</p>
+    <div class="case-grid">
+      <button class="case" data-s="near">
+        <span class="c-ring cr-near">62</span>
+        <span><span class="c-name">Caso cercano</span><span class="c-desc" style="display:block">María aplica a su área. 3 preguntas · hasta +16.</span></span>
+      </button>
+      <button class="case" data-s="mid">
+        <span class="c-ring cr-mid">44</span>
+        <span><span class="c-name">Caso medio</span><span class="c-desc" style="display:block">Encaje parcial. 3 preguntas · hasta +15.</span></span>
+      </button>
+      <button class="case" data-s="far">
+        <span class="c-ring cr-far">21</span>
+        <span><span class="c-name">Caso lejano</span><span class="c-desc" style="display:block">IA conversacional. 5 preguntas · hasta +32. Nada se sentencia sin preguntar.</span></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- INPUT -->
+  <section class="screen input-sc" id="sc-input">
+    <span class="eyebrow">Entrada · 30 segundos</span>
+    <h2>Tu CV y la vacante. Nada más.</h2>
+    <p class="sub">Sin formularios. Lo que sigue lo hacemos nosotros.</p>
+    <div class="card field-card">
+      <div class="cv-chip">
+        <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div class="t"><b>Tu CV base ya está guardado</b><span id="cv-name">Maria_Fernandez_CV.pdf</span></div>
+        <button class="swap">Cambiar</button>
+      </div>
+    </div>
+    <div class="card field-card">
+      <label class="field-label" for="vac">La vacante real</label>
+      <textarea class="vac-area" id="vac" rows="5"></textarea>
+    </div>
+    <div class="input-foot">
+      <button class="btn btn-primary" id="go-analyze">✦&nbsp; Analizar mi CV →</button>
+    </div>
+    <p class="trustline">No inventamos experiencia. Solo mejoramos cómo se muestra la tuya.</p>
+  </section>
+
+  <!-- WORKING -->
+  <section class="screen work" id="sc-work">
+    <div class="orbit" aria-hidden="true"></div>
+    <h2>Estamos haciendo el trabajo por ti.</h2>
+    <div class="steps" id="work-steps">
+      <div class="stp"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Leyendo la vacante real</span></div>
+      <div class="stp"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span id="ws-2">Detectando qué pide y qué pesa más</span></div>
+      <div class="stp"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span>Cruzando con tu experiencia real — sin inventar</span></div>
+    </div>
+    <p class="trustline" style="margin-top:30px">Tu análisis estará listo en un momento.</p>
+  </section>
+
+  <!-- TIEMPO 1 -->
+  <section class="screen t1" id="sc-t1">
+    <div class="t1-head">
+      <span class="eyebrow">Tiempo 1 · tu análisis</span>
+      <h2 id="t1-title"></h2>
+      <p class="t1-sub" id="t1-sub"></p>
+    </div>
+
+    <div class="hero-card">
+      <div class="gauge-wrap">
+        <svg width="190" height="190" viewBox="0 0 190 190">
+          <circle class="g-track" cx="95" cy="95" r="82"/>
+          <circle class="g-fill" id="g-fill" cx="95" cy="95" r="82"/>
+        </svg>
+        <div class="g-center">
+          <div class="g-num" id="g-num">0</div>
+          <div class="g-sub">/100 encaje</div>
+        </div>
+      </div>
+      <div class="delta-label"><span>Empezaste en</span> <span class="from" id="d-from">21</span> <span class="gain" id="d-gain" style="display:none">+0 con tu verdad</span></div>
+    </div>
+
+    <div class="verdict" id="d-verdict"></div>
+
+    <div class="qs-head">
+      <h3 id="boost-title">5 preguntas rápidas</h3>
+      <span class="total-pill" id="total-pill"></span>
+    </div>
+    <p class="qs-sub">Respondes con taps — nunca escribes. Cada una dice cuántos puntos vale. Solo lo que confirmes entra a tu CV.</p>
+    <div class="qs-progress"><i id="qs-bar"></i></div>
+    <div id="gaps"></div>
+    <p class="skip-note">Nada de lo que no confirmes se inventa.</p>
+  </section>
+
+  <!-- GENERANDO -->
+  <section class="screen work" id="sc-gen">
+    <div class="orbit" aria-hidden="true"></div>
+    <h2>Escribiendo tu CV con todo lo que confirmaste.</h2>
+    <p class="trustline">Cada línea nueva sale de tus taps — nada más.</p>
+  </section>
+
+  <!-- TIEMPO 2 -->
+  <section class="screen t2" id="sc-t2">
+    <div class="crown"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <span class="eyebrow green">Tiempo 2 · listo para enviar</span>
+    <h2>Tu CV quedó listo.</h2>
+    <p class="t2-sub" id="t2-sub">Adaptado a esta vacante, con tu experiencia real.</p>
+
+    <div class="delta-hero">
+      <span class="dh-from" id="dh-from">21</span>
+      <span class="dh-arrow"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <span class="dh-to" id="dh-to">45</span>
+    </div>
+    <p class="dh-label">puntos de encaje con esta vacante</p>
+
+    <div class="chips-summary" id="chips-summary"></div>
+
+    <div class="dl-hero">
+      <button class="btn btn-green" id="dl-btn" style="font-size:17px;padding:17px 38px">↓&nbsp; Descargar mi CV en PDF</button>
+      <div class="dl-secondary">
+        <button class="dl-mini">DOCX</button>
+        <button class="dl-mini">TXT</button>
+        <button class="dl-mini">Editar antes de descargar</button>
+      </div>
+    </div>
+
+    <div class="card cv-card">
+      <span class="eyebrow" style="display:block;margin-bottom:13px">Tu CV adaptado</span>
+      <div class="cv-doc" id="cv-doc"></div>
+    </div>
+
+    <div class="card letter-card">
+      <div class="letter-head">
+        <h3>Inclúyela con tu CV</h3>
+        <div class="seg"><button class="on" id="seg-short" onclick="setLetter('short')">Mensaje corto</button><button id="seg-formal" onclick="setLetter('formal')">Carta formal</button></div>
+      </div>
+      <div class="letter-body" id="letter-body"></div>
+      <div class="letter-acts">
+        <button class="btn btn-ghost" style="padding:11px 20px;font-size:14px" onclick="toast('Copiado al portapapeles (simulado).')">Copiar al portapapeles</button>
+        <button class="dl-mini">Descargar TXT</button>
+      </div>
+      <p class="trustline" style="text-align:left;margin-top:10px">Ideal para LinkedIn, chat o portales con campo de texto corto.</p>
+    </div>
+
+    <div class="card next-block" id="next-block"></div>
+    <p class="d-trust">No inventamos empleadores, cargos ni métricas. <b>Tú tienes la última palabra antes de enviar.</b></p>
+  </section>
+
+</div>
+
+<!-- sticky bar tiempo 1 -->
+<div class="action-bar" id="action-bar">
+  <div class="ab-in">
+    <div class="ab-score"><span class="n" id="ab-num">21</span><span class="l">/100</span></div>
+    <span class="ab-count" id="ab-count">0 de 5 respondidas</span>
+    <button class="ab-skip" id="ab-skip">Saltar preguntas</button>
+    <button class="btn btn-primary ab-cta" id="ab-go" style="padding:12px 24px;font-size:14.5px">Generar mi CV →</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LEVELS = ['B1 (igual que hoy)','B2','C1'];
+const CERTS  = ['Con certificado','Autoevaluado — honesto'];
+const SRC_FRAG = {'Proyectos personales':'en proyectos personales','Freelance':'como freelance','Empleo anterior':'en un empleo anterior','Estudios o cursos':'en estudios y cursos prácticos','Voluntariado':'en voluntariado'};
+const DUR_FRAG = {'Menos de 1 año':'desde hace menos de un año','1–3 años':'desde hace 1–3 años','3+ años':'desde hace más de 3 años'};
+
+const SCEN = {
+  near: {
+    cv:'Maria_Fernandez_CV.pdf',
+    vac:'Buscamos especialista en marketing digital para liderar campañas pagadas en Meta Ads y Google Ads: planificar, ejecutar, analizar métricas y reportar ROI. Deseable inglés intermedio-alto.',
+    reqs:6, from:62, to:74,
+    t1Title:'Tu CV ya conecta con esta vacante.',
+    t1Sub:'Lo principal está. Estas preguntas pueden subirlo más — todas opcionales.',
+    verdict:'Tu experiencia <b>sí conecta con lo principal</b>. Reescribimos tu CV en el lenguaje de la vacante y reforzamos tus logros reales. Lo que confirmes abajo, lo suma.',
+    gaps:[
+      {name:'Campañas de Meta Ads', q:'Obligatorio en la vacante. Tu CV no lo muestra todavía.', lift:7, type:'acts',
+       whatis:'Cuenta cualquier campaña real que hayas creado u operado — propia, de un cliente o de un empleo. No cuenta solo haber visto tutoriales.',
+       acts:['Creé y configuré campañas','Segmenté audiencias','Optimicé presupuesto','Hice A/B testing de creativos','Usé el Pixel / eventos','Leí y reporté resultados']},
+      {name:'Reportes de ROI', q:'Aparece como deseable en la vacante.', lift:5, type:'acts',
+       whatis:'Cuenta si calculaste retorno o presentaste resultados con números reales, aunque fuera en algo pequeño.',
+       acts:['Calculé ROI / ROAS','Armé reportes periódicos','Presenté resultados al equipo','Propuse mejoras con base en datos']},
+      {name:'Nivel de inglés', q:'Tu CV dice B1. La vacante pide intermedio-alto. ¿Tu nivel real hoy es otro?', lift:4, type:'level',
+       whatis:'Tu nivel real de hoy, el que defenderías en una llamada. Con certificado mejor; sin certificado lo marcamos como autoevaluado. Lo que no hacemos es inventarlo.'}
+    ],
+    cvName:'María Fernández', cvMeta:'maria@correo.com · Santiago, Chile · linkedin.com/in/mariaf',
+    cvBody:[
+      {h:'Perfil profesional', t:'Especialista en marketing digital con experiencia en <span class="hl">campañas pagadas</span>, <span class="hl">métricas</span> y coordinación de contenido para adquisición.'},
+      {h:'Experiencia', list:['Gestioné campañas digitales para productos propios y clientes pequeños.','Analicé <span class="hl">métricas</span> semanales y propuse mejoras de adquisición.','Coordiné contenido y diseño para piezas de campaña.']},
+      {h:'Idiomas', list:['Español — Nativo','Inglés — B1']}
+    ],
+    letterShort:'Hola, soy María Fernández. Vi la vacante de Especialista en Marketing Digital y adapté mi CV a lo que piden: campañas pagadas, métricas y reportes con resultados. Me encantaría conversar. Adjunto mi CV.',
+    letterFormal:'Estimado equipo de selección:\n\nMe postulo a la vacante de Especialista en Marketing Digital. Mi experiencia en campañas pagadas, análisis de métricas y coordinación de contenido conecta directamente con lo que buscan. Adjunto mi CV adaptado a esta posición.\n\nQuedo atenta a una conversación.\nMaría Fernández',
+    next:'<p><b>Este análisis fue para esta vacante.</b> ¿A cuántas más estás aplicando esta semana?</p><button class="btn btn-ghost">Analizar otra vacante →</button>'
+  },
+  mid: {
+    cv:'Maria_Fernandez_CV.pdf',
+    vac:'Buscamos especialista en marketing digital con dominio de Meta Ads, análisis de métricas de campañas y reportes de ROI mensuales. Inglés B2 deseable.',
+    reqs:5, from:44, to:58,
+    t1Title:'Hay base real. Y margen para subir.',
+    t1Sub:'Tus skills blandas pesan a tu favor. Estas 3 preguntas pueden cambiar el número.',
+    verdict:'Reforzamos <b>todo lo real que conecta</b>. La vacante pide 3 cosas que tu CV no muestra todavía — si las viviste, confírmalas abajo. Si no, tu CV queda honesto igual.',
+    gaps:[
+      {name:'Campañas de Meta Ads', q:'Obligatorio en la vacante. Tu CV no lo muestra.', lift:6, type:'acts',
+       whatis:'Cuenta cualquier campaña real que hayas creado u operado.',
+       acts:['Creé y configuré campañas','Segmenté audiencias','Optimicé presupuesto','Hice A/B testing de creativos','Usé el Pixel / eventos']},
+      {name:'Análisis de métricas de campañas', q:'Tu CV lo muestra parcialmente.', lift:5, type:'acts',
+       whatis:'Cuenta si seguiste números de campañas reales y decidiste con ellos.',
+       acts:['Analicé ROAS / CPC / CPA','Monitoreé campañas activas','Optimicé con base en datos','Documenté aprendizajes']},
+      {name:'Nivel de inglés', q:'Tu CV dice B1. La vacante pide B2. ¿Tu nivel real hoy es otro?', lift:4, type:'level',
+       whatis:'Tu nivel real de hoy. Con certificado mejor; sin certificado lo marcamos como autoevaluado.'}
+    ],
+    cvName:'María Fernández', cvMeta:'maria@correo.com · Santiago, Chile · linkedin.com/in/mariaf',
+    cvBody:[
+      {h:'Perfil profesional', t:'Especialista en marketing digital con experiencia en contenidos, <span class="hl">comunicación</span> y análisis de <span class="hl">métricas</span> para campañas.'},
+      {h:'Experiencia', list:['Gestioné campañas digitales con foco en resultados.','Revisé <span class="hl">métricas</span> de campañas mensuales.','Coordiné contenido y diseño para piezas de campaña.']},
+      {h:'Idiomas', list:['Español — Nativo','Inglés — B1']}
+    ],
+    letterShort:'Hola, soy María Fernández. Adapté mi CV a la vacante de Especialista en Marketing Digital: métricas, campañas y comunicación con resultados reales. Me encantaría conversar. Adjunto mi CV.',
+    letterFormal:'Estimado equipo de selección:\n\nMe postulo a la vacante de Especialista en Marketing Digital. Adjunto mi CV adaptado a esta posición, con mi experiencia real en métricas, campañas y comunicación.\n\nQuedo atenta.\nMaría Fernández',
+    next:'<p><b>Este análisis fue para esta vacante.</b> ¿A cuántas más estás aplicando esta semana?</p><button class="btn btn-ghost">Analizar otra vacante →</button>'
+  },
+  far: {
+    cv:'Rosa_Alvarez_CV.pdf',
+    vac:'About the job: We are seeking an AI Conversational Agents Specialist to lead the design, implementation, and integration of AI-powered solutions leveraging LLMs. Requirements: 3–5 years developing conversational AI, chatbots, NLP and LLM-based agents. Fluent English (B2+ or C1). Valid U.S. visa required.',
+    reqs:7, from:21, to:27,
+    t1Title:'Hay distancia con esta vacante. Preguntemos antes de sentenciar.',
+    t1Sub:'Reforzamos todo lo real. Y estas 5 preguntas pueden cambiar el número — hasta +32.',
+    verdict:'Tu gestión de productos, tu research y tus resultados <b>ya están reforzados</b>. La vacante pide varias cosas que tu CV todavía no muestra — pero <b>nada se da por perdido sin preguntar</b>. Lo que sí viviste, sube. Lo que no, te lo decimos derecho y sin drama.',
+    gaps:[
+      {name:'Visa de EE. UU. vigente', q:'La vacante la exige. ¿La tienes?', lift:8, type:'binary',
+       whatis:'Solo cuenta una visa vigente que te autorice a trabajar en EE. UU. Es un requisito legal — por eso preguntamos directo.',
+       line:'Autorización de trabajo: visa de EE. UU. vigente.',
+       noNote:'<b>Gracias por la honestidad.</b> Esta vacante lo exige por ley — ningún CV lo arregla, y no es un defecto tuyo. Tu crédito rinde más en vacantes sin este requisito.'},
+      {name:'Experiencia construyendo con IA', q:'La vacante pide años construyendo soluciones con IA. ¿Lo has hecho — aunque sea en proyectos propios que no están en tu CV?', lift:9, type:'acts', dur:true,
+       whatis:'Cuenta lo real aunque nunca haya sido un empleo: chatbots que armaste, agentes que configuraste, automatizaciones con LLMs. Los proyectos propios son experiencia.',
+       acts:['Construí chatbots / agentes con LLMs','Diseñé prompts y flujos conversacionales','Automaticé procesos con herramientas de IA','Integré modelos (OpenAI, Claude, etc.) en productos','Lancé un producto con IA a usuarios reales']},
+      {name:'Nivel de inglés', q:'Tu CV dice B1. La vacante exige B2+ o C1. ¿Tu nivel real hoy es otro?', lift:6, type:'level',
+       whatis:'El nivel que defenderías en una entrevista en inglés. Si sigue en B1, dejarlo así también te protege.'},
+      {name:'Integraciones con APIs', q:'La vacante lo pide. ¿Has conectado sistemas de verdad?', lift:4, type:'acts',
+       whatis:'Cuenta si conectaste herramientas o automatizaste flujos reales, en cualquier contexto.',
+       acts:['Conecté herramientas vía API','Configuré webhooks / integraciones','Automaticé flujos entre apps','Documenté integraciones']},
+      {name:'Herramientas de IA que dominas', q:'La vacante valora el stack. ¿Cuáles usas de verdad?', lift:5, type:'acts',
+       whatis:'Marca solo las que podrías abrir hoy y usar sin tutorial.',
+       acts:['APIs de OpenAI / Anthropic','Plataformas de agentes (n8n, Make, etc.)','Bases vectoriales / RAG básico','Prompting avanzado','Modelos open-source locales']}
+    ],
+    cvName:'Rosa Álvarez', cvMeta:'rosa.alvarez@gmail.com · Colombia · linkedin.com/in/rosita-alvarez',
+    cvBody:[
+      {h:'Perfil profesional', t:'Ingeniera de Sistemas con experiencia sólida en <span class="hl">gestión de productos</span> digitales, <span class="hl">investigación de usuarios</span> y transformación digital.'},
+      {h:'Experiencia', list:['Lideré el ciclo completo de productos: de la investigación a la optimización.','Implementé estrategias de <span class="hl">investigación de usuarios</span> — 600 nuevos suscriptores.','Optimicé conversión en 10% mediante pruebas A/B.']},
+      {h:'Idiomas', list:['Español — Nativo','Inglés — B1']}
+    ],
+    letterShort:'Hola, soy Rosa Álvarez. Adapté mi CV a la vacante de AI Conversational Agents Specialist con mi experiencia real construyendo productos con IA. Me encantaría conversar. Adjunto mi CV.',
+    letterFormal:'Dear hiring team:\n\nI am applying for the AI Conversational Agents Specialist role. My CV is adapted to this position with my real experience building AI-powered products. I would love to talk.\n\nBest regards,\nRosa Álvarez',
+    next:'<p><b>Este resultado queda guardado en tu panel.</b> Cuando encuentres una vacante más cercana, tu CV base ya está listo — el análisis toma 2 minutos.</p><button class="btn btn-primary">Buscar mejor encaje · Analizar otra vacante →</button>'
+  }
+};
+
+let cur=null, target=0, answered=0;
+const gapState={};
+const $=id=>document.getElementById(id);
+const screens=['sc-intro','sc-input','sc-work','sc-t1','sc-gen','sc-t2'];
+function show(id){ screens.forEach(s=>$(s).classList.toggle('on',s===id)); $('action-bar').classList.toggle('on', id==='sc-t1'); window.scrollTo({top:0}); }
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),2600);}
+
+document.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click',()=>startScenario(b.dataset.s)));
+function startScenario(key){
+  cur=key; const S=SCEN[key];
+  $('pills').style.display='flex';
+  document.querySelectorAll('.scen-pill').forEach(p=>p.classList.toggle('on',p.dataset.s===key));
+  $('cv-name').textContent=S.cv; $('vac').value=S.vac;
+  show('sc-input');
+}
+
+$('go-analyze').addEventListener('click',()=>{
+  const S=SCEN[cur]; show('sc-work');
+  const steps=document.querySelectorAll('#work-steps .stp');
+  steps.forEach(s=>s.classList.remove('on'));
+  steps[0].classList.add('on');
+  setTimeout(()=>{steps[1].classList.add('on');$('ws-2').textContent=`Detectamos ${S.reqs} requisitos — sabemos cuáles pesan más`;},900);
+  setTimeout(()=>steps[2].classList.add('on'),1900);
+  setTimeout(()=>renderT1(),3200);
+});
+
+/* gauge */
+const CIRC = 2*Math.PI*82;
+function setGauge(v){
+  $('g-fill').style.strokeDasharray = CIRC;
+  $('g-fill').style.strokeDashoffset = CIRC*(1 - v/100);
+}
+function animateNum(el, from, to, after){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent=to; if(after)after(); return; }
+  let v=from; el.textContent=v;
+  const dir = to>=v?1:-1;
+  const step=()=>{ v+=dir*Math.max(1,Math.round(Math.abs(to-v)/6));
+    if((dir===1&&v>=to)||(dir===-1&&v<=to)){el.textContent=to; if(after)after(); return;}
+    el.textContent=v; requestAnimationFrame(()=>setTimeout(step,40)); };
+  setTimeout(step,200);
+}
+
+function renderT1(){
+  const S=SCEN[cur];
+  target=S.to; answered=0;
+  Object.keys(gapState).forEach(k=>delete gapState[k]);
+  $('t1-title').textContent=S.t1Title;
+  $('t1-sub').textContent=S.t1Sub;
+  $('d-verdict').innerHTML=S.verdict;
+  $('d-from').textContent=S.from;
+  $('d-gain').style.display='none';
+  $('boost-title').textContent=`${S.gaps.length} preguntas rápidas`;
+  const totalLift=S.gaps.reduce((a,g)=>a+g.lift,0);
+  $('total-pill').textContent=`Hasta +${totalLift} en juego`;
+  $('ab-num').textContent=S.to;
+  updateProgress();
+
+  $('gaps').innerHTML=S.gaps.map((g,i)=>{
+    const isLevel=g.type==='level', isBin=g.type==='binary';
+    let actsHTML='';
+    if(isLevel) actsHTML=LEVELS.map((a,j)=>actBtn(i,j,a)).join('');
+    else if(!isBin) actsHTML=g.acts.map((a,j)=>actBtn(i,j,a)).join('');
+    const durHTML=g.dur?`<div class="src-block"><p class="step-q" style="margin-top:2px">¿Hace cuánto?</p><div class="src-grid">${Object.keys(DUR_FRAG).map(d=>`<button class="src" onclick="pickDur(${i},this,'${d}')">${d}</button>`).join('')}</div></div>`:'';
+    const srcHTML=(isLevel?CERTS:Object.keys(SRC_FRAG)).map(s=>`<button class="src" onclick="pickSrc(${i},this,'${s}')">${s}</button>`).join('');
+    const firstChips=isBin
+      ?`<button class="chip" onclick="binYes(${i})">Sí, la tengo</button><button class="chip" onclick="binNo(${i})">No la tengo</button>`
+      :`<button class="chip" onclick="startGap(${i})">${isLevel?'Actualizar mi nivel':'Sí, lo viví'}</button>${isLevel?'':'<button class="chip" onclick="startGap('+i+')">Tengo algo básico</button>'}<button class="chip" onclick="dismissGap(${i})">${isLevel?'Sigue igual':'No aplica'}</button>`;
+    return `
+    <div class="gap ${isBin?'binary':''}" id="gap-${i}" style="animation-delay:${i*0.06}s">
+      <div class="gap-top"><span class="gap-name">${g.name}</span><span class="gap-lift">+${g.lift} pts</span></div>
+      <p class="gap-q">${g.q} <button class="whatis" onclick="toggleWhat(${i})">¿Qué cuenta?</button></p>
+      <div class="whatis-box" id="what-${i}">${g.whatis}</div>
+      <div class="gap-acts">${firstChips}</div>
+      ${isBin?'':`
+      <div class="acts-step">
+        <p class="step-q">${isLevel?'¿Tu nivel real hoy?':'¿Cuáles de estas hiciste de verdad?'}</p>
+        <p class="step-hint">${isLevel?'El que defenderías en una llamada real.':'Marca solo lo real — puedes marcar varias.'}</p>
+        <div class="act-grid">${actsHTML}</div>
+      </div>
+      <div class="src-step">${durHTML}
+        <div class="src-block"><p class="step-q" style="margin-top:2px">${isLevel?'¿Cómo lo respaldas?':'¿Dónde lo hiciste?'}</p>
+        <div class="src-grid">${srcHTML}</div></div>
+      </div>`}
+      <div class="confirm-step">
+        <div class="line-preview"><span class="lp-label">Así quedaría en tu CV</span><span id="prev-${i}"></span></div>
+        <div class="confirm-row">
+          <button class="btn-add ${isBin?'':'dis'}" id="add-${i}" onclick="confirmGap(${i})">Sumar a mi CV · +${g.lift}</button>
+          <span class="confirm-hint" id="hint-${i}" ${isBin?'style="display:none"':''}>${isLevel?'↑ falta cómo lo respaldas':(g.dur?'↑ falta hace cuánto y dónde':'↑ falta elegir dónde lo hiciste')}</span>
+          <button class="lnk" onclick="resetGap(${i})">Empezar de nuevo</button>
+        </div>
+      </div>
+      <div class="gap-done-row">
+        <div class="done-head"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Sumado — construido con tus taps</div>
+        <div class="done-line" id="done-${i}"></div>
+        <button class="lnk done-undo" onclick="undoGap(${i})">Quitar</button>
+      </div>
+      <div class="gap-note-row">
+        <p class="note-text" id="note-${i}"></p>
+        <button class="lnk done-undo" onclick="resetGap(${i})">Cambiar mi respuesta</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  show('sc-t1');
+  setGauge(0); $('g-num').textContent=0;
+  setTimeout(()=>{ setGauge(S.to); animateNum($('g-num'), S.from, S.to); },350);
+}
+
+function actBtn(i,j,a){return `<button class="act" id="act-${i}-${j}" onclick="toggleAct(${i},${j})"><span class="tick"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>${a}</button>`;}
+
+function st(i){return gapState[i]||(gapState[i]={acts:new Set(),src:null,dur:null});}
+function G(i){return SCEN[cur].gaps[i];}
+function isLevel(i){return G(i).type==='level';}
+
+function updateProgress(){
+  const S=SCEN[cur];
+  const resolved=document.querySelectorAll('.gap.done,.gap.noted,.gap[data-skip]').length;
+  $('qs-bar').style.width=(resolved/S.gaps.length*100)+'%';
+  $('ab-count').textContent=`${resolved} de ${S.gaps.length} respondidas`;
+}
+function bumpScore(newTarget){
+  const S=SCEN[cur];
+  const old=target; target=newTarget;
+  setGauge(target);
+  animateNum($('g-num'), old, target);
+  animateNum($('ab-num'), old, target);
+  const gain=target-S.to;
+  const g=$('d-gain');
+  if(gain>0){g.style.display='inline-block';g.textContent=`+${gain} con tu verdad`;}else{g.style.display='none';}
+}
+
+window.startGap=i=>{$(`gap-${i}`).classList.add('s-acts');};
+window.toggleWhat=i=>$(`what-${i}`).classList.toggle('show');
+window.binYes=i=>{$(`gap-${i}`).classList.add('s-confirm');$(`prev-${i}`).textContent=G(i).line;};
+window.binNo=i=>{const el=$(`gap-${i}`);el.classList.remove('s-confirm');el.classList.add('noted');$(`note-${i}`).innerHTML=G(i).noNote;updateProgress();toast('Anotado con honestidad — nada se inventa.');};
+
+window.toggleAct=(i,j)=>{
+  const s=st(i),el=$(`act-${i}-${j}`),gap=$(`gap-${i}`);
+  const list=isLevel(i)?LEVELS:G(i).acts; const a=list[j];
+  if(isLevel(i)){s.acts.clear();gap.querySelectorAll('.act').forEach(x=>x.classList.remove('sel'));s.acts.add(a);el.classList.add('sel');}
+  else{ if(s.acts.has(a)){s.acts.delete(a);el.classList.remove('sel');}else{s.acts.add(a);el.classList.add('sel');} }
+  if(s.acts.size>0){gap.classList.add('s-src','s-confirm');updatePreview(i);refreshAddState(i);}
+  else{gap.classList.remove('s-src','s-confirm');}
+};
+window.pickSrc=(i,el,name)=>{const s=st(i);s.src=name;el.parentElement.querySelectorAll('.src').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');updatePreview(i);refreshAddState(i);};
+window.pickDur=(i,el,name)=>{const s=st(i);s.dur=name;el.parentElement.querySelectorAll('.src').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');updatePreview(i);refreshAddState(i);};
+
+function refreshAddState(i){
+  const g=G(i),s=st(i);
+  const ready=s.acts.size>0&&!!s.src&&(!g.dur||!!s.dur);
+  $(`add-${i}`).classList.toggle('dis',!ready);
+  $(`hint-${i}`).style.display=ready?'none':'inline';
+}
+function composeLine(i){
+  const g=G(i),s=st(i);
+  if(g.type==='binary')return g.line;
+  if(isLevel(i)){
+    const lvl=([...s.acts][0]||'…').split(' ')[0];
+    const cert=s.src?(s.src.startsWith('Con')?'certificado':'autoevaluado'):'…';
+    return `Inglés — ${lvl} (${cert})`;
+  }
+  const acts=[...s.acts].map(a=>a.charAt(0).toLowerCase()+a.slice(1));
+  let frag=acts.length===1?acts[0]:acts.slice(0,-1).join(', ')+' y '+acts[acts.length-1];
+  const src=s.src?SRC_FRAG[s.src].charAt(0).toUpperCase()+SRC_FRAG[s.src].slice(1):'…';
+  const dur=g.dur?(s.dur?`, ${DUR_FRAG[s.dur]}`:', …'):'';
+  return `${src}${dur}: ${frag}.`;
+}
+function updatePreview(i){
+  const s=st(i);
+  if(isLevel(i)&&[...s.acts][0]===LEVELS[0]){
+    $(`prev-${i}`).textContent='Tu CV ya dice B1 — no hay nada que cambiar, y dejarlo honesto también te protege.';
+    $(`add-${i}`).classList.add('dis');$(`hint-${i}`).style.display='none';return;
+  }
+  $(`prev-${i}`).textContent=composeLine(i);
+}
+window.confirmGap=i=>{
+  const g=G(i),el=$(`gap-${i}`);
+  const line=composeLine(i);
+  el.className='gap done'+(g.type==='binary'?' binary':'');
+  $(`done-${i}`).textContent=line;
+  g._line=line; g._on=true;
+  bumpScore(target+g.lift);
+  updateProgress();
+  toast(`Subiste a ${target} — cada palabra salió de tus taps.`);
+};
+window.undoGap=i=>{
+  const g=G(i); g._on=false; g._line=null;
+  bumpScore(target-g.lift);
+  resetGap(i); updateProgress();
+  toast('Quitado. Nada queda sin tu permiso.');
+};
+window.resetGap=i=>{
+  const el=$(`gap-${i}`);
+  el.className='gap'+(G(i).type==='binary'?' binary':'');
+  el.removeAttribute('data-skip');
+  gapState[i]={acts:new Set(),src:null,dur:null};
+  el.querySelectorAll('.act').forEach(a=>a.classList.remove('sel'));
+  el.querySelectorAll('.src').forEach(s=>s.classList.remove('sel'));
+  updateProgress();
+};
+window.dismissGap=i=>{const el=$(`gap-${i}`);el.setAttribute('data-skip','1');el.style.display='none';updateProgress();toast('Listo — eso se queda por fuera. Nada se inventa.');};
+
+/* tiempo 1 → generar → tiempo 2 */
+$('ab-go').addEventListener('click', goGenerate);
+$('ab-skip').addEventListener('click', goGenerate);
+function goGenerate(){
+  show('sc-gen');
+  setTimeout(renderT2, 1700);
+}
+function renderT2(){
+  const S=SCEN[cur];
+  $('dh-from').textContent=S.from;
+  $('t2-sub').textContent='Adaptado a esta vacante, con tu experiencia real — nada inventado.';
+  const confirmed=S.gaps.filter(g=>g._on);
+  $('chips-summary').innerHTML = confirmed.length
+    ? confirmed.map((g,k)=>`<span class="cs-chip" style="animation-delay:${k*0.08}s"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>${g.name}</span>`).join('')
+    : `<span class="cs-chip">Reforzado con tu experiencia real del CV</span>`;
+  /* cv doc */
+  $('cv-doc').innerHTML=`<p class="name">${S.cvName}</p><p class="meta">${S.cvMeta}</p>`+
+    S.cvBody.map(b=>`<h4>${b.h}</h4>`+(b.t?`<p>${b.t}</p>`:`<ul>${b.list.map(l=>`<li>${l}</li>`).join('')}</ul>`)).join('');
+  document.querySelectorAll('#cv-doc li').forEach(li=>{if(li.textContent.startsWith('Inglés'))li.id='lang-line';});
+  confirmed.forEach(g=>{
+    if(g.type==='level'){const li=$('lang-line');if(li)li.innerHTML=`Inglés — <span class="hl">${g._line.replace('Inglés — ','')}</span>`;}
+    else{const ul=document.querySelector('#cv-doc ul');if(ul){const li=document.createElement('li');li.className='new-line';li.textContent=g._line;ul.prepend(li);}}
+  });
+  $('letter-body').textContent=S.letterShort;
+  $('seg-short').classList.add('on');$('seg-formal').classList.remove('on');
+  $('next-block').innerHTML=S.next;
+  show('sc-t2');
+  $('dh-to').textContent=S.from;
+  setTimeout(()=>animateNum($('dh-to'), S.from, target),350);
+}
+window.setLetter=k=>{
+  const S=SCEN[cur];
+  $('letter-body').textContent = k==='short'?S.letterShort:S.letterFormal;
+  $('seg-short').classList.toggle('on',k==='short');
+  $('seg-formal').classList.toggle('on',k==='formal');
+};
+window.toast=toast;
+$('dl-btn').addEventListener('click',()=>toast('En el producto real: descarga tu PDF aquí.'));
+</script>
+</body>
+</html>
