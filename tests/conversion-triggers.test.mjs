@@ -70,13 +70,15 @@ test('email renders include required Spanish copy, delta, CTA and unsubscribe', 
   const day6 = buildAnalysisEmail('day6', context)
 
   assert.match(day0.subject, /listo/i)
-  assert.match(day0.text, /54 → 81/)
+  assert.match(day0.text, /Tu CV pasó de 54 a 81 para esta vacante/)
+  assert.doesNotMatch(day0.text, /Delta real/i)
   assert.match(day0.html, /Darse de baja/)
   assert.match(day2.subject, /Ya aplicaste con tu CV adaptado/i)
   assert.match(day2.text, /siguiente vacante pide cosas distintas/i)
   assert.match(day2.html, /Analizar mi próxima vacante/)
   assert.match(day6.subject, /Tu CV pasó de 54 a 81/i)
   assert.match(day6.text, /haz lo mismo con la siguiente/i)
+  assert.doesNotMatch(day6.text, /delta real/i)
   assert.match(day6.html, /Darse de baja/)
 })
 

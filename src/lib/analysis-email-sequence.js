@@ -99,11 +99,11 @@ export function buildAnalysisEmail(step, context) {
     const original = Math.round(Number(context.originalScore ?? context.original_score ?? 0))
     const adapted = Math.round(Number(context.adaptedScore ?? context.adapted_score ?? 0))
     const subject = original && adapted ? `Tu CV pasó de ${original} a ${adapted} para esa vacante` : 'Haz lo mismo con tu siguiente vacante'
-    const paragraph = `Para ${vacancyTitle}, tu delta real fue ${delta}. Haz lo mismo con la siguiente: cada vacante pide evidencia y keywords distintas.`
+    const paragraph = `Para ${vacancyTitle}, tu CV pasó de ${delta.replace(' → ', ' a ')}. Haz lo mismo con la siguiente: cada vacante pide evidencia y keywords distintas.`
     return { subject, html: layout(subject, `<p style="line-height:1.7;color:#334155">${paragraph}</p>${button('Analizar la siguiente vacante', analyzeUrl)}`, unsubscribeUrl), text: `${paragraph}\nAnalizar: ${analyzeUrl}\nDarse de baja: ${unsubscribeUrl}` }
   }
 
   const subject = 'Tu CV adaptado está listo en RevisaMiCV'
-  const paragraph = `Terminamos tu análisis para ${vacancyTitle}. Delta real: ${delta}. Puedes volver al dashboard para recuperar el resultado y descargar tu CV otra vez.`
+  const paragraph = `Terminamos tu análisis para ${vacancyTitle}. Tu CV pasó de ${delta.replace(' → ', ' a ')} para esta vacante. Puedes volver al dashboard para recuperar el resultado y descargar tu CV otra vez.`
   return { subject, html: layout(subject, `<p style="line-height:1.7;color:#334155">${paragraph}</p>${button('Ver mi resultado', dashboardUrl)}`, unsubscribeUrl), text: `${paragraph}\nDashboard: ${dashboardUrl}\nDarse de baja: ${unsubscribeUrl}` }
 }

@@ -89,6 +89,12 @@ function getAnalysisTitle(itemOrPreview: HistoryItem | string) {
     .slice(0, 92) || 'Vacante analizada'
 }
 
+function formatSpanishDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
+}
+
 function getAnalysisMeta(item: HistoryItem) {
   const clean = stripJobMarkdown(item.job_preview)
   const location = extractLabel(clean, 'Location') || extractLabel(clean, 'Ubicación')
@@ -97,7 +103,7 @@ function getAnalysisMeta(item: HistoryItem) {
     location,
     commitment,
     item.output_language === 'english' ? 'English' : 'Español',
-    new Date(item.created_at).toLocaleDateString(),
+    formatSpanishDate(item.created_at),
   ].filter(Boolean)
   return meta.join(' · ')
 }
@@ -388,7 +394,7 @@ export default function DashboardPage() {
             <a href="/dashboard" aria-label="Mi panel" className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:border-[var(--color-primary)]">
               <UserIcon className="h-4 w-4" />
               <span className="hidden sm:inline">Mi panel</span>
-              {user && <b className="text-[var(--color-secondary-deep)]">{user.tokens}</b>}
+              {user && <span className="rounded-full bg-[var(--color-paper-2)] px-2 py-0.5 text-[11px] font-bold text-[var(--color-secondary-deep)]">Créditos: {user.tokens}</span>}
             </a>
           </div>
         </div>
@@ -400,7 +406,7 @@ export default function DashboardPage() {
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--color-secondary-deep)]">Mi panel</p>
             <h1 className="mt-2 font-display text-4xl font-semibold text-[var(--color-ink)] md:text-[2.3rem]">Hola de nuevo.</h1>
           </div>
-          <a href="/analizar" className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-[var(--color-ink)] shadow-[0_14px_38px_-12px_rgba(245,128,10,.55)] transition hover:-translate-y-0.5">
+          <a href="/analizar" className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-4 text-base font-bold text-white shadow-[0_14px_38px_-12px_rgba(245,128,10,.55)] transition hover:-translate-y-0.5 hover:bg-[var(--color-primary-deep)]">
             Analizar nueva vacante →
           </a>
         </header>
@@ -439,7 +445,7 @@ export default function DashboardPage() {
               {loading ? 'Cargando...' : authToken ? 'Actualizar panel' : 'Enviar enlace seguro'}
             </button>
             {checkoutIntent && selectedPack && (
-              <button type="button" onClick={() => openCheckout(selectedPack)} className="min-h-12 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-[var(--color-ink)]">Confirmar compra</button>
+              <button type="button" onClick={() => openCheckout(selectedPack)} className="min-h-12 rounded-xl bg-[var(--color-primary)] px-5 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)]">Confirmar compra</button>
             )}
           </form>
           {notice && <p className="mt-4 rounded-xl border border-[#CFE0FF] bg-[#F3F8FF] p-3 text-sm text-[#38527A]">{notice}</p>}
@@ -495,8 +501,8 @@ export default function DashboardPage() {
               const highlighted = isSmartSelected || p.popular
               return (
               <div key={pack} className={`relative flex flex-col rounded-2xl border bg-white p-6 ${highlighted ? 'border-[var(--color-primary)] shadow-[0_22px_56px_-28px_rgba(45,107,224,.5)]' : 'border-[var(--color-line)]'}`}>
-                {isSmartSelected && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Recomendado para ti</span>}
-                {!isSmartSelected && p.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white">Más elegido</span>}
+                {isSmartSelected && <span className="absolute -top-3 left-1/2 min-w-max -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--color-primary)] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-white">Recomendado para ti</span>}
+                {!isSmartSelected && p.popular && <span className="absolute -top-3 left-1/2 min-w-max -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--color-primary)] px-3 py-1 text-center text-[11px] font-bold uppercase tracking-wide text-white">Más elegido</span>}
                 <h3 className="font-display text-xl font-semibold text-[var(--color-ink)]">{p.name}</h3>
                 <p className="mt-2 font-display text-4xl font-bold text-[var(--color-ink)]">${p.priceUSD}<small className="ml-1 text-sm font-medium text-[var(--color-ink-soft)]">USD</small></p>
                 <p className="mb-5 mt-1 text-sm text-[var(--color-ink-soft)]">{p.cvCount} análisis · {pricePerCv(p.priceUSD, p.cvCount)}</p>
@@ -531,7 +537,7 @@ export default function DashboardPage() {
               <li>✓ Stripe procesa el pago de forma segura. No guardamos tu tarjeta.</li>
             </ul>
             <div className="px-6 pb-6">
-              <button type="button" onClick={() => handleBuy(selectedPack)} disabled={loading} className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-4 text-base font-bold text-[var(--color-ink)] shadow-[0_12px_30px_-10px_rgba(245,128,10,.5)] transition hover:bg-[var(--color-primary-deep)] hover:text-white disabled:opacity-60">
+              <button type="button" onClick={() => handleBuy(selectedPack)} disabled={loading} className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-4 text-base font-bold text-white shadow-[0_12px_30px_-10px_rgba(245,128,10,.5)] transition hover:bg-[var(--color-primary-deep)] disabled:opacity-60">
                 {loading ? 'Abriendo Stripe...' : `Pagar $${selectedPackDetails.priceUSD} USD con Stripe →`}
               </button>
               <p className="mt-3 text-center text-xs text-[var(--color-ink-soft)]">Te llevamos a Stripe para completar el pago de forma segura.</p>

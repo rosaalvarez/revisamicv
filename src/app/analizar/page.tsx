@@ -1860,6 +1860,12 @@ Requisitos:
                   <button onClick={() => downloadFile('txt')} disabled={!!downloadLoading || !canDownloadCv} className="rounded-xl border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-bold text-[var(--color-ink)] hover:border-[var(--color-primary)] disabled:opacity-50">TXT</button>
                 </div>
 
+                <div className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
+                  {canDownloadCv ? renderOptimizedCV(cvForActions, outputLanguage, result.keywordsToInclude || []) : (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
+                  )}
+                </div>
+
                 {downloadedVacancyTitle ? (
                   <section className="mx-auto max-w-[620px] rounded-2xl border border-[#CFE0FF] bg-[#F6FAFF] p-5 text-center shadow-sm">
                     <p className="text-sm font-semibold leading-6 text-[var(--color-ink)]">Tu CV quedó adaptado para {downloadedVacancyTitle}. Tu CV base ya está guardado — el próximo análisis toma 2 minutos.</p>
@@ -1871,12 +1877,6 @@ Requisitos:
                     <a href={anotherVacancyHref} className="mt-4 inline-flex rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white hover:bg-[var(--color-primary-deep)]">Analizar otra vacante →</a>
                   </section>
                 )}
-
-                <div className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-soft)] md:p-10">
-                  {canDownloadCv ? renderOptimizedCV(cvForActions, outputLanguage, result.keywordsToInclude || []) : (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">Para evitar un CV vacío o inventado, responde las preguntas rápidas o abre el editor y completa datos reales antes de descargar.</div>
-                  )}
-                </div>
 
                 {(result?.coverLetterShort || result?.coverLetterFormal || result?.coverLetter) ? (
                   <section className="mx-auto max-w-[620px] rounded-[14px] border border-[var(--color-line)] bg-white p-5 shadow-[var(--shadow-soft)]">
