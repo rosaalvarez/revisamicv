@@ -79,6 +79,56 @@ export function createAnalysisDraftKey(email) {
   return `revisamicv:analysis-draft:${normalizeEmail(email) || 'anonymous'}`
 }
 
+export function createCheckoutDraftKey(email) {
+  return `revisamicv:checkout-draft:${normalizeEmail(email) || 'anonymous'}`
+}
+
+export function buildCheckoutDraft(input = {}) {
+  const jobDescription = String(input.jobDescription || input.job_description || '')
+  const outputLanguage = input.outputLanguage === 'english' ? 'english' : 'spanish'
+  const email = normalizeEmail(input.email)
+  const savedCvText = String(input.savedCvText || input.saved_cv_text || '')
+  const cvReference = input.cvReference && typeof input.cvReference === 'object'
+    ? {
+        mode: input.cvReference.mode === 'uploaded_file' ? 'uploaded_file' : 'saved_cv',
+        fileName: String(input.cvReference.fileName || ''),
+        fileSize: Number(input.cvReference.fileSize || 0) || 0,
+        hasSavedText: Boolean(input.cvReference.hasSavedText || savedCvText.trim().length >= 200),
+        fileDataUrl: typeof input.cvReference.fileDataUrl === 'string' ? input.cvReference.fileDataUrl : '',
+      }
+    : {
+        mode: savedCvText.trim().length >= 200 ? 'saved_cv' : 'uploaded_file',
+        fileName: String(input.fileName || ''),
+        fileSize: Number(input.fileSize || 0) || 0,
+        hasSavedText: savedCvText.trim().length >= 200,
+      }
+
+  return {
+    kind: 'analysis_checkout_recovery',
+    version: 1,
+    email,
+    setupStep: 'vacancy',
+    jobDescription,
+    outputLanguage,
+    savedCvText: savedCvText.trim().length >= 200 ? savedCvText : '',
+    useSavedCv: savedCvText.trim().length >= 200,
+    cvReference,
+    savedAt: input.savedAt || new Date().toISOString(),
+  }
+}
+
+export function isRestorableCheckoutDraft(draft) {
+  return Boolean(
+    draft &&
+    draft.kind === 'analysis_checkout_recovery' &&
+    draft.setupStep === 'vacancy' &&
+    typeof draft.jobDescription === 'string' &&
+    draft.jobDescription.trim().length > 0 &&
+    (draft.outputLanguage === 'english' || draft.outputLanguage === 'spanish') &&
+    (draft.useSavedCv || draft.cvReference)
+  )
+}
+
 export function getEvidenceThermometer(result) {
   const score = scoreOf(result)
   const activeBand = EVIDENCE_BANDS.find((band) => score >= band.min && score <= band.max) || EVIDENCE_BANDS[0]

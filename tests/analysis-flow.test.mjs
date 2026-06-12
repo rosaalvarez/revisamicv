@@ -2,17 +2,45 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  buildCheckoutDraft,
   createAnalysisDraftKey,
+  createCheckoutDraftKey,
   getEvidenceStepState,
   getEvidenceThermometer,
   getInitialResultStep,
   getResultWizardSteps,
+  isRestorableCheckoutDraft,
   shouldShowEvidenceQuestions,
 } from '../src/lib/analysis-flow.js'
 
 test('createAnalysisDraftKey normalizes email for stable refresh recovery', () => {
   assert.equal(createAnalysisDraftKey(' Rosita@Example.COM '), 'revisamicv:analysis-draft:rosita@example.com')
   assert.equal(createAnalysisDraftKey(''), 'revisamicv:analysis-draft:anonymous')
+})
+
+test('checkout draft keeps step-2 vacancy, language and CV reference for Stripe round-trip restore', () => {
+  const draft = buildCheckoutDraft({
+    email: ' Rosita@Example.COM ',
+    jobDescription: 'Vacante real con requisitos y responsabilidades suficientes para restaurar.',
+    outputLanguage: 'english',
+    savedCvText: 'x'.repeat(240),
+    cvReference: { mode: 'saved_cv', fileName: 'cv.pdf', fileSize: 12345, fileDataUrl: 'data:application/pdf;base64,abc' },
+    savedAt: '2026-06-12T12:00:00.000Z',
+  })
+
+  assert.equal(createCheckoutDraftKey(' Rosita@Example.COM '), 'revisamicv:checkout-draft:rosita@example.com')
+  assert.equal(draft.email, 'rosita@example.com')
+  assert.equal(draft.setupStep, 'vacancy')
+  assert.equal(draft.jobDescription, 'Vacante real con requisitos y responsabilidades suficientes para restaurar.')
+  assert.equal(draft.outputLanguage, 'english')
+  assert.equal(draft.useSavedCv, true)
+  assert.equal(draft.cvReference.hasSavedText, true)
+  assert.equal(isRestorableCheckoutDraft(draft), true)
+})
+
+test('checkout draft rejects incomplete round-trip state instead of restoring a dead-end wizard', () => {
+  assert.equal(isRestorableCheckoutDraft({ kind: 'analysis_checkout_recovery', setupStep: 'vacancy', outputLanguage: 'spanish' }), false)
+  assert.equal(isRestorableCheckoutDraft(buildCheckoutDraft({ email: 'x@y.com', jobDescription: '', outputLanguage: 'spanish' })), false)
 })
 
 test('shouldShowEvidenceQuestions returns true only when evidence questions can help', () => {
