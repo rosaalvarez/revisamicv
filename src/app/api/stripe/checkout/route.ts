@@ -12,7 +12,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { pack, email } = await req.json()
+    const { pack, email, returnTo } = await req.json()
     const normalizedEmail = normalizeEmail(email || '')
     const emailError = validateEmail(normalizedEmail)
     if (emailError) return NextResponse.json({ error: 'invalid_email', message: emailError }, { status: 400 })
@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
     if (!packData) return NextResponse.json({ error: 'Invalid pack' }, { status: 400 })
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://revisamicv.lat').trim()
-    const success_url = `${appUrl}/dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(normalizedEmail)}`
-    const cancel_url = `${appUrl}/dashboard?payment=cancelled&email=${encodeURIComponent(normalizedEmail)}`
+    const checkoutReturnPath = returnTo === 'analysis' ? '/analizar' : '/dashboard'
+    const success_url = `${appUrl}${checkoutReturnPath}?payment=success&session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(normalizedEmail)}`
+    const cancel_url = `${appUrl}${checkoutReturnPath}?payment=cancelled&email=${encodeURIComponent(normalizedEmail)}`
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

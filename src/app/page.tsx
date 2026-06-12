@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { UserIcon } from '@/components/icons'
+import { UserIcon, TrendingUpIcon, AlertCircleIcon } from '@/components/icons'
 import { trackEvent } from '@/lib/analytics'
 
 const plans = [
@@ -114,7 +114,7 @@ export default function HomePage() {
               <div className="stakes-result">
                 <div>
                   <div className="label"><span /> El punto crítico</div>
-                  <blockquote>El silencio no siempre significa que no sirvas. A veces significa que tu CV no está diciendo lo que la vacante necesita leer.</blockquote>
+                  <blockquote>Si no te están llamando, puede que no sea tu experiencia. Puede que tu CV no esté mostrando todo lo que puedes aportar.</blockquote>
                 </div>
                 <p>Por eso RevisaMiCV cruza tu hoja de vida con la oferta real: para mostrar tu porcentaje de ajuste, las palabras que faltan, lo que sí juega a tu favor y cómo mejorar el CV antes de enviarlo.</p>
               </div>
@@ -145,8 +145,8 @@ export default function HomePage() {
                 <p>El análisis no se basa en consejos genéricos. Cruza tu experiencia con requisitos, keywords y contexto de la oferta.</p>
               </div>
               <div className="dt-right">
-                <div className="match"><b>Lo que ya juega a tu favor</b><p>Experiencia, herramientas y logros que sí conectan con la vacante.</p></div>
-                <div className="gap"><b>Lo que conviene ajustar</b><p>Palabras clave, evidencias o enfoques que hoy no están claros en tu CV.</p></div>
+                <div className="match"><TrendingUpIcon className="mini-icon" /><b>Lo que ya juega a tu favor</b><p>Experiencia, herramientas y logros que sí conectan con la vacante.</p></div>
+                <div className="gap"><AlertCircleIcon className="mini-icon" /><b>Lo que conviene ajustar</b><p>Palabras clave, evidencias o enfoques que hoy no están claros en tu CV.</p></div>
               </div>
             </div>
             <div className="diff-bottom">

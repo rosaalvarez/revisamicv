@@ -3,15 +3,16 @@
 
 import { useEffect, useState, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { UploadIcon, SparklesIcon, ShieldCheckIcon, CheckIcon, ArrowRightIcon, AlertCircleIcon, TrendingUpIcon, UserIcon } from '@/components/icons'
+import { UploadIcon, SparklesIcon, ShieldCheckIcon, CheckIcon, ArrowRightIcon, AlertCircleIcon, TrendingUpIcon, UserIcon, DocumentIcon } from '@/components/icons'
 import EditableCvForm from '@/components/EditableCvForm'
 import { getFriendlyApiError, validateCvFile, validateEmail, validateJobDescription, MIN_JOB_DESCRIPTION_CHARS } from '@/lib/input-validation'
 import { getFileExtensionForAnalytics, getFileSizeBucket, trackEvent } from '@/lib/analytics'
 import { optimizedCvToPlainText, getCvLabels } from '@/lib/cv-formatters'
 import { buildRiskyRevisionPrompt, buildLowScoreCoachingPrompt, coachBlockedChange, summarizeCvChanges } from '@/lib/result-ux'
 import { buildGapRecoveryQuestions, buildKeyRequirementRows, buildScoreBreakdownRows, getQuestionProjectedLift, normalizeUserDeclarations, sanitizeDocumentFraming } from '@/lib/result-phase2'
-import { createAnalysisDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
+import { buildCheckoutDraft, createAnalysisDraftKey, createCheckoutDraftKey, getEvidenceStepState, getInitialResultStep, getResultWizardSteps, isRestorableCheckoutDraft, shouldShowEvidenceQuestions } from '@/lib/analysis-flow'
 import { getSmartPackDefault, incrementStoredAnalysisCount, shouldShowLastCreditNotice } from '@/lib/conversion-triggers'
+import { TOKEN_PACKS } from '@/lib/token-rules'
 
 type ClarificationPrompt = {
   question: string
@@ -103,6 +104,31 @@ const revisionProgressSteps = [
 
 const fallbackClarificationOptions = ['Sí, la tengo', 'Tengo algo básico', 'No']
 const evidenceSourceOptions = ['Proyectos personales', 'Freelance', 'Empleo anterior', 'Estudios o cursos', 'Voluntariado']
+const PACKS = TOKEN_PACKS as Record<string, { name: string; cvCount: number; priceUSD: number; description: string; popular: boolean }>
+
+function pricePerCv(price: number, count: number) {
+  if (!count) return ''
+  return `$${(price / count).toFixed(2).replace('.00', '')} por vacante`
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(reader.error || new Error('No pude guardar el archivo'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function dataUrlToFile(dataUrl: string, fileName: string) {
+  const [header, data] = dataUrl.split(',')
+  if (!header || !data) return null
+  const mime = header.match(/data:([^;]+)/)?.[1] || 'application/octet-stream'
+  const binary = atob(data)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], fileName || 'cv-guardado.pdf', { type: mime })
+}
 
 function buildDownloadFilename(cv: any, format: 'pdf' | 'docx' | 'txt') {
   const rawName = typeof cv === 'object' ? (cv?.candidateName || cv?.name || 'candidato') : 'candidato'
@@ -1000,6 +1026,10 @@ export default function SignupPage() {
   const [coverLetterFormat, setCoverLetterFormat] = useState<'short' | 'formal'>('short')
   const [setupStep, setSetupStep] = useState<'cv-base' | 'vacancy'>('cv-base')
   const [activeResultStep, setActiveResultStep] = useState<'evidence' | 'context' | 'cv'>('evidence')
+  const [inlinePurchaseOpen, setInlinePurchaseOpen] = useState(false)
+  const [checkoutLoadingPack, setCheckoutLoadingPack] = useState('')
+  const [checkoutMessage, setCheckoutMessage] = useState('')
+  const [checkoutError, setCheckoutError] = useState('')
   const normalizedEmailForLinks = email.trim().toLowerCase()
   const dashboardHref = result?.dashboard_url || `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}`
   const cvForActions = editableCv || result?.optimizedCV
@@ -1020,8 +1050,11 @@ export default function SignupPage() {
   const anotherVacancyHref = result?.tokens_remaining === 0
     ? `/dashboard?email=${encodeURIComponent(normalizedEmailForLinks)}${result?.auth_token ? `&auth=${encodeURIComponent(result.auth_token)}` : ''}&pack=${getSmartPackDefault(lifetimeAnalyses)}#comprar`
     : '/analizar'
+  const smartCheckoutPack = PACKS[getSmartPackDefault(lifetimeAnalyses)] ? getSmartPackDefault(lifetimeAnalyses) : 'basic'
+  const packEntries = Object.entries(PACKS)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
     const savedEmail = window.localStorage.getItem('revisamicv_email')
     const savedJob = window.localStorage.getItem('revisamicv_job_description')
     const savedLanguage = window.localStorage.getItem('revisamicv_output_language') as 'english' | 'spanish' | null
@@ -1051,6 +1084,60 @@ export default function SignupPage() {
         }
       } catch {}
     }
+    const restoreDraftKey = window.localStorage.getItem('revisamicv:last-checkout-draft-key')
+    if (restoreDraftKey) {
+      try {
+        const draft = JSON.parse(window.localStorage.getItem(restoreDraftKey) || 'null')
+        if (isRestorableCheckoutDraft(draft)) {
+          if (draft.email) setEmail(draft.email)
+          setJobDescription(draft.jobDescription)
+          setOutputLanguage(draft.outputLanguage)
+          if (draft.savedCvText?.trim().length >= 200) {
+            setSavedCvText(draft.savedCvText)
+            setUseSavedCv(true)
+            window.localStorage.setItem('revisamicv_latest_cv_text', draft.savedCvText)
+          } else if (draft.cvReference?.fileDataUrl) {
+            const restoredFile = dataUrlToFile(draft.cvReference.fileDataUrl, draft.cvReference.fileName || 'cv-guardado.pdf')
+            if (restoredFile) {
+              setFile(restoredFile)
+              setUseSavedCv(false)
+            }
+          }
+          setSetupStep('vacancy')
+          setCheckoutMessage(params.get('payment') === 'success'
+            ? 'Pago confirmado. Recuperé tu vacante y tu CV para que sigas en el paso 2.'
+            : 'Recuperé tu borrador. Puedes seguir desde la vacante sin volver a pegarla.')
+        }
+      } catch {}
+    }
+    const payment = params.get('payment')
+    const sessionId = params.get('session_id') || ''
+    const paymentEmail = params.get('email') || savedEmail
+    if (payment === 'success' && sessionId && paymentEmail) {
+      setCheckoutMessage('Confirmando pago con Stripe y restaurando tu borrador...')
+      fetch('/api/stripe/recover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, email: paymentEmail.trim().toLowerCase() }),
+      })
+        .then(async (res) => {
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.message || data.error || 'No pude confirmar el pago')
+          if (data.auth_token) window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
+          if (typeof data.tokens === 'number') {
+            setUserCredits(data.tokens)
+            window.localStorage.setItem('revisamicv_tokens_remaining', String(data.tokens))
+          }
+          setInlinePurchaseOpen(false)
+          setCheckoutMessage('Pago confirmado. Volviste al paso 2 con tu vacante intacta: puedes analizar cuando quieras.')
+          trackEvent('analysis_checkout_recovery_completed', { pack: data.pack || 'unknown' })
+        })
+        .catch((err) => {
+          setCheckoutError(getFriendlyApiError(err.message, 'No pude confirmar el pago todavía. Si ya pagaste, espera unos segundos e intenta analizar de nuevo.'))
+          trackEvent('analysis_checkout_recovery_failed', { message: String(err.message || '').slice(0, 80) })
+        })
+    }
+    if (payment === 'cancelled') setCheckoutMessage('Pago cancelado. Tu vacante sigue aquí para que puedas continuar cuando quieras.')
     trackEvent('signup_view')
   }, [])
 
@@ -1135,6 +1222,89 @@ export default function SignupPage() {
     setSetupStep('vacancy')
   }
 
+  const persistCheckoutDraft = async () => {
+    let fileDataUrl = ''
+    let serializationWarning = ''
+    const hasSavedCvText = savedCvText.trim().length >= 200
+    const needsUploadedFileRestore = !useSavedCv && Boolean(file) && !hasSavedCvText
+
+    if (needsUploadedFileRestore && file) {
+      try {
+        fileDataUrl = await fileToDataUrl(file)
+      } catch {
+        serializationWarning = 'No pude guardar el archivo de CV en este navegador. Tu vacante sigue intacta aquí, pero para no perder el CV no abras Stripe todavía: sube un archivo más liviano o usa tu CV guardado antes de comprar.'
+      }
+    }
+
+    const draft = buildCheckoutDraft({
+      email,
+      jobDescription,
+      outputLanguage,
+      savedCvText,
+      cvReference: {
+        mode: useSavedCv ? 'saved_cv' : 'uploaded_file',
+        fileName: file?.name || (useSavedCv ? 'CV guardado' : ''),
+        fileSize: file?.size || 0,
+        hasSavedText: hasSavedCvText,
+        fileDataUrl,
+      },
+    })
+    const draftKey = createCheckoutDraftKey(email)
+    try {
+      window.localStorage.setItem(draftKey, JSON.stringify(draft))
+    } catch {
+      draft.cvReference.fileDataUrl = ''
+      try {
+        window.localStorage.setItem(draftKey, JSON.stringify(draft))
+      } catch {}
+      if (needsUploadedFileRestore) {
+        serializationWarning = 'El archivo de CV es demasiado grande para guardarlo en localStorage. Tu vacante quedó guardada, pero no voy a abrir Stripe para evitar que pierdas el CV: usa un archivo más liviano o tu CV guardado.'
+      }
+    }
+    window.localStorage.setItem('revisamicv:last-checkout-draft-key', draftKey)
+    window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
+    window.localStorage.setItem('revisamicv_job_description', jobDescription)
+    window.localStorage.setItem('revisamicv_output_language', outputLanguage)
+    if (hasSavedCvText) window.localStorage.setItem('revisamicv_latest_cv_text', savedCvText)
+
+    if (needsUploadedFileRestore && !fileDataUrl) {
+      return { ok: false, draftKey, warning: serializationWarning || 'No pude guardar el archivo de CV en el navegador. Tu vacante está guardada, pero necesito un archivo más liviano o tu CV guardado para continuar sin perder trabajo.' }
+    }
+    return { ok: true, draftKey, warning: serializationWarning }
+  }
+
+  const startInlineCheckout = async (pack: string) => {
+    const emailError = validateEmail(email)
+    if (emailError) return setCheckoutError(emailError)
+    setCheckoutError('')
+    setCheckoutMessage('Guardando tu vacante antes de abrir Stripe...')
+    setCheckoutLoadingPack(pack)
+    try {
+      const draftState = await persistCheckoutDraft()
+      if (!draftState.ok) {
+        setCheckoutError(draftState.warning)
+        setCheckoutMessage('Tu vacante quedó guardada. Resuelve el CV antes de ir a Stripe para no perder el avance.')
+        trackEvent('checkout_draft_file_too_large', { pack, location: 'analysis_inline_zero_credits' })
+        return
+      }
+      const normalizedEmail = email.trim().toLowerCase()
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pack, email: normalizedEmail, returnTo: 'analysis' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'No pude iniciar el pago')
+      trackEvent('checkout_started', { pack, location: 'analysis_inline_zero_credits' })
+      if (data.url) window.location.href = data.url
+    } catch (err: any) {
+      setCheckoutError(getFriendlyApiError(err.message, 'No pude iniciar el pago'))
+      trackEvent('checkout_failed', { pack, location: 'analysis_inline_zero_credits', message: String(err.message || '').slice(0, 80) })
+    } finally {
+      setCheckoutLoadingPack('')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const emailError = validateEmail(email)
@@ -1194,7 +1364,20 @@ export default function SignupPage() {
       }
       const data = await res.json()
 
-      if (!res.ok) throw new Error(getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.'))
+      if (!res.ok) {
+        const friendly = getFriendlyApiError(data.message || data.error, 'No pude procesar el CV. Intenta de nuevo.')
+        if (res.status === 402 || data.tokens_remaining === 0 || data.error === 'no_tokens') {
+          const draftState = await persistCheckoutDraft()
+          setInlinePurchaseOpen(true)
+          setCheckoutMessage(draftState.ok
+            ? 'Tu vacante quedó guardada aquí. Compra créditos y al volver de Stripe sigues en este mismo paso.'
+            : 'Tu vacante quedó guardada aquí. Antes de comprar, resuelve el CV para que el regreso de Stripe no te deje sin archivo.')
+          setCheckoutError(draftState.ok ? '' : draftState.warning)
+          setUserCredits(0)
+          window.localStorage.setItem('revisamicv_tokens_remaining', '0')
+        }
+        throw new Error(friendly)
+      }
       setAnalysisProgress(100)
       window.localStorage.setItem('revisamicv_email', email.trim().toLowerCase())
       if (data.auth_token) window.localStorage.setItem('revisamicv_auth_token', data.auth_token)
@@ -1639,9 +1822,19 @@ Requisitos:
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ CV cargado</span>
-                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ Sin inventar experiencia</span>
-                    <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-paper-2)] px-3 py-1.5">✓ PDF, DOCX y TXT</span>
+                    {[
+                      { label: 'CV cargado', icon: DocumentIcon },
+                      { label: 'Sin inventar experiencia', icon: ShieldCheckIcon },
+                      { label: 'PDF, DOCX y TXT', icon: CheckIcon },
+                    ].map((pill) => {
+                      const Icon = pill.icon
+                      return (
+                        <span key={pill.label} className="inline-flex items-center gap-2 rounded-full border border-[rgba(45,107,224,.18)] bg-[rgba(45,107,224,.06)] px-3.5 py-2 text-[12.5px] font-bold text-[var(--color-ink)] shadow-[0_8px_20px_rgba(17,24,39,.04)]">
+                          <span className="grid h-5 w-5 place-items-center rounded-full border border-[rgba(45,107,224,.16)] bg-white text-[var(--color-primary)]"><Icon className="h-3.5 w-3.5" /></span>
+                          {pill.label}
+                        </span>
+                      )
+                    })}
                   </div>
 
                   <p className={`mt-3 text-xs ${!jobFile && jobDescription.trim().length > 0 && jobDescription.trim().length < MIN_JOB_DESCRIPTION_CHARS ? 'font-semibold text-red-700' : 'text-[var(--color-ink-soft)]'}`}>
@@ -1675,6 +1868,47 @@ Requisitos:
             )}
 
             {error && <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+
+            {(inlinePurchaseOpen || checkoutMessage || checkoutError) && (
+              <section className="mx-auto max-w-[920px] rounded-3xl border border-[rgba(45,107,224,.18)] bg-white p-5 shadow-[var(--shadow-soft)] md:p-6" data-testid="inline-zero-credit-checkout">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--color-primary)]">Créditos agotados</p>
+                    <h3 className="mt-1 font-display text-2xl font-semibold text-[var(--color-ink)]">Compra créditos sin perder esta vacante</h3>
+                    <p className="mt-2 text-sm font-semibold text-[var(--color-ink-soft)]">Cada análisis es una vacante distinta. Tus créditos no vencen.</p>
+                  </div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#BDE8D0] bg-[#F2FBF6] px-3 py-2 text-xs font-bold text-[#0C6F49]"><ShieldCheckIcon className="h-4 w-4" /> Borrador guardado</span>
+                </div>
+                {checkoutMessage && <p className="mt-4 rounded-2xl border border-[#CFE0FF] bg-[#F6FAFF] p-3 text-sm font-semibold text-[#2A3B5F]">{checkoutMessage}</p>}
+                {checkoutError && <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{checkoutError}</p>}
+                {inlinePurchaseOpen && (
+                  <div className="mt-5 grid gap-3 md:grid-cols-3">
+                    {packEntries.map(([packKey, pack]) => {
+                      const selected = packKey === smartCheckoutPack
+                      return (
+                        <button
+                          key={packKey}
+                          type="button"
+                          onClick={() => startInlineCheckout(packKey)}
+                          disabled={checkoutLoadingPack !== ''}
+                          className={`relative rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(17,24,39,.10)] disabled:cursor-wait disabled:opacity-70 ${selected ? 'border-[var(--color-primary)] bg-[rgba(45,107,224,.06)] ring-2 ring-[rgba(45,107,224,.10)]' : 'border-[var(--color-line)] bg-white'}`}
+                          data-testid={`inline-pack-${packKey}`}
+                        >
+                          {selected && <span className="absolute right-3 top-3 rounded-full bg-[var(--color-primary)] px-2.5 py-1 text-[11px] font-bold text-white">Recomendado</span>}
+                          <p className="text-sm font-bold text-[var(--color-ink)]">{pack.name}</p>
+                          <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--color-ink)]">${pack.priceUSD}<span className="text-sm font-semibold text-[var(--color-ink-soft)]"> USD</span></p>
+                          <p className="mt-1 text-sm font-semibold text-[var(--color-primary-deep)]">{pack.cvCount} análisis · {pricePerCv(pack.priceUSD, pack.cvCount)}</p>
+                          <p className="mt-3 text-xs leading-5 text-[var(--color-ink-soft)]">{pack.description}</p>
+                          <span className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white">
+                            {checkoutLoadingPack === packKey ? 'Abriendo Stripe…' : `Comprar ${pack.name}`}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )}
 
             {loading && (
               <section className="mx-auto max-w-2xl rounded-3xl bg-[var(--color-block)] p-7 text-[var(--color-paper)] shadow-[var(--shadow-screen)]">
